@@ -325,7 +325,7 @@ fun AdvancedFilterScreen(
                     selectedAmenities = setOf()
                 },
                 modifier = Modifier.weight(1f),
-                colors = OutlinedButtonDefaults.outlinedButtonColors(contentColor = OrangePrimary)
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = OrangePrimary)
             ) {
                 Text("Xóa lọc")
             }
