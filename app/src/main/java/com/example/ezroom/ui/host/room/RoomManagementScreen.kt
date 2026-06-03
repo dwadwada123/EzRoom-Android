@@ -1,4 +1,4 @@
-package com.example.ezroom.ui.room
+package com.example.ezroom.ui.host.room
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
