@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -171,7 +173,78 @@ fun RoomDetailScreen(
                         )
                     }
 
-                    // Image navigation arrows and dots
+                    // Navigation Buttons (Inside the image block)
+                    if (displayRoom.images.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    currentImageIndex =
+                                        if (currentImageIndex > 0) currentImageIndex - 1 else displayRoom.images.size - 1
+                                },
+                                modifier = Modifier
+                                    .background(
+                                        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
+                                        shape = CircleShape
+                                    )
+                                    .size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Previous",
+                                    tint = androidx.compose.ui.graphics.Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    currentImageIndex =
+                                        (currentImageIndex + 1) % displayRoom.images.size
+                                },
+                                modifier = Modifier
+                                    .background(
+                                        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
+                                        shape = CircleShape
+                                    )
+                                    .size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Next",
+                                    tint = androidx.compose.ui.graphics.Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // Counter (1 / 4) - Positioned at Top Right
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            contentAlignment = Alignment.TopEnd
+                        ) {
+                            Text(
+                                text = "${currentImageIndex % displayRoom.images.size + 1} / ${displayRoom.images.size}",
+                                style = Typography.labelSmall,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier
+                                    .background(
+                                        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
+                                        shape = CircleShape
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Image navigation dots
                     Row(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -188,49 +261,6 @@ fun RoomDetailScreen(
                                         shape = CircleShape
                                     )
                             )
-                        }
-                    }
-                }
-
-                // Image carousel navigation
-                if (displayRoom.images.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = {
-                                currentImageIndex =
-                                    if (currentImageIndex > 0) currentImageIndex - 1 else displayRoom.images.size - 1
-                            },
-                            modifier = Modifier.size(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("←", fontSize = 16.sp)
-                        }
-
-                        Text(
-                            text = "${currentImageIndex % displayRoom.images.size + 1} / ${displayRoom.images.size}",
-                            style = Typography.bodySmall,
-                            color = OnBackgroundLight,
-                            modifier = Modifier.weight(1f),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-
-                        Button(
-                            onClick = {
-                                currentImageIndex =
-                                    (currentImageIndex + 1) % displayRoom.images.size
-                            },
-                            modifier = Modifier.size(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("→", fontSize = 16.sp)
                         }
                     }
                 }

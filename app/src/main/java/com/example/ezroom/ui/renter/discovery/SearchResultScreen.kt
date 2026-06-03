@@ -1,9 +1,11 @@
 package com.example.ezroom.ui.renter.discovery
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -71,7 +73,8 @@ fun SearchResultScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (filterParams.selectedDistrict.isNotEmpty()) {
                                 AssistChip(
@@ -109,12 +112,15 @@ fun SearchResultScreen(
                             }
 
                             // Show filter button
-                            ElevatedButton(
+                            Button(
                                 onClick = onFilterClick,
                                 modifier = Modifier.height(32.dp),
-                                colors = ButtonDefaults.elevatedButtonColors(
-                                    containerColor = OrangePrimary
-                                )
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = TealAccent,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                shape = Shapes.medium
                             ) {
                                 Text("Bộ lọc", style = Typography.labelSmall)
                             }
