@@ -33,6 +33,17 @@ data class Conversation(
     val lastMsgFromMe: Boolean = false
 )
 
+@Preview(showBackground = true, name = "Chat List Screen")
+@Composable
+fun PreviewChatListScreen() {
+    EzRoomTheme {
+        ChatListScreen(
+            onNavigateBack = {},
+            onConversationClick = { _, _ -> }
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
@@ -199,13 +210,3 @@ fun ConversationListItem(
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun ChatListScreenPreview() {
-    EzRoomTheme {
-        ChatListScreen(
-            onNavigateBack = {},
-            onConversationClick = { _, _ -> }
-        )
-    }
-}
