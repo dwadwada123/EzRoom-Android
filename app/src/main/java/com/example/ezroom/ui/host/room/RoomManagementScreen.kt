@@ -271,11 +271,3 @@ fun RoomPostCard(
     }
 }
 
-// Chỉnh sửa: Thêm Preview để xem trước giao diện trong Android Studio
-@Preview(showBackground = true)
-@Composable
-fun RoomManagementScreenPreview() {
-    EzRoomTheme {
-        RoomManagementScreen()
-    }
-}
