@@ -7,9 +7,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset // IMPORT QUAN TRỌNG
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +69,7 @@ fun NotificationScreen(
                 title = { Text("THÔNG BÁO", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, null, tint = OrangePrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = OrangePrimary)
                     }
                 },
                 actions = {
@@ -131,10 +133,9 @@ fun NotificationScreen(
 fun NotificationRow(item: NotificationItem) {
     // Sửa lỗi 'when' expression must be exhaustive bằng cách thêm else
     val (icon, color) = when (item.type) {
-        NotificationType.BILL -> Icons.Default.ReceiptLong to Color(0xFFF44336)
+        NotificationType.BILL -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
         NotificationType.SCHEDULE -> Icons.Default.EventAvailable to TealAccent
         NotificationType.SYSTEM -> Icons.Default.Info to Color(0xFF2196F3)
-        else -> Icons.Default.Notifications to Color.Gray // Nhánh an toàn
     }
 
     Surface(
@@ -208,6 +209,7 @@ fun NotificationRow(item: NotificationItem) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun NotificationScreenPreview() {
