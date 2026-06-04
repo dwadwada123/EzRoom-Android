@@ -21,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ezroom.ui.theme.EzRoomTheme
 import java.util.UUID
 
 // --- DATA MODELS ---
@@ -408,5 +410,21 @@ fun ImageCardWithLabel(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RoomFormScreenPreview() {
+    EzRoomTheme {
+        RoomFormScreen()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RoomFormScreenEditPreview() {
+    EzRoomTheme {
+        RoomFormScreen(isEditMode = true)
     }
 }
