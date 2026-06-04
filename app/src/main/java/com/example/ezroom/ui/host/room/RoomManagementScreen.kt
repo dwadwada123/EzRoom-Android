@@ -271,3 +271,10 @@ fun RoomPostCard(
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun RoomManagementScreenPreview() {
+    EzRoomTheme {
+        RoomManagementScreen()
+    }
+}

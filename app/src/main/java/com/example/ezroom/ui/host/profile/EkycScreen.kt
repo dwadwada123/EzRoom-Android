@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.theme.EzRoomTheme
@@ -390,5 +391,13 @@ fun SuccessSection(onFinishClick: () -> Unit) {
         ) {
             Text("Quay lại trang cá nhân", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EkycScreenPreview() {
+    EzRoomTheme {
+        EkycScreen()
     }
 }
