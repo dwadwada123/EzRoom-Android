@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.theme.EzRoomTheme
@@ -30,7 +31,8 @@ import com.example.ezroom.ui.theme.EzRoomTheme
 @Composable
 fun HostProfileScreen(
     onNavigateToEkyc: () -> Unit = {},
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onBack: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -41,7 +43,10 @@ fun HostProfileScreen(
 
     Scaffold(
         topBar = {
-            CommonTopAppBar(title = "Hồ sơ cá nhân")
+            CommonTopAppBar(
+                title = "Hồ sơ cá nhân",
+                onBackClick = onBack
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -276,5 +281,13 @@ fun MenuOptionItem(
             contentDescription = "Đi tiếp",
             tint = MaterialTheme.colorScheme.outline
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HostProfileScreenPreview() {
+    EzRoomTheme {
+        HostProfileScreen()
     }
 }
