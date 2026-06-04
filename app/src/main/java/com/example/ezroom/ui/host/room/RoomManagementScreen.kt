@@ -22,8 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.theme.EzRoomTheme
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InternalCommonTopAppBar(title: String) {
+    TopAppBar(
+        title = { Text(text = title) }
+    )
+}
 
 // 1. Định nghĩa các Trạng thái Phòng
 enum class RoomStatus(val title: String) {
@@ -67,8 +74,7 @@ fun RoomManagementScreen(
 
     Scaffold(
         topBar = {
-            // Tận dụng CommonTopAppBar có sẵn trong thư mục components của bạn
-            CommonTopAppBar(title = "Quản lý phòng trọ")
+            InternalCommonTopAppBar(title = "Quản lý phòng trọ")
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -114,7 +120,7 @@ fun RoomManagementScreen(
                     Text(
                         text = "Không có phòng nào ở trạng thái này.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant // Chỉnh sửa: Dùng màu hệ thống hỗ trợ Dark Mode
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -147,37 +153,33 @@ fun RoomPostCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, // Kế thừa RoundedCornerShape(12.dp) từ Shape.kt của bạn
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Phần thông tin tóm tắt (Ảnh + Text)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                // Ảnh đại diện phòng trọ
                 Image(
                     painter = painterResource(id = room.imageUrl),
                     contentDescription = "Room Image",
                     modifier = Modifier
                         .size(90.dp)
-                        .clip(MaterialTheme.shapes.medium) // Dùng bo góc medium đồng bộ
+                        .clip(MaterialTheme.shapes.medium)
                         .background(Color.LightGray),
                     contentScale = ContentScale.Crop
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Nội dung text thông tin phòng
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Tiêu đề bài đăng
                     Text(
                         text = room.title,
-                        style = MaterialTheme.typography.titleLarge, // fontSize = 18.sp từ Type.kt của bạn
+                        style = MaterialTheme.typography.titleLarge,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onBackground
@@ -185,22 +187,20 @@ fun RoomPostCard(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Giá thuê
                     Text(
                         text = room.price,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary // Dùng OrangePrimary làm điểm nhấn giá tiền
+                            color = MaterialTheme.colorScheme.primary
                         )
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
 
-                    // Diện tích
                     Text(
                         text = "Diện tích: ${room.area} m²",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant // Chỉnh sửa: Dùng màu hệ thống hỗ trợ Dark Mode
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -209,17 +209,15 @@ fun RoomPostCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- CÁC NÚT CHỨC NĂNG NHANH ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Nút Ẩn Tin
                 TextButton(
                     onClick = onHideClick,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
-                    contentPadding = PaddingValues(horizontal = 8.dp) // Chỉnh sửa: Thu nhỏ padding để tránh tràn hàng
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.VisibilityOff,
@@ -230,13 +228,12 @@ fun RoomPostCard(
                     Text(text = "Ẩn tin", style = MaterialTheme.typography.bodySmall)
                 }
 
-                Spacer(modifier = Modifier.width(4.dp)) // Chỉnh sửa: Giảm khoảng cách giữa các nút
+                Spacer(modifier = Modifier.width(4.dp))
 
-                // Nút Sửa
                 OutlinedButton(
                     onClick = onEditClick,
                     shape = MaterialTheme.shapes.small,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp), // Chỉnh sửa: Tối ưu không gian
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Icon(
@@ -248,9 +245,8 @@ fun RoomPostCard(
                     Text(text = "Sửa", style = MaterialTheme.typography.bodySmall)
                 }
 
-                Spacer(modifier = Modifier.width(4.dp)) // Chỉnh sửa: Giảm khoảng cách giữa các nút
+                Spacer(modifier = Modifier.width(4.dp))
 
-                // Nút Xóa
                 Button(
                     onClick = onDeleteClick,
                     shape = MaterialTheme.shapes.small,
@@ -271,7 +267,6 @@ fun RoomPostCard(
     }
 }
 
-// Chỉnh sửa: Thêm Preview để xem trước giao diện trong Android Studio
 @Preview(showBackground = true)
 @Composable
 fun RoomManagementScreenPreview() {
