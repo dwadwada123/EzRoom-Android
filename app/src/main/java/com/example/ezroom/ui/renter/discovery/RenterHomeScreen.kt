@@ -1,222 +1,262 @@
 package com.example.ezroom.ui.renter.discovery
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ezroom.data.model.MockData
+import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.components.RoomCard
 import com.example.ezroom.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class RoomItem(
     val id: String,
     val title: String,
     val price: String,
     val address: String,
-    val rating: Float
+    val rating: Float,
+    val imageUrl: Any? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RenterHomeScreen(
     modifier: Modifier = Modifier,
-    onOpenFilters: () -> Unit = {},
+    // Event callbacks
     onRoomClick: (RoomItem) -> Unit = {}
 ) {
+    val scope = rememberCoroutineScope()
+    // State definitions
     var query by remember { mutableStateOf("") }
-    var currentScreen by remember { mutableStateOf<String>("HOME") }
+    var currentScreen by remember { mutableStateOf("HOME") }
     var selectedFilter by remember { mutableStateOf(FilterParams()) }
-    var showFilterDialog by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var isError by remember { mutableStateOf(false) }
 
-    val categories = listOf("Phòng đơn", "Studio", "Phòng gác lửng", "Căn hộ nguyên căn")
-
-    val sampleRooms = listOf(
-        RoomItem("1", "Phòng trọ cao cấp Q7", "3.500.000₫/tháng", "Quận 7, TP.HCM", 4.5f),
-        RoomItem("2", "Studio tiện nghi gần chợ", "4.200.000₫/tháng", "Quận 1, TP.HCM", 4.8f),
-        RoomItem("3", "Phòng gác lửng thoáng mát", "2.800.000₫/tháng", "Bình Thạnh, TP.HCM", 4.2f),
-        RoomItem("4", "Căn hộ dịch vụ mới", "5.500.000₫/tháng", "Quận 3, TP.HCM", 4.9f),
-        RoomItem("5", "Phòng đơn sạch sẽ", "2.200.000₫/tháng", "Quận 10, TP.HCM", 4.3f)
-    )
-
-    // Filter results based on selected filter
-    val filteredRooms = if (selectedFilter.selectedDistrict.isNotEmpty() ||
-        selectedFilter.priceRange != (1f..10f) ||
-        selectedFilter.selectedAreaRange.isNotEmpty() ||
-        selectedFilter.selectedAmenities.isNotEmpty()
-    ) {
-        sampleRooms.filter {
-            val matchDistrict = if (selectedFilter.selectedDistrict.isNotEmpty())
-                it.address.contains(selectedFilter.selectedDistrict) else true
-            val matchPrice = true // Price matching logic
-            val matchArea = true // Area matching logic
-            matchDistrict && matchPrice && matchArea
+    val categories = listOf("Phòng đơn", "Studio", "Gác lửng", "Nguyên căn")
+    val sampleRooms = remember {
+        MockData.rooms.map { room ->
+            RoomItem(
+                id = room.id, 
+                title = room.title, 
+                price = room.priceFormatted, 
+                address = room.address, 
+                rating = room.rating,
+                imageUrl = room.images.firstOrNull()?.resId
+            )
         }
-    } else {
-        sampleRooms
     }
 
-    // Screen rendering
-    when (currentScreen) {
-        "HOME" -> {
-            Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(16.dp)
-            ) {
-                // Search bar with filter button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+    fun refreshData() {
+        scope.launch {
+            isLoading = true
+            isError = false
+            delay(1200) // Simulate fetching
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshData()
+    }
+
+    val filteredRooms = remember(selectedFilter) {
+        if (selectedFilter.selectedDistrict.isNotEmpty() ||
+            selectedFilter.priceRange != (1f..10f) ||
+            selectedFilter.selectedAreaRange.isNotEmpty() ||
+            selectedFilter.selectedAmenities.isNotEmpty()
+        ) {
+            sampleRooms.filter {
+                val matchDistrict = if (selectedFilter.selectedDistrict.isNotEmpty())
+                    it.address.contains(selectedFilter.selectedDistrict) else true
+                matchDistrict
+            }
+        } else {
+            sampleRooms
+        }
+    }
+
+    // Main layout container
+    Box(modifier = modifier.fillMaxSize()) {
+        when (currentScreen) {
+            "HOME" -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(16.dp)
                 ) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        placeholder = { Text("Tìm phòng, địa điểm...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                        singleLine = true,
-                        shape = Shapes.small,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.12f),
-                            focusedLeadingIconColor = OrangePrimary,
-                            cursorColor = OrangePrimary
+                    // Input fields group
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            placeholder = { Text("Tìm phòng, địa điểm...") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                            singleLine = true,
+                            shape = Shapes.small,
+                            enabled = !isLoading,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = OrangePrimary,
+                                unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.12f),
+                                focusedLeadingIconColor = OrangePrimary,
+                                cursorColor = OrangePrimary
+                            )
                         )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(
+                            onClick = { if (!isLoading) currentScreen = "FILTER" },
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(MaterialTheme.colorScheme.surface, CircleShape),
+                            enabled = !isLoading
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = "Bộ lọc",
+                                tint = OrangePrimary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Categories scroll area
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(categories, key = { it }) { cat ->
+                            AssistChip(
+                                onClick = { if (!isLoading) currentScreen = "SEARCH_RESULT" },
+                                label = { Text(cat, style = Typography.bodySmall) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Home, contentDescription = null, tint = OrangePrimary)
+                                },
+                                shape = Shapes.small,
+                                enabled = !isLoading
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Gợi ý cho bạn",
+                        style = Typography.titleLarge,
+                        color = OnBackgroundLight
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    IconButton(
-                        onClick = {
-                            currentScreen = "FILTER"
-                            onOpenFilters()
-                        },
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(MaterialTheme.colorScheme.surface, shape = CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = "Filter",
-                            tint = OrangePrimary
+                    if (isError) {
+                        DiscoveryEmptyState(
+                            title = "Đã có lỗi xảy ra",
+                            desc = "Chúng tôi không thể tải danh sách phòng. Vui lòng thử lại.",
+                            onRetry = { refreshData() }
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Categories - horizontal scroll
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(categories) { cat ->
-                        AssistChip(
-                            onClick = { currentScreen = "SEARCH_RESULT" },
-                            label = { Text(cat, style = Typography.bodySmall) },
-                            leadingIcon = {
-                                Icon(Icons.Default.Home, contentDescription = null, tint = OrangePrimary)
-                            },
-                            shape = Shapes.small
+                    } else if (!isLoading && sampleRooms.isEmpty()) {
+                        DiscoveryEmptyState(
+                            title = "Không có phòng trống",
+                            desc = "Vui lòng quay lại sau để xem thêm các bài đăng mới.",
+                            onRetry = { refreshData() }
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Gợi ý cho bạn",
-                    style = Typography.titleLarge,
-                    color = OnBackgroundLight
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // List of recommended rooms
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(sampleRooms) { room ->
-                        ElevatedCard(
-                            onClick = { onRoomClick(room) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = Shapes.medium,
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    } else {
+                        // Content scroll area
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Row(modifier = Modifier.padding(12.dp)) {
-                                // Image placeholder
-                                Box(
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .background(OrangeTertiary, shape = Shapes.small)
-                                ) {
-                                    // If you want an image later, replace this Box with Image(...)
-                                }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(room.title, style = Typography.titleLarge, color = OnBackgroundLight)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(room.price, style = Typography.bodyLarge, color = OnBackgroundLight)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(room.address, style = Typography.bodyMedium, color = OnBackgroundLight.copy(alpha = 0.7f))
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        repeat(5) { index ->
-                                            val filled = index < room.rating.toInt()
-                                            Icon(
-                                                imageVector = Icons.Default.Star,
-                                                contentDescription = null,
-                                                tint = if (filled) TealAccent else OnBackgroundLight.copy(alpha = 0.2f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("${room.rating}", style = Typography.bodySmall, color = OnBackgroundLight)
-                                    }
-                                }
+                            items(sampleRooms, key = { it.id }) { room ->
+                                RoomCard(
+                                    title = room.title,
+                                    price = room.price,
+                                    address = room.address,
+                                    rating = room.rating,
+                                    imageUrl = room.imageUrl,
+                                    onClick = { if (!isLoading) onRoomClick(room) }
+                                )
                             }
                         }
                     }
                 }
             }
+            "FILTER" -> {
+                AdvancedFilterScreen(
+                    onFilterApply = { params ->
+                        selectedFilter = params
+                        currentScreen = "SEARCH_RESULT"
+                    },
+                    onDismiss = { currentScreen = "HOME" }
+                )
+            }
+            "SEARCH_RESULT" -> {
+                SearchResultScreen(
+                    rooms = filteredRooms,
+                    filterParams = selectedFilter,
+                    onRoomClick = { room -> onRoomClick(room) },
+                    onBackClick = { currentScreen = "HOME" },
+                    onFilterClick = { currentScreen = "FILTER" }
+                )
+            }
         }
-        "FILTER" -> {
-            AdvancedFilterScreen(
-                onFilterApply = { params ->
-                    selectedFilter = params
-                    currentScreen = "SEARCH_RESULT"
-                },
-                onDismiss = { currentScreen = "HOME" }
-            )
+
+        if (isLoading) {
+            LoadingWidget()
         }
-        "SEARCH_RESULT" -> {
-            SearchResultScreen(
-                rooms = filteredRooms,
-                filterParams = selectedFilter,
-                onRoomClick = { room ->
-                    onRoomClick(room)
-                },
-                onBackClick = { currentScreen = "HOME" },
-                onFilterClick = { currentScreen = "FILTER" }
-            )
+    }
+}
+
+@Composable
+fun DiscoveryEmptyState(title: String, desc: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = OnBackgroundLight.copy(alpha = 0.2f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = title, style = Typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(text = desc, style = Typography.bodyMedium, color = OnBackgroundLight.copy(alpha = 0.6f), textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+            shape = Shapes.small
+        ) {
+            Text("Thử lại")
         }
     }
 }

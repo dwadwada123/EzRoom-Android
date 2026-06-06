@@ -1,19 +1,17 @@
 package com.example.ezroom.ui.renter.review_report
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -25,9 +23,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun WriteReviewScreen(
+fun SubmitReportScreen(
     onBackClick: () -> Unit = {},
-    onSubmitReview: (Int, String) -> Unit = { _, _ -> },
+    onSubmitReport: (reason: String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     // Mock Data for Room Summary
@@ -35,20 +33,30 @@ fun WriteReviewScreen(
     val roomPrice = "3.500.000₫/tháng"
     val roomImageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=400"
 
+    // Predefined Reasons
+    val reasons = listOf(
+        "Thông tin phòng trọ ảo, sai sự thật",
+        "Giá phòng không đúng với thực tế niêm yết",
+        "Chủ nhà có dấu hiệu lừa đảo tiền cọc",
+        "Phòng đã cho thuê nhưng không ẩn bài đăng",
+        "Lý do khác"
+    )
+
     // States
-    var rating by remember { mutableIntStateOf(0) }
-    var commentText by remember { mutableStateOf("") }
+    var selectedReason by remember { mutableStateOf("") }
+    var detailedDescription by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     
     val scrollState = rememberScrollState()
 
-    val isSubmitEnabled = rating > 0 && !isLoading
+    val isOtherSelected = selectedReason == "Lý do khác"
+    val isSubmitEnabled = selectedReason.isNotEmpty() && (!isOtherSelected || detailedDescription.isNotBlank())
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 CommonTopAppBar(
-                    title = "Đánh Giá Phòng Trọ",
+                    title = "Báo cáo vi phạm",
                     onBackClick = onBackClick
                 )
             },
@@ -60,10 +68,14 @@ fun WriteReviewScreen(
                     .padding(paddingValues)
                     .verticalScroll(scrollState)
                     .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // Room Summary Card
+                Text(
+                    text = "Phòng trọ bị báo cáo",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
@@ -102,48 +114,62 @@ fun WriteReviewScreen(
                     }
                 }
 
-                // Interactive Rating Bar
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Select Reason Section
+                Column(modifier = Modifier.selectableGroup()) {
                     Text(
-                        text = "Mức độ hài lòng của bạn?",
+                        text = "Chọn lý do vi phạm",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        repeat(5) { index ->
-                            val starPosition = index + 1
-                            val isSelected = starPosition <= rating
-                            Icon(
-                                imageVector = if (isSelected) Icons.Default.Star else Icons.Outlined.StarOutline,
-                                contentDescription = "Rating Star $starPosition",
-                                tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.5f),
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clickable(enabled = !isLoading) { rating = starPosition }
+                    
+                    reasons.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .selectable(
+                                    selected = (reason == selectedReason),
+                                    onClick = { if (!isLoading) selectedReason = reason },
+                                    role = Role.RadioButton
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (reason == selectedReason),
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                ),
+                                enabled = !isLoading
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = reason,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
                 }
 
-                // Comment Input
+                // Detailed Description Box
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Nhận xét của bạn",
+                        text = "Chi tiết vi phạm",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
-                        value = commentText,
-                        onValueChange = { commentText = it },
+                        value = detailedDescription,
+                        onValueChange = { detailedDescription = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
                             Text(
-                                text = "Chia sẻ trải nghiệm thực tế của bạn...",
+                                text = if (isOtherSelected) 
+                                    "Vui lòng cung cấp thêm thông tin chi tiết..." 
+                                else "Mô tả thêm (không bắt buộc)...",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -152,15 +178,23 @@ fun WriteReviewScreen(
                         shape = MaterialTheme.shapes.medium,
                         enabled = !isLoading,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                            focusedBorderColor = if (isOtherSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = if (isOtherSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         )
                     )
+                    if (isOtherSelected && detailedDescription.isBlank()) {
+                        Text(
+                            text = "* Bắt buộc nhập chi tiết cho lý do khác",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Submit Button
+                // Action button
                 Button(
                     onClick = { 
                         if (isSubmitEnabled) {
@@ -168,21 +202,24 @@ fun WriteReviewScreen(
                                 isLoading = true
                                 delay(1500)
                                 isLoading = false
-                                onSubmitReview(rating, commentText) 
+                                val finalReason = if (isOtherSelected) "Lý do khác: $detailedDescription" else selectedReason
+                                onSubmitReport(finalReason)
                             }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = isSubmitEnabled,
+                    enabled = isSubmitEnabled && !isLoading,
                     shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
                     )
                 ) {
                     Text(
-                        text = "GỬI ĐÁNH GIÁ",
+                        text = "GỬI BÁO CÁO",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -197,8 +234,8 @@ fun WriteReviewScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun WriteReviewScreenPreview() {
+fun SubmitReportScreenPreview() {
     EzRoomTheme {
-        WriteReviewScreen()
+        SubmitReportScreen()
     }
 }

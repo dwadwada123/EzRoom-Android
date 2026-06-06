@@ -28,7 +28,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun EzRoomTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false, // Forced Light Theme to prevent UI color issues on some devices
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme

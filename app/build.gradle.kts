@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.secrets)
 }
 
 android {
@@ -49,6 +50,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.tv.material)
     implementation(libs.coil.compose)
+    implementation(libs.google.maps)
+    implementation(libs.maps.compose)
+    implementation(libs.gson)
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

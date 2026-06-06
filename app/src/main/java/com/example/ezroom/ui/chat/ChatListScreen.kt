@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,94 +20,71 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ezroom.data.model.*
 import com.example.ezroom.ui.theme.*
 
-data class Conversation(
-    val id: String,
-    val userName: String,
-    val lastMessage: String,
-    val time: String,
-    val unreadCount: Int,
+data class ConversationUI(
+    val conversation: Conversation,
     val isOnline: Boolean = false,
     val lastMsgFromMe: Boolean = false
 )
 
-@Preview(showBackground = true, name = "Chat List Screen")
-@Composable
-fun PreviewChatListScreen() {
-    EzRoomTheme {
-        ChatListScreen(
-            onNavigateBack = {},
-            onConversationClick = { _, _ -> }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
+    // Event callbacks
     onNavigateBack: () -> Unit,
     onConversationClick: (String, String) -> Unit
 ) {
+    // State definitions
     var searchQuery by remember { mutableStateOf("") }
-
     val mockConversations = remember {
         listOf(
-            Conversation("1", "Trần Vũ Phong", "Phòng này còn không ạ?", "10:30", 2, isOnline = true),
-            Conversation("2", "Bùi Nhật Nguyệt", "Dạ em đã nhận được tiền cọc rồi ạ", "Hôm qua", 0, lastMsgFromMe = true),
-            Conversation("3", "Trần Lê Quốc Dũng", "Anh gửi em vị trí chính xác nhé.", "Thứ 2", 1, isOnline = true),
-            Conversation("4", "Phạm Đức Anh Tài", "Hợp đồng đã được ký chưa anh?", "01/05", 0),
-            Conversation("5", "Trần Tâm", "Cảm ơn bạn đã hỗ trợ nhiệt tình", "28/04", 0, lastMsgFromMe = true)
+            ConversationUI(Conversation("1", "Trần Vũ Phong", "Phòng này còn không ạ?", "10:30", 2), isOnline = true),
+            ConversationUI(Conversation("2", "Bùi Nhật Nguyệt", "Dạ em đã nhận được tiền cọc rồi ạ", "Hôm qua", 0), lastMsgFromMe = true),
+            ConversationUI(Conversation("3", "Trần Lê Quốc Dũng", "Anh gửi em vị trí chính xác nhé.", "Thứ 2", 1), isOnline = true),
+            ConversationUI(Conversation("4", "Phạm Đức Anh Tài", "Hợp đồng đã được ký chưa anh?", "01/05", 0)),
+            ConversationUI(Conversation("5", "Trần Tâm", "Cảm ơn bạn đã hỗ trợ nhiệt tình", "28/04", 0), lastMsgFromMe = true)
         )
     }
 
-    Scaffold(
-        containerColor = BackgroundLight,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text("TIN NHẮN", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary)
-                },
-                // Thêm nút Back ở đây
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OrangePrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceLight)
+    // Main layout container
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Input fields group
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            placeholder = { Text("Tìm kiếm cuộc hội thoại...", fontSize = 14.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = OrangePrimary,
+                unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.1f)
             )
-        }
-    ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // Thanh Search Bar (Giữ nguyên như bản nâng cấp trước)
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                placeholder = { Text("Tìm kiếm hội thoại...", fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = OrangePrimary,
-                    unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.1f)
-                )
-            )
+        )
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(mockConversations) { chat ->
-                    ConversationListItem(chat = chat, onClick = { onConversationClick(chat.id, chat.userName) })
-                }
+        // Content scroll area
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(mockConversations, key = { it.conversation.id }) { chatUI ->
+                ConversationListItem(
+                    chatUI = chatUI, 
+                    onClick = { 
+                        onConversationClick(chatUI.conversation.id, chatUI.conversation.otherPartyName) 
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun ConversationListItem(
-    chat: Conversation,
+private fun ConversationListItem(
+    chatUI: ConversationUI,
     onClick: () -> Unit
 ) {
+    val chat = chatUI.conversation
+    // Action buttons row
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -116,7 +92,6 @@ fun ConversationListItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Khối ảnh đại diện có tích xanh Online
         Box(contentAlignment = Alignment.BottomEnd) {
             Box(
                 modifier = Modifier
@@ -125,16 +100,15 @@ fun ConversationListItem(
                     .background(OrangePrimary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                // Hiển thị chữ cái đầu tên nếu không có ảnh
                 Text(
-                    text = chat.userName.take(1),
+                    text = chat.otherPartyName.take(1),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = OrangePrimary
                 )
             }
 
-            if (chat.isOnline) {
+            if (chatUI.isOnline) {
                 Box(
                     modifier = Modifier
                         .size(14.dp)
@@ -149,7 +123,6 @@ fun ConversationListItem(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Nội dung tin nhắn
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -157,13 +130,13 @@ fun ConversationListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = chat.userName,
+                    text = chat.otherPartyName,
                     fontSize = 16.sp,
                     fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.SemiBold,
                     color = OnBackgroundLight
                 )
                 Text(
-                    text = chat.time,
+                    text = chat.timestamp,
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -173,7 +146,7 @@ fun ConversationListItem(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (chat.lastMsgFromMe) "Bạn: ${chat.lastMessage}" else chat.lastMessage,
+                    text = if (chatUI.lastMsgFromMe) "Bạn: ${chat.lastMessage}" else chat.lastMessage,
                     fontSize = 14.sp,
                     color = if (chat.unreadCount > 0) OnBackgroundLight else Color.Gray,
                     maxLines = 1,
@@ -202,7 +175,6 @@ fun ConversationListItem(
             }
         }
     }
-    // Đường gạch ngang mảnh đồng bộ với màn hình Hóa đơn
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = 16.dp),
         thickness = 0.5.dp,
@@ -210,3 +182,13 @@ fun ConversationListItem(
     )
 }
 
+@Preview(showBackground = true, name = "Chat List Screen")
+@Composable
+fun PreviewChatListScreen() {
+    EzRoomTheme {
+        ChatListScreen(
+            onNavigateBack = {},
+            onConversationClick = { _, _ -> }
+        )
+    }
+}

@@ -1,6 +1,5 @@
 package com.example.ezroom.ui.renter.favorite
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,13 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import com.example.ezroom.ui.components.RoomCard
 import com.example.ezroom.ui.theme.EzRoomTheme
 
 data class SavedRoom(
@@ -25,16 +22,17 @@ data class SavedRoom(
     val title: String,
     val price: String,
     val address: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val rating: Float = 4.5f
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedRoomsScreen(
+    // Event callbacks
     onRoomClick: (String) -> Unit = {},
     onNavigateToExplore: () -> Unit = {}
 ) {
-    // Mock Data initial state
+    // State definitions
     val savedRooms = remember {
         mutableStateListOf(
             SavedRoom(
@@ -61,33 +59,35 @@ fun SavedRoomsScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Phòng đã lưu", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) }
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            if (savedRooms.isEmpty()) {
-                EmptyState(onNavigateToExplore)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(savedRooms, key = { it.id }) { room ->
-                        SavedRoomItem(
-                            room = room,
-                            onClick = { onRoomClick(room.id) },
-                            onRemove = { savedRooms.remove(room) }
-                        )
-                    }
+    // Main layout container
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (savedRooms.isEmpty()) {
+            EmptySavedState(onNavigateToExplore)
+        } else {
+            // Content scroll area
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(savedRooms, key = { it.id }) { room ->
+                    RoomCard(
+                        title = room.title,
+                        price = room.price,
+                        address = room.address,
+                        rating = room.rating,
+                        imageUrl = room.imageUrl,
+                        onClick = { onRoomClick(room.id) },
+                        trailingIcon = {
+                            IconButton(onClick = { savedRooms.remove(room) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Xóa",
+                                    tint = Color.Red
+                                )
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -95,7 +95,7 @@ fun SavedRoomsScreen(
 }
 
 @Composable
-fun EmptyState(onNavigateToExplore: () -> Unit) {
+private fun EmptySavedState(onNavigateToExplore: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -113,9 +113,11 @@ fun EmptyState(onNavigateToExplore: () -> Unit) {
         Text(
             text = "Bạn chưa lưu phòng trọ nào.",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(24.dp))
+        // Action buttons row
         Button(
             onClick = onNavigateToExplore,
             shape = MaterialTheme.shapes.medium,
@@ -126,94 +128,10 @@ fun EmptyState(onNavigateToExplore: () -> Unit) {
     }
 }
 
-@Composable
-fun SavedRoomItem(
-    room: SavedRoom,
-    onClick: () -> Unit,
-    onRemove: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-        ) {
-            // Room Image
-            AsyncImage(
-                model = room.imageUrl,
-                contentDescription = room.title,
-                modifier = Modifier
-                    .width(120.dp)
-                    .fillMaxHeight()
-                    .clip(MaterialTheme.shapes.medium),
-                contentScale = ContentScale.Crop
-            )
-
-            // Room Info
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = room.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 2,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = room.price,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = room.address,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-
-            // Favorite Icon
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier.padding(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Remove",
-                    tint = Color.Red // Or MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun SavedRoomsScreenPreview() {
     EzRoomTheme {
         SavedRoomsScreen()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun EmptySavedRoomsPreview() {
-    EzRoomTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
-            EmptyState(onNavigateToExplore = {})
-        }
     }
 }

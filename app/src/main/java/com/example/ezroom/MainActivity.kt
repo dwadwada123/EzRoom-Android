@@ -14,6 +14,7 @@ import com.example.ezroom.ui.theme.EzRoomTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Main layout container
         enableEdgeToEdge()
         setContent {
             EzRoomTheme {
@@ -21,6 +22,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    // Navigation routing
                     AppNavigation()
                 }
             }

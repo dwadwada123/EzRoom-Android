@@ -23,16 +23,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ezroom.ui.components.CustomTextField
+import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.EzRoomTheme
+import com.example.ezroom.data.model.RoomStructure
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.UUID
 
-// --- DATA MODELS ---
-
-enum class RoomStructure(val displayName: String) {
-    SINGLE("Phòng đơn"), WHOLE("Nguyên căn"), APARTMENT("Căn hộ")
-}
-
-// Chuyển sang val để đảm bảo tính bất biến (Immutability), giúp Compose quản lý State ổn định hơn
+// Mock data
 data class DetailedArea(
     val id: String = UUID.randomUUID().toString(), 
     val roomName: String = "", 
@@ -56,9 +56,10 @@ val ImageLabels = listOf("Ảnh phòng khách", "Ảnh phòng ngủ", "Ảnh WC"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {}) {
+    // State definitions
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
 
-    // --- STATES QUẢN LÝ DỮ LIỆU ---
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
@@ -66,8 +67,8 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
     var isStructureDropdownExpanded by remember { mutableStateOf(false) }
 
     var totalArea by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
     
-    // Sử dụng mutableStateListOf để quản lý danh sách động (thêm/xóa dòng)
     val detailedAreas = remember { mutableStateListOf<DetailedArea>() }
 
     val amenities = remember {
@@ -81,255 +82,272 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
     
     val uploadedImages = remember { mutableStateListOf<RoomImage>() }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { 
-                    Text(
-                        text = if (isEditMode) "Chỉnh sửa phòng trọ" else "Đăng tin mới", 
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    ) 
-                },
-                navigationIcon = { 
-                    IconButton(onClick = onNavigateBack) { 
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng") 
-                    } 
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
+    val isFormValid = title.isNotEmpty() && description.isNotEmpty() && 
+                      price.isNotEmpty() && totalArea.isNotEmpty()
 
-            // --- 1. THÔNG TIN CƠ BẢN ---
-            FormSectionTitle(title = "Thông tin cơ bản")
-            
-            OutlinedTextField(
-                value = title, 
-                onValueChange = { title = it }, 
-                label = { Text("Tiêu đề bài đăng") }, 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.small
-            )
-
-            // Dropdown chọn cấu trúc cho thuê (Phòng đơn / Nguyên căn / Căn hộ)
-            ExposedDropdownMenuBox(
-                expanded = isStructureDropdownExpanded,
-                onExpandedChange = { isStructureDropdownExpanded = !isStructureDropdownExpanded }
+    // Main layout container
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            // Top app bar
+            topBar = {
+                // Wrapping in a Box to ensure the topBar slot always contains at least one node,
+                // preventing a NoSuchElementException in ScaffoldLayout during measurement in Previews.
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    CenterAlignedTopAppBar(
+                        title = { 
+                            Text(
+                                text = if (isEditMode) "Chỉnh sửa phòng trọ" else "Đăng tin mới", 
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                            ) 
+                        },
+                        navigationIcon = { 
+                            IconButton(onClick = onNavigateBack, enabled = !isLoading) { 
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng") 
+                            } 
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                    )
+                }
+            }
+        ) { innerPadding ->
+            // Content scroll area
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
+                    .verticalScroll(scrollState)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                OutlinedTextField(
-                    value = selectedStructure.displayName, 
-                    onValueChange = {}, 
-                    readOnly = true, 
-                    label = { Text("Cấu trúc cho thuê") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStructureDropdownExpanded) },
-                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(), 
-                    shape = MaterialTheme.shapes.small
+
+                FormSectionTitle(title = "Thông tin cơ bản")
+                
+                // Input fields group
+                CustomTextField(
+                    value = title, 
+                    onValueChange = { title = it }, 
+                    label = "Tiêu đề bài đăng", 
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 )
-                ExposedDropdownMenu(
-                    expanded = isStructureDropdownExpanded, 
-                    onDismissRequest = { isStructureDropdownExpanded = false }
-                ) {
-                    RoomStructure.entries.forEach { structure ->
-                        DropdownMenuItem(
-                            text = { Text(structure.displayName) },
-                            onClick = { 
-                                selectedStructure = structure
-                                isStructureDropdownExpanded = false 
-                            }
-                        )
-                    }
-                }
-            }
 
-            OutlinedTextField(
-                value = price, 
-                onValueChange = { price = it }, 
-                label = { Text("Giá thuê / tháng (VND)") }, 
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.small
-            )
-            
-            OutlinedTextField(
-                value = description, 
-                onValueChange = { description = it }, 
-                label = { Text("Mô tả chi tiết phòng trọ") }, 
-                modifier = Modifier.fillMaxWidth().height(120.dp), 
-                shape = MaterialTheme.shapes.small, 
-                maxLines = 5
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
-
-            // --- 2. KHỐI DIỆN TÍCH (Tính năng sinh dòng tự động theo yêu cầu) ---
-            FormSectionTitle(title = "Diện tích căn hộ")
-            
-            OutlinedTextField(
-                value = totalArea, 
-                onValueChange = { totalArea = it }, 
-                label = { Text("Diện tích tổng toàn căn (m²)") }, 
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.small
-            )
-
-            // Hiển thị danh sách các dòng chi tiết được sinh thêm
-            detailedAreas.forEachIndexed { index, item ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(), 
-                    verticalAlignment = Alignment.CenterVertically, 
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Ô bên trái: Nhập tên phòng
-                    OutlinedTextField(
-                        value = item.roomName, 
-                        onValueChange = { detailedAreas[index] = item.copy(roomName = it) }, 
-                        label = { Text("Tên phòng (VD: Phòng ngủ 1)") }, 
-                        modifier = Modifier.weight(1.3f), 
-                        shape = MaterialTheme.shapes.small
+                // Using a standard Box + DropdownMenu instead of ExposedDropdownMenuBox to resolve 
+                // the java.lang.NoSuchMethodError in the Android Studio Preview environment.
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    CustomTextField(
+                        value = selectedStructure.displayName, 
+                        onValueChange = {}, 
+                        readOnly = true,
+                        label = "Cấu trúc cho thuê",
+                        trailingIcon = { 
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStructureDropdownExpanded) 
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isLoading) { isStructureDropdownExpanded = !isStructureDropdownExpanded },
+                        enabled = !isLoading
                     )
-                    // Ô bên phải: Nhập diện tích phòng đó
-                    OutlinedTextField(
-                        value = item.areaValue, 
-                        onValueChange = { detailedAreas[index] = item.copy(areaValue = it) }, 
-                        label = { Text("Diện tích (m²)") }, 
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
-                        modifier = Modifier.weight(0.9f), 
-                        shape = MaterialTheme.shapes.small
-                    )
-                    // Icon nút Thùng rác nhỏ màu đỏ để xóa dòng
-                    IconButton(
-                        onClick = { detailedAreas.removeAt(index) }, 
-                        colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    DropdownMenu(
+                        expanded = isStructureDropdownExpanded, 
+                        onDismissRequest = { isStructureDropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Xóa dòng")
+                        RoomStructure.entries.forEach { structure ->
+                            DropdownMenuItem(
+                                text = { Text(structure.displayName) },
+                                onClick = { 
+                                    selectedStructure = structure
+                                    isStructureDropdownExpanded = false 
+                                }
+                            )
+                        }
                     }
                 }
-            }
 
-            // Nút bấm có dấu (+) để thêm dòng mới
-            OutlinedButton(
-                onClick = { detailedAreas.add(DetailedArea()) }, 
-                modifier = Modifier.fillMaxWidth(), 
-                shape = MaterialTheme.shapes.small, 
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Thêm")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Thêm diện tích chi tiết từng phòng (nếu có)", style = MaterialTheme.typography.bodyMedium)
-            }
+                CustomTextField(
+                    value = price, 
+                    onValueChange = { price = it }, 
+                    label = "Giá thuê / tháng (VND)", 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
+                )
+                
+                CustomTextField(
+                    value = description, 
+                    onValueChange = { description = it }, 
+                    label = "Mô tả chi tiết phòng trọ", 
+                    modifier = Modifier.fillMaxWidth().height(120.dp), 
+                    singleLine = false,
+                    enabled = !isLoading
+                )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
 
-            // --- 3. TIỆN ÍCH PHÒNG TRỌ (Checkbox kèm thông số mặc định) ---
-            FormSectionTitle(title = "Tiện ích đi kèm")
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                amenities.chunked(2).forEach { rowItems ->
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        rowItems.forEach { amenity ->
-                            val index = amenities.indexOf(amenity)
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { 
-                                        // Cập nhật State bằng cách tạo bản sao mới (copy)
-                                        amenities[index] = amenity.copy(isChecked = !amenity.isChecked) 
-                                    }, 
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = amenity.isChecked, 
-                                    onCheckedChange = { checked -> 
-                                        amenities[index] = amenity.copy(isChecked = checked) 
-                                    }, 
-                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                                )
-                                Column(modifier = Modifier.padding(start = 4.dp)) {
-                                    Text(text = amenity.name, style = MaterialTheme.typography.bodyLarge)
-                                    // Hiển thị thông số mặc định (VD: 1m8 x 2m) như yêu cầu
-                                    Text(text = amenity.defaultSpec, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                FormSectionTitle(title = "Diện tích căn hộ")
+                
+                CustomTextField(
+                    value = totalArea, 
+                    onValueChange = { totalArea = it }, 
+                    label = "Diện tích tổng toàn căn (m²)", 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
+                )
+
+                detailedAreas.forEachIndexed { index, item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(), 
+                        verticalAlignment = Alignment.CenterVertically, 
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CustomTextField(
+                            value = item.roomName, 
+                            onValueChange = { detailedAreas[index] = item.copy(roomName = it) }, 
+                            label = "Tên phòng (VD: Phòng ngủ 1)", 
+                            modifier = Modifier.weight(1.3f),
+                            enabled = !isLoading
+                        )
+                        CustomTextField(
+                            value = item.areaValue, 
+                            onValueChange = { detailedAreas[index] = item.copy(areaValue = it) }, 
+                            label = "Diện tích (m²)", 
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                            modifier = Modifier.weight(0.9f),
+                            enabled = !isLoading
+                        )
+                        IconButton(
+                            onClick = { if (!isLoading) detailedAreas.removeAt(index) }, 
+                            colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            enabled = !isLoading
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Xóa dòng")
+                        }
+                    }
+                }
+
+                // Action buttons row
+                OutlinedButton(
+                    onClick = { if (!isLoading) detailedAreas.add(DetailedArea()) }, 
+                    modifier = Modifier.fillMaxWidth(), 
+                    shape = MaterialTheme.shapes.small, 
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    enabled = !isLoading
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "Thêm")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Thêm diện tích chi tiết từng phòng (nếu có)", style = MaterialTheme.typography.bodyMedium)
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+
+                FormSectionTitle(title = "Tiện ích đi kèm")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    amenities.chunked(2).forEach { rowItems ->
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            rowItems.forEach { amenity ->
+                                val index = amenities.indexOf(amenity)
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable(enabled = !isLoading) { 
+                                            amenities[index] = amenity.copy(isChecked = !amenity.isChecked) 
+                                        }, 
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = amenity.isChecked, 
+                                        onCheckedChange = { checked -> 
+                                            if (!isLoading) {
+                                                amenities[index] = amenity.copy(isChecked = checked) 
+                                            }
+                                        }, 
+                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+                                        enabled = !isLoading
+                                    )
+                                    Column(modifier = Modifier.padding(start = 4.dp)) {
+                                        Text(text = amenity.name, style = MaterialTheme.typography.bodyLarge)
+                                        Text(text = amenity.defaultSpec, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    }
                                 }
                             }
+                            if (rowItems.size < 2) Spacer(modifier = Modifier.weight(1f))
                         }
-                        if (rowItems.size < 2) Spacer(modifier = Modifier.weight(1f))
                     }
                 }
-            }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
 
-            // --- 4. TẢI ẢNH VÀ GẮN NHÃN (Lưới ảnh kèm Dropdown) ---
-            FormSectionTitle(title = "Hình ảnh thực tế")
-            
-            // Khung tải ảnh mô phỏng
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .border(1.dp, color = MaterialTheme.colorScheme.primary, shape = MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                    .clickable { uploadedImages.add(RoomImage(uri = null)) },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.CloudUpload, contentDescription = "Upload Image", tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Bấm để tải ảnh lên từ thư viện máy", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                FormSectionTitle(title = "Hình ảnh thực tế")
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .border(1.dp, color = MaterialTheme.colorScheme.primary, shape = MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                        .clickable(enabled = !isLoading) { uploadedImages.add(RoomImage(uri = null)) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(imageVector = Icons.Default.CloudUpload, contentDescription = "Upload Image", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Bấm để tải ảnh lên từ thư viện máy", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
-            }
 
-            // Lưới hiển thị ảnh và gắn nhãn
-            if (uploadedImages.isNotEmpty()) {
-                uploadedImages.chunked(2).forEach { rowImages ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        rowImages.forEach { roomImage ->
-                            val index = uploadedImages.indexOf(roomImage)
-                            Box(modifier = Modifier.weight(1f)) {
-                                ImageCardWithLabel(
-                                    roomImage = roomImage, 
-                                    onDelete = { uploadedImages.removeAt(index) },
-                                    onLabelChange = { newLabel ->
-                                        uploadedImages[index] = roomImage.copy(label = newLabel)
-                                    }
-                                )
+                if (uploadedImages.isNotEmpty()) {
+                    uploadedImages.chunked(2).forEach { rowImages ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            rowImages.forEach { roomImage ->
+                                val index = uploadedImages.indexOf(roomImage)
+                                Box(modifier = Modifier.weight(1f)) {
+                                    ImageCardWithLabel(
+                                        roomImage = roomImage, 
+                                        onDelete = { if (!isLoading) uploadedImages.removeAt(index) },
+                                        onLabelChange = { newLabel ->
+                                            if (!isLoading) {
+                                                uploadedImages[index] = roomImage.copy(label = newLabel)
+                                            }
+                                        },
+                                        enabled = !isLoading
+                                    )
+                                }
+                            }
+                            if (rowImages.size < 2) Spacer(modifier = Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Action buttons row
+                PrimaryButton(
+                    text = if (isEditMode) "Cập nhật bài đăng" else "Đăng bài ngay", 
+                    onClick = { 
+                        if (isFormValid) {
+                            scope.launch {
+                                isLoading = true
+                                delay(1500)
+                                isLoading = false
+                                onNavigateBack()
                             }
                         }
-                        if (rowImages.size < 2) Spacer(modifier = Modifier.weight(1f))
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Nút hành động chính
-            Button(
-                onClick = { /* Xử lý gửi API tại đây */ }, 
-                modifier = Modifier.fillMaxWidth().height(48.dp), 
-                shape = MaterialTheme.shapes.medium, 
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text(
-                    text = if (isEditMode) "Cập nhật bài đăng" else "Đăng bài ngay", 
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                    }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isFormValid && !isLoading
                 )
             }
+        }
+
+        if (isLoading) {
+            LoadingWidget()
         }
     }
 }
 
-/**
- * Component hỗ trợ hiển thị tiêu đề các phân đoạn trong Form
- */
 @Composable
 fun FormSectionTitle(title: String) {
     Text(
@@ -341,16 +359,15 @@ fun FormSectionTitle(title: String) {
     )
 }
 
-/**
- * Component hiển thị từng Card ảnh kèm Dropdown gắn nhãn phân loại
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageCardWithLabel(
     roomImage: RoomImage, 
     onDelete: () -> Unit,
-    onLabelChange: (String) -> Unit
+    onLabelChange: (String) -> Unit,
+    enabled: Boolean = true
 ) {
+    // State definitions
     var isLabelDropdownExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -360,12 +377,10 @@ fun ImageCardWithLabel(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column {
-            // Khu vực ảnh (Placeholder)
             Box(modifier = Modifier.fillMaxWidth().height(110.dp).background(Color.LightGray)) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Ảnh minh họa", style = MaterialTheme.typography.bodySmall, color = Color.DarkGray)
                 }
-                // Nút xóa nhanh ảnh
                 IconButton(
                     onClick = onDelete, 
                     modifier = Modifier
@@ -373,19 +388,19 @@ fun ImageCardWithLabel(
                         .padding(4.dp)
                         .size(28.dp)
                         .background(Color.Black.copy(alpha = 0.5f), shape = MaterialTheme.shapes.small),
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)
+                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White),
+                    enabled = enabled
                 ) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = "Xóa", modifier = Modifier.size(16.dp))
                 }
             }
 
-            // Dropdown gắn nhãn (Phòng khách, WC, Mặt tiền...)
             Box(modifier = Modifier.fillMaxWidth().padding(6.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(1.dp, Color.LightGray, MaterialTheme.shapes.small)
-                        .clickable { isLabelDropdownExpanded = true }
+                        .clickable(enabled = enabled) { isLabelDropdownExpanded = true }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, 
                     verticalAlignment = Alignment.CenterVertically
@@ -404,7 +419,8 @@ fun ImageCardWithLabel(
                             onClick = { 
                                 onLabelChange(label)
                                 isLabelDropdownExpanded = false 
-                            }
+                            },
+                            enabled = enabled
                         )
                     }
                 }

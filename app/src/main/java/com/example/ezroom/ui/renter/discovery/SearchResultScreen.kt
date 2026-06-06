@@ -8,16 +8,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ezroom.ui.components.RoomCard
 import com.example.ezroom.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchResultScreen(
     modifier: Modifier = Modifier,
@@ -27,32 +26,36 @@ fun SearchResultScreen(
     onBackClick: () -> Unit = {},
     onFilterClick: () -> Unit = {}
 ) {
+    // Main layout container
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
     ) {
-        // Header
-        TopAppBar(
-            title = { Text("Kết quả tìm kiếm") },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                titleContentColor = OnBackgroundLight
+        // Top app bar section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại", tint = OrangePrimary)
+            }
+            Text(
+                text = "Kết quả tìm kiếm",
+                style = Typography.titleMedium,
+                color = OnBackgroundLight
             )
-        )
+        }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Content scroll area
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Result count section
+            // Result summary section
             item {
                 Column {
                     Text(
@@ -61,7 +64,7 @@ fun SearchResultScreen(
                         color = OnBackgroundLight
                     )
 
-                    // Applied filters display
+                    // Active filters row
                     if (filterParams.selectedDistrict.isNotEmpty() ||
                         filterParams.priceRange != (1f..10f) ||
                         filterParams.selectedAreaRange.isNotEmpty() ||
@@ -80,9 +83,7 @@ fun SearchResultScreen(
                                 AssistChip(
                                     onClick = { },
                                     label = { Text(filterParams.selectedDistrict, style = Typography.labelSmall) },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = OrangeTertiary
-                                    )
+                                    colors = AssistChipDefaults.assistChipColors(containerColor = OrangeTertiary)
                                 )
                             }
 
@@ -91,13 +92,11 @@ fun SearchResultScreen(
                                     onClick = { },
                                     label = {
                                         Text(
-                                            "₫${filterParams.priceRange.start.toInt()}M - ₫${filterParams.priceRange.endInclusive.toInt()}M",
+                                            "₫${filterParams.priceRange.start.toInt()}tr - ₫${filterParams.priceRange.endInclusive.toInt()}tr",
                                             style = Typography.labelSmall
                                         )
                                     },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = OrangeTertiary
-                                    )
+                                    colors = AssistChipDefaults.assistChipColors(containerColor = OrangeTertiary)
                                 )
                             }
 
@@ -105,13 +104,11 @@ fun SearchResultScreen(
                                 AssistChip(
                                     onClick = { },
                                     label = { Text(filterParams.selectedAreaRange, style = Typography.labelSmall) },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = OrangeTertiary
-                                    )
+                                    colors = AssistChipDefaults.assistChipColors(containerColor = OrangeTertiary)
                                 )
                             }
 
-                            // Show filter button
+                            // Refine search action
                             Button(
                                 onClick = onFilterClick,
                                 modifier = Modifier.height(32.dp),
@@ -128,11 +125,11 @@ fun SearchResultScreen(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = OnBackgroundLight.copy(alpha = 0.1f))
+                    HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.1f))
                 }
             }
 
-            // Rooms list
+            // Results list section
             if (rooms.isEmpty()) {
                 item {
                     Column(
@@ -155,79 +152,14 @@ fun SearchResultScreen(
                     }
                 }
             } else {
-                items(rooms) { room ->
-                    RoomResultCard(
-                        room = room,
+                items(rooms, key = { it.id }) { room ->
+                    RoomCard(
+                        title = room.title,
+                        price = room.price,
+                        address = room.address,
+                        rating = room.rating,
+                        imageUrl = room.imageUrl,
                         onClick = { onRoomClick(room) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RoomResultCard(
-    room: RoomItem,
-    onClick: () -> Unit = {},
-    modifier: Modifier = Modifier
-) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = Shapes.medium,
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(modifier = Modifier.padding(12.dp)) {
-            // Image placeholder
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .background(OrangeTertiary, shape = Shapes.small)
-            ) {
-                // Image will go here
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(room.title, style = Typography.titleMedium, color = OnBackgroundLight)
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    room.price,
-                    style = Typography.titleSmall,
-                    color = OrangePrimary
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    room.address,
-                    style = Typography.bodySmall,
-                    color = OnBackgroundLight.copy(alpha = 0.7f),
-                    maxLines = 1
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Rating
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(5) { index ->
-                        val filled = index < room.rating.toInt()
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = if (filled) TealAccent else OnBackgroundLight.copy(alpha = 0.2f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        "${room.rating}",
-                        style = Typography.labelSmall,
-                        color = OnBackgroundLight
                     )
                 }
             }

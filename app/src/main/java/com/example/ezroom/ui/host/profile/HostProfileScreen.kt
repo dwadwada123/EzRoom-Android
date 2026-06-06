@@ -7,19 +7,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,20 +22,26 @@ import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.theme.EzRoomTheme
 
+enum class EkycStatus {
+    UNVERIFIED, PENDING, VERIFIED
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostProfileScreen(
+    // Event callbacks
     onNavigateToEkyc: () -> Unit = {},
+    onNavigateToDepositAccount: () -> Unit = {},
     onLogout: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
+    // State definitions
     val scrollState = rememberScrollState()
-
     val hostName by remember { mutableStateOf("Nguyễn Văn A") }
     val hostId by remember { mutableStateOf("EZ-HOST-88291") }
-    val isEkycVerified by remember { mutableStateOf(false) }
-    val hasBankAccount by remember { mutableStateOf(false) }
+    var ekycStatus by remember { mutableStateOf(EkycStatus.UNVERIFIED) }
 
+    // Main layout container
     Scaffold(
         topBar = {
             CommonTopAppBar(
@@ -58,8 +59,7 @@ fun HostProfileScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // KHU VỰC THÔNG TIN CÁ NHÂN
+            // Profile header section
             Box(
                 modifier = Modifier
                     .size(100.dp)
@@ -90,15 +90,15 @@ fun HostProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // TRẠNG THÁI XÁC THỰC EKYC
+            // Verification status section
             EkycStatusCard(
-                isVerified = isEkycVerified,
+                status = ekycStatus,
                 onClick = onNavigateToEkyc
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // TIỆN ÍCH & CÀI ĐẶT
+            // Menu options list
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -108,9 +108,9 @@ fun HostProfileScreen(
                 Column {
                     MenuOptionItem(
                         icon = Icons.Default.AccountBalance,
-                        title = "Tài khoản ngân hàng nhận cọc",
-                        subtitle = if (hasBankAccount) "Đã liên kết Vietcombank" else "Chưa liên kết (Bấm để thêm)",
-                        onClick = { /* Mở modal/màn hình thêm tài khoản ngân hàng */ }
+                        title = "Tài khoản nhận tiền",
+                        subtitle = "Quản lý thông tin tài khoản nhận tiền đặt cọc",
+                        onClick = onNavigateToDepositAccount
                     )
 
                     HorizontalDivider(
@@ -141,7 +141,7 @@ fun HostProfileScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // NÚT ĐĂNG XUẤT
+            // Auth actions row
             OutlinedButton(
                 onClick = onLogout,
                 modifier = Modifier
@@ -151,14 +151,12 @@ fun HostProfileScreen(
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.error
                 ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error)
-                )
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true)
             ) {
                 Icon(imageVector = Icons.Default.Logout, contentDescription = "Đăng xuất")
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Đăng xuất",
+                    text = "ĐĂNG XUẤT",
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                 )
             }
@@ -173,30 +171,44 @@ fun HostProfileScreen(
     }
 }
 
-// CARD TRẠNG THÁI EKYC
 @Composable
-fun EkycStatusCard(isVerified: Boolean, onClick: () -> Unit) {
-    // Sử dụng màu sắc từ Theme để hỗ trợ Dark Mode
-    val containerColor = if (isVerified) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.errorContainer
+fun EkycStatusCard(status: EkycStatus, onClick: () -> Unit) {
+    // Dynamic styling based on status
+    val containerColor = when (status) {
+        EkycStatus.VERIFIED -> Color(0xFFE0F2F1)
+        EkycStatus.PENDING -> Color(0xFFFFF3E0)
+        EkycStatus.UNVERIFIED -> MaterialTheme.colorScheme.errorContainer
     }
     
-    val contentColor = if (isVerified) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onErrorContainer
+    val contentColor = when (status) {
+        EkycStatus.VERIFIED -> Color(0xFF00796B)
+        EkycStatus.PENDING -> Color(0xFFE65100)
+        EkycStatus.UNVERIFIED -> MaterialTheme.colorScheme.onErrorContainer
     }
 
-    val icon = if (isVerified) Icons.Outlined.CheckCircle else Icons.Default.Warning
-    val titleText = if (isVerified) "Đã xác thực danh tính" else "Tài khoản chưa xác thực"
-    val subText = if (isVerified) "Hồ sơ của bạn đã được duyệt và an toàn." else "Vui lòng xác thực CCCD để đăng tin và nhận cọc."
+    val icon = when (status) {
+        EkycStatus.VERIFIED -> Icons.Outlined.CheckCircle
+        EkycStatus.PENDING -> Icons.Default.Settings
+        EkycStatus.UNVERIFIED -> Icons.Default.Warning
+    }
+    
+    val titleText = when (status) {
+        EkycStatus.VERIFIED -> "Tài khoản đã xác minh"
+        EkycStatus.PENDING -> "Đang chờ duyệt"
+        EkycStatus.UNVERIFIED -> "Tài khoản chưa xác thực"
+    }
+    
+    val subText = when (status) {
+        EkycStatus.VERIFIED -> "Hồ sơ của bạn đã được duyệt và an toàn."
+        EkycStatus.PENDING -> "Thông tin của bạn đang được hệ thống kiểm tra."
+        EkycStatus.UNVERIFIED -> "Vui lòng xác thực CCCD để đăng tin và nhận cọc."
+    }
 
+    // Interactive card container
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !isVerified) { onClick() },
+            .clickable(enabled = status == EkycStatus.UNVERIFIED) { onClick() },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
@@ -228,10 +240,10 @@ fun EkycStatusCard(isVerified: Boolean, onClick: () -> Unit) {
                     color = contentColor.copy(alpha = 0.8f)
                 )
             }
-            if (!isVerified) {
+            if (status == EkycStatus.UNVERIFIED) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Đi tiếp",
+                    contentDescription = "Tiếp tục",
                     tint = contentColor
                 )
             }
@@ -239,7 +251,6 @@ fun EkycStatusCard(isVerified: Boolean, onClick: () -> Unit) {
     }
 }
 
-// ITEM MENU TÙY CHỌN
 @Composable
 fun MenuOptionItem(
     icon: ImageVector,
@@ -247,6 +258,7 @@ fun MenuOptionItem(
     subtitle: String? = null,
     onClick: () -> Unit
 ) {
+    // Interactive list item row
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -278,7 +290,7 @@ fun MenuOptionItem(
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
-            contentDescription = "Đi tiếp",
+            contentDescription = "Tiếp tục",
             tint = MaterialTheme.colorScheme.outline
         )
     }

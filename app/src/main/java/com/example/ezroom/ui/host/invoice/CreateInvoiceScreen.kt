@@ -1,4 +1,5 @@
 package com.example.ezroom.ui.host.invoice
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,22 +18,31 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ezroom.ui.components.CustomTextField
+import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateInvoiceScreen(
+    // Event callbacks
     roomName: String = "Phòng 101",
     baseRentPrice: Long = 3000000L,
     onNavigateBack: () -> Unit,
     onInvoiceCreated: () -> Unit
 ) {
+    // State definitions
+    val scope = rememberCoroutineScope()
     var oldElectricity by remember { mutableStateOf("") }
     var newElectricity by remember { mutableStateOf("") }
     var oldWater by remember { mutableStateOf("") }
     var newWater by remember { mutableStateOf("") }
     var otherCosts by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     val formatter = remember { DecimalFormat("#,### đ") }
 
@@ -46,137 +56,149 @@ fun CreateInvoiceScreen(
         baseRentPrice + (eUsage * 3500L) + (wUsage * 15000L) + other
     }
 
-    Scaffold(
-        containerColor = BackgroundLight,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "LẬP HÓA ĐƠN",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = OrangePrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OrangePrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = SurfaceLight
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Header: Thông tin phòng - Hạ font xuống 16.sp/SemiBold giống BookingForm
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OrangePrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Đang lập hóa đơn cho:", color = OnPrimaryLight.copy(alpha = 0.8f), fontSize = 12.sp)
-                    Text(roomName, color = OnPrimaryLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Home, contentDescription = null, tint = OnPrimaryLight, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tiền phòng cố định: ${formatter.format(baseRentPrice)}", color = OnPrimaryLight, fontSize = 14.sp)
-                    }
-                }
-            }
+    val isFormValid = oldElectricity.isNotEmpty() && newElectricity.isNotEmpty() && 
+                      oldWater.isNotEmpty() && newWater.isNotEmpty() &&
+                      elecUsage >= 0 && waterUsage >= 0
 
-            // Nhóm Điện
-            InvoiceInputGroup(
-                title = "Chỉ số Điện (3.500đ/kWh)",
-                icon = Icons.Default.Bolt,
-                unit = "kWh",
-                oldValue = oldElectricity,
-                newValue = newElectricity,
-                onOldChange = { oldElectricity = it },
-                onNewChange = { newElectricity = it },
-                usage = elecUsage
-            )
-
-            // Nhóm Nước
-            InvoiceInputGroup(
-                title = "Chỉ số Nước (15.000đ/m³)",
-                icon = Icons.Default.WaterDrop,
-                unit = "m³",
-                oldValue = oldWater,
-                newValue = newWater,
-                onOldChange = { oldWater = it },
-                onNewChange = { newWater = it },
-                usage = waterUsage
-            )
-
-            // Chi phí khác
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Chi phí phát sinh khác",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = OnBackgroundLight,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-                OutlinedTextField(
-                    value = otherCosts,
-                    onValueChange = { otherCosts = it },
-                    placeholder = { Text("Nhập số tiền phát sinh...") },
-                    prefix = { Text("₫ ", color = OrangePrimary, fontWeight = FontWeight.Bold) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = OnBackgroundLight,
-                        unfocusedTextColor = OnBackgroundLight,
-                        focusedBorderColor = OrangePrimary,
-                        unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.1f)
+    // Main layout container
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = BackgroundLight,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = "LẬP HÓA ĐƠN",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = OrangePrimary
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack, enabled = !isLoading) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại", tint = OrangePrimary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = SurfaceLight
                     )
                 )
             }
-
-            // Tổng kết tiền - Thu gọn kích cỡ, tinh tế và đồng bộ hơn
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("TỔNG TIỀN TỰ ĐỘNG", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnBackgroundLight.copy(alpha = 0.5f))
-                        Text(formatter.format(totalAmount), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                    }
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = TealAccent, modifier = Modifier.size(24.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Button chuẩn 50.dp, bo góc 8.dp y hệt BookingFormScreen
-            Button(
-                onClick = onInvoiceCreated,
+        ) { paddingValues ->
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("XÁC NHẬN & GỬI HÓA ĐƠN", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                // Header: Room Info
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = OrangePrimary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Đang lập hóa đơn cho:", color = OnPrimaryLight.copy(alpha = 0.8f), fontSize = 12.sp)
+                        Text(roomName, color = OnPrimaryLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Home, contentDescription = null, tint = OnPrimaryLight, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tiền phòng cố định: ${formatter.format(baseRentPrice)}", color = OnPrimaryLight, fontSize = 14.sp)
+                        }
+                    }
+                }
+
+                // Input fields group: Electricity
+                InvoiceInputGroup(
+                    title = "Chỉ số Điện (3.500đ/kWh)",
+                    icon = Icons.Default.Bolt,
+                    unit = "kWh",
+                    oldValue = oldElectricity,
+                    newValue = newElectricity,
+                    onOldChange = { oldElectricity = it },
+                    onNewChange = { newElectricity = it },
+                    usage = elecUsage,
+                    enabled = !isLoading
+                )
+
+                // Input fields group: Water
+                InvoiceInputGroup(
+                    title = "Chỉ số Nước (15.000đ/m³)",
+                    icon = Icons.Default.WaterDrop,
+                    unit = "m³",
+                    oldValue = oldWater,
+                    newValue = newWater,
+                    onOldChange = { oldWater = it },
+                    onNewChange = { newWater = it },
+                    usage = waterUsage,
+                    enabled = !isLoading
+                )
+
+                // Input fields group: Other costs
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Chi phí phát sinh khác",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = OnBackgroundLight,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                    CustomTextField(
+                        value = otherCosts,
+                        onValueChange = { if (it.all { char -> char.isDigit() }) otherCosts = it },
+                        label = "Số tiền phát sinh",
+                        placeholder = "Nhập số tiền phát sinh...",
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        enabled = !isLoading
+                    )
+                }
+
+                // Total amount summary section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceLight),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("TỔNG TIỀN TỰ ĐỘNG", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OnBackgroundLight.copy(alpha = 0.5f))
+                            Text(formatter.format(totalAmount), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                        }
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = TealAccent, modifier = Modifier.size(24.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Action buttons row
+                PrimaryButton(
+                    text = "XÁC NHẬN & GỬI HÓA ĐƠN",
+                    onClick = {
+                        if (isFormValid) {
+                            scope.launch {
+                                isLoading = true
+                                delay(1500)
+                                isLoading = false
+                                onInvoiceCreated()
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = isFormValid && !isLoading
+                )
             }
+        }
+
+        if (isLoading) {
+            LoadingWidget()
         }
     }
 }
@@ -190,7 +212,8 @@ fun InvoiceInputGroup(
     newValue: String,
     onOldChange: (String) -> Unit,
     onNewChange: (String) -> Unit,
-    usage: Int
+    usage: Int,
+    enabled: Boolean = true
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -215,29 +238,29 @@ fun InvoiceInputGroup(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                CustomTextField(
                     value = oldValue,
                     onValueChange = onOldChange,
-                    label = { Text("Số cũ") },
+                    label = "Số cũ",
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = OrangePrimary,
-                        unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.1f)
-                    )
+                    enabled = enabled
                 )
-                OutlinedTextField(
+                CustomTextField(
                     value = newValue,
                     onValueChange = onNewChange,
-                    label = { Text("Số mới") },
+                    label = "Số mới",
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = OrangePrimary,
-                        unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.1f)
-                    )
+                    enabled = enabled,
+                    isError = usage < 0 && newValue.isNotEmpty()
+                )
+            }
+            if (usage < 0 && newValue.isNotEmpty()) {
+                Text(
+                    text = "Số mới không được nhỏ hơn số cũ",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
@@ -254,4 +277,3 @@ fun CreateInvoiceScreenPreview() {
         )
     }
 }
-

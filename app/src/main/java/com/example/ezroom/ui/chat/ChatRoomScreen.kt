@@ -19,14 +19,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ezroom.data.model.*
 import com.example.ezroom.ui.theme.*
 
-data class Message(
-    val id: String,
-    val content: String,
-    val time: String,
-    val isFromMe: Boolean,
-    val dateHeader: String? = null // Dùng để hiển thị phân cách ngày
+// Mock data
+data class MessageUI(
+    val message: Message? = null,
+    val dateHeader: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,24 +33,28 @@ data class Message(
 fun ChatRoomScreen(
     userName: String = "Trần Vũ Phong",
     isOnline: Boolean = true,
+    // Event callbacks
     onNavigateBack: () -> Unit
 ) {
+    // State definitions
     var messageText by remember { mutableStateOf("") }
 
-    // Giả lập dữ liệu có phân cách ngày để giao diện bớt sơ sài
+    // Mock data
     val messages = remember {
         mutableStateListOf(
-            Message("0", "", "", false, dateHeader = "10 Tháng 05, 2026"),
-            Message("1", "Chào anh, phòng Q7 bên mình còn trống không ạ?", "10:00", false),
-            Message("2", "Chào bạn, phòng đó vẫn còn nhé. Bạn muốn xem lúc nào?", "10:02", true),
-            Message("3", "", "", false, dateHeader = "Hôm nay"),
-            Message("4", "Dạ chiều nay tầm 5h30 mình qua xem được không anh?", "15:45", false),
-            Message("5", "Được nhé, khi nào đến bạn gọi số 090xxxxxxx.", "15:50", true)
+            MessageUI(dateHeader = "10 Tháng 05, 2026"),
+            MessageUI(message = Message("1", "other", "Chào anh, phòng Q7 bên mình còn trống không ạ?", 1715310000000L, false)),
+            MessageUI(message = Message("2", "me", "Chào bạn, phòng đó vẫn còn nhé. Bạn muốn xem lúc nào?", 1715310120000L, true)),
+            MessageUI(dateHeader = "Hôm nay"),
+            MessageUI(message = Message("4", "other", "Dạ chiều nay tầm 5h30 mình qua xem được không anh?", 1715396700000L, false)),
+            MessageUI(message = Message("5", "me", "Được nhé, khi nào đến bạn gọi số 090xxxxxxx.", 1715397000000L, true))
         )
     }
 
+    // Main layout container
     Scaffold(
-        containerColor = BackgroundLight, // Nền xám nhạt đồng bộ các màn hình khác
+        containerColor = BackgroundLight,
+        // Top app bar
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -61,7 +64,6 @@ fun ChatRoomScreen(
                 },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Avatar có viền trắng mỏng cho sang
                         Surface(
                             modifier = Modifier.size(40.dp),
                             shape = CircleShape,
@@ -97,10 +99,10 @@ fun ChatRoomScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Gọi điện */ }) {
+                    IconButton(onClick = { }) {
                         Icon(Icons.Default.Call, null, tint = OrangePrimary)
                     }
-                    IconButton(onClick = { /* Menu phụ */ }) {
+                    IconButton(onClick = { }) {
                         Icon(Icons.Default.MoreVert, null, tint = OrangePrimary)
                     }
                 },
@@ -110,8 +112,8 @@ fun ChatRoomScreen(
                 )
             )
         },
+        // Input fields group
         bottomBar = {
-            // Thanh nhập liệu thiết kế lại: Bo cong và nổi khối
             Surface(
                 tonalElevation = 8.dp,
                 shadowElevation = 12.dp,
@@ -145,7 +147,6 @@ fun ChatRoomScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Nút gửi hình tròn màu Cam chủ đạo
                     FilledIconButton(
                         onClick = { if (messageText.isNotBlank()) messageText = "" },
                         enabled = messageText.isNotBlank(),
@@ -161,6 +162,7 @@ fun ChatRoomScreen(
             }
         }
     ) { padding ->
+        // Content scroll area
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -168,12 +170,14 @@ fun ChatRoomScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(messages) { msg ->
-                if (msg.dateHeader != null) {
-                    // Hiển thị phân cách ngày
-                    DateSeparator(msg.dateHeader)
-                } else {
-                    ChatBubble(msg)
+            items(
+                items = messages,
+                key = { it.message?.id ?: it.dateHeader ?: "" }
+            ) { msgUI ->
+                if (msgUI.dateHeader != null) {
+                    DateSeparator(msgUI.dateHeader)
+                } else if (msgUI.message != null) {
+                    ChatBubble(msgUI.message)
                 }
             }
         }
@@ -210,7 +214,6 @@ fun ChatBubble(message: Message) {
     val bubbleColor = if (isMe) OrangePrimary else SurfaceLight
     val textColor = if (isMe) Color.White else OnBackgroundLight
 
-    // Bo góc kiểu chuyên nghiệp (Messenger style)
     val shape = if (isMe)
         RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp)
     else
@@ -225,16 +228,16 @@ fun ChatBubble(message: Message) {
                 modifier = Modifier.widthIn(max = 300.dp)
             ) {
                 Text(
-                    text = message.content,
+                    text = message.text,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     color = textColor,
-                    fontSize = 15.sp, // Đồng bộ font size nội dung
+                    fontSize = 15.sp, 
                     lineHeight = 22.sp
                 )
             }
             Text(
-                text = message.time,
-                fontSize = 11.sp, // Đồng bộ với các text phụ ở màn hình Hóa đơn
+                text = "10:00", 
+                fontSize = 11.sp, 
                 color = Color.Gray,
                 modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
             )

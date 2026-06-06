@@ -3,9 +3,8 @@ package com.example.ezroom.ui.renter.discovery
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.OutlinedButtonDefaults
 import com.example.ezroom.ui.theme.*
 import kotlin.math.roundToInt
 
@@ -25,13 +23,14 @@ data class FilterParams(
     val selectedAmenities: List<String> = emptyList()
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedFilterScreen(
+    // Event callbacks
     modifier: Modifier = Modifier,
     onFilterApply: (FilterParams) -> Unit = {},
     onDismiss: () -> Unit = {}
 ) {
+    // State definitions
     var selectedDistrict by remember { mutableStateOf("") }
     var selectedWard by remember { mutableStateOf("") }
     var priceRange by remember { mutableStateOf(1f..10f) }
@@ -52,66 +51,70 @@ fun AdvancedFilterScreen(
     val areaRanges = listOf("Dưới 20m²", "20m² - 30m²", "Trên 30m²")
     val amenities = listOf("WiFi", "Máy giặt", "Tủ lạnh", "Điều hòa", "Giờ giấc tự do", "Bảo vệ 24/7")
 
+    // Main layout container
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
     ) {
-        // Header
-        TopAppBar(
-            title = { Text("Bộ lọc nâng cao") },
-            navigationIcon = {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                titleContentColor = OnBackgroundLight
+        // Top app bar section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Bộ lọc nâng cao",
+                style = Typography.titleMedium,
+                color = OnBackgroundLight
             )
-        )
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Đóng", tint = OrangePrimary)
+            }
+        }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Content scroll area
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Khu vực section
+            // Section: Area selection
             item {
                 Text(
                     text = "Khu vực",
-                    style = Typography.titleMedium,
+                    style = Typography.bodyLarge,
                     color = OnBackgroundLight
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // District Dropdown
+                // Input fields group: District Dropdown
                 var expandedDistrict by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = expandedDistrict,
-                    onExpandedChange = { expandedDistrict = it }
-                ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = selectedDistrict,
                         onValueChange = {},
                         label = { Text("Chọn Quận/Huyện") },
                         readOnly = true,
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistrict) },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = { 
+                            IconButton(onClick = { expandedDistrict = true }) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OrangePrimary,
                             focusedLabelColor = OrangePrimary,
                             cursorColor = OrangePrimary
                         )
                     )
-                    ExposedDropdownMenu(
+                    DropdownMenu(
                         expanded = expandedDistrict,
-                        onDismissRequest = { expandedDistrict = false }
+                        onDismissRequest = { expandedDistrict = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         districts.forEach { district ->
                             DropdownMenuItem(
@@ -127,30 +130,30 @@ fun AdvancedFilterScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Ward Dropdown
+                // Input fields group: Ward Dropdown
                 var expandedWard by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = expandedWard,
-                    onExpandedChange = { expandedWard = it }
-                ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = selectedWard,
                         onValueChange = {},
                         label = { Text("Chọn Phường/Xã") },
                         readOnly = true,
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedWard) },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = { 
+                            IconButton(onClick = { expandedWard = true }) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OrangePrimary,
                             focusedLabelColor = OrangePrimary,
                             cursorColor = OrangePrimary
                         )
                     )
-                    ExposedDropdownMenu(
+                    DropdownMenu(
                         expanded = expandedWard,
-                        onDismissRequest = { expandedWard = false }
+                        onDismissRequest = { expandedWard = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         wards.forEach { ward ->
                             DropdownMenuItem(
@@ -165,11 +168,11 @@ fun AdvancedFilterScreen(
                 }
             }
 
-            // Giá section
+            // Section: Price range
             item {
                 Text(
                     text = "Khoảng giá (Triệu đồng/tháng)",
-                    style = Typography.titleMedium,
+                    style = Typography.bodyLarge,
                     color = OnBackgroundLight
                 )
 
@@ -211,11 +214,11 @@ fun AdvancedFilterScreen(
                 }
             }
 
-            // Diện tích section
+            // Section: Area range
             item {
                 Text(
                     text = "Diện tích",
-                    style = Typography.titleMedium,
+                    style = Typography.bodyLarge,
                     color = OnBackgroundLight
                 )
 
@@ -225,7 +228,7 @@ fun AdvancedFilterScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -239,28 +242,25 @@ fun AdvancedFilterScreen(
                 }
             }
 
-            // Tiện ích section
+            // Section: Amenities
             item {
                 Text(
                     text = "Tiện ích",
-                    style = Typography.titleMedium,
+                    style = Typography.bodyLarge,
                     color = OnBackgroundLight
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    amenities.forEachIndexed { index, amenity ->
-                        if (index % 2 == 0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // First checkbox
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    amenities.chunked(2).forEach { rowAmenities ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            rowAmenities.forEach { amenity ->
                                 Row(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(vertical = 8.dp),
+                                    modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Checkbox(
@@ -277,31 +277,9 @@ fun AdvancedFilterScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(amenity, style = Typography.bodyMedium, color = OnBackgroundLight)
                                 }
-
-                                // Second checkbox (if exists)
-                                if (index + 1 < amenities.size) {
-                                    val nextAmenity = amenities[index + 1]
-                                    Row(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Checkbox(
-                                            checked = selectedAmenities.contains(nextAmenity),
-                                            onCheckedChange = {
-                                                selectedAmenities = if (it) {
-                                                    selectedAmenities + nextAmenity
-                                                } else {
-                                                    selectedAmenities - nextAmenity
-                                                }
-                                            },
-                                            colors = CheckboxDefaults.colors(checkedColor = OrangePrimary)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(nextAmenity, style = Typography.bodyMedium, color = OnBackgroundLight)
-                                    }
-                                }
+                            }
+                            if (rowAmenities.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -309,11 +287,11 @@ fun AdvancedFilterScreen(
             }
         }
 
-        // Buttons
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Action buttons row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(

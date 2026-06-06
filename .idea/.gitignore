@@ -1,3 +1,26 @@
-# Default ignored files
-/shelf/
-/workspace.xml
+# Android Studio & IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+
+# Gradle files
+.gradle/
+build/
+**/build/
+
+# Local configuration (CRITICAL: Chứa API Keys)
+local.properties
+
+# Output artifacts (APK, AAB)
+*.apk
+*.aar
+*.aab
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db

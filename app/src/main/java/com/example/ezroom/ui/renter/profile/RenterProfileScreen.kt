@@ -26,6 +26,7 @@ import com.example.ezroom.ui.theme.EzRoomTheme
 
 @Composable
 fun RenterProfileScreen(
+    onBackClick: () -> Unit = {},
     onNavigateToFavorite: () -> Unit = {},
     onNavigateToAppointments: () -> Unit = {},
     onNavigateToInvoices: () -> Unit = {},
@@ -45,7 +46,10 @@ fun RenterProfileScreen(
 
     Scaffold(
         topBar = {
-            CommonTopAppBar(title = "Hồ sơ của tôi")
+            CommonTopAppBar(
+                title = "Hồ sơ của tôi",
+                onBackClick = onBackClick
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->

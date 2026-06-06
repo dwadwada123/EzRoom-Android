@@ -25,25 +25,25 @@ import com.example.ezroom.ui.theme.EzRoomTheme
 
 @Composable
 fun ForgotPasswordScreen(
+    // Event callbacks
     onBackClick: () -> Unit,
     onResetSuccess: () -> Unit,
 ) {
+    // State definitions
     var currentStep by remember { mutableIntStateOf(1) }
-    
-    // States for inputs
     var email by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    
-    // UI states
     var isPasswordVisible by remember { mutableStateOf(value = false) }
     var isConfirmPasswordVisible by remember { mutableStateOf(value = false) }
     var errorText by remember { mutableStateOf<String?>(value = null) }
     
     val scrollState = rememberScrollState()
 
+    // Main layout container
     Scaffold(
+        // Top app bar
         topBar = {
             CommonTopAppBar(
                 title = "Khôi Phục Mật Khẩu"
@@ -57,6 +57,7 @@ fun ForgotPasswordScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
+        // Content scroll area
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -125,6 +126,7 @@ fun StepOneEmailInput(
     onEmailChange: (String) -> Unit,
     onNextStep: () -> Unit
 ) {
+    // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Vui lòng nhập Email đã đăng ký tài khoản. Chúng tôi sẽ gửi mã OTP để xác minh.",
@@ -143,6 +145,7 @@ fun StepOneEmailInput(
             shape = MaterialTheme.shapes.medium
         )
 
+        // Action buttons row
         Button(
             onClick = onNextStep,
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -167,6 +170,7 @@ fun StepTwoResetPassword(
     onToggleConfirmPasswordVisibility: () -> Unit,
     onResetPassword: () -> Unit
 ) {
+    // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Mã OTP đã được gửi đến Email của bạn. Vui lòng nhập mã và thiết lập mật khẩu mới.",
@@ -225,6 +229,7 @@ fun StepTwoResetPassword(
             shape = MaterialTheme.shapes.medium
         )
 
+        // Action buttons row
         Button(
             onClick = onResetPassword,
             modifier = Modifier.fillMaxWidth().height(52.dp),

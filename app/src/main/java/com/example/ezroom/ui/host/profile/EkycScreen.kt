@@ -37,23 +37,21 @@ enum class EkycStep {
 
 @Composable
 fun EkycScreen(onNavigateBack: () -> Unit = {}) {
-    // Quản lý trạng thái bước hiện tại
+    // State definitions
     var currentStep by remember { mutableStateOf(EkycStep.INSTRUCTIONS) }
-
-    // Quản lý trạng thái hình ảnh (Sử dụng Uri? để sẵn sàng cho logic thực tế)
     var frontIdUri by remember { mutableStateOf<Uri?>(null) }
     var backIdUri by remember { mutableStateOf<Uri?>(null) }
     var selfieUri by remember { mutableStateOf<Uri?>(null) }
 
+    // Main layout container
     Scaffold(
         topBar = {
             CommonTopAppBar(
-                title = "Xác thực danh tính",
+                title = "Identity Verification",
                 onBackClick = {
                     when (currentStep) {
                         EkycStep.INSTRUCTIONS, EkycStep.SUCCESS -> onNavigateBack()
                         else -> {
-                            // Quay lại bước trước đó
                             val previousStep = EkycStep.entries.getOrNull(currentStep.ordinal - 1)
                             if (previousStep != null) currentStep = previousStep
                         }
@@ -73,7 +71,7 @@ fun EkycScreen(onNavigateBack: () -> Unit = {}) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Render giao diện tương ứng với Step hiện tại
+            // Content scroll area
             when (currentStep) {
                 EkycStep.INSTRUCTIONS -> {
                     InstructionSection(
@@ -84,7 +82,7 @@ fun EkycScreen(onNavigateBack: () -> Unit = {}) {
                     UploadIdSection(
                         frontUri = frontIdUri,
                         backUri = backIdUri,
-                        onCaptureFront = { /* Logic chụp ảnh thực tế sẽ gán Uri vào đây */ frontIdUri = Uri.EMPTY },
+                        onCaptureFront = { frontIdUri = Uri.EMPTY },
                         onCaptureBack = { backIdUri = Uri.EMPTY },
                         onNextClick = { currentStep = EkycStep.SELFIE }
                     )
@@ -108,10 +106,8 @@ fun EkycScreen(onNavigateBack: () -> Unit = {}) {
     }
 }
 
-// --- CÁC PHÂN ĐOẠN GIAO DIỆN ---
-
 @Composable
-fun InstructionSection(onStartClick: () -> Unit) {
+private fun InstructionSection(onStartClick: () -> Unit) {
     Icon(
         imageVector = Icons.Default.VerifiedUser,
         contentDescription = null,
@@ -120,51 +116,53 @@ fun InstructionSection(onStartClick: () -> Unit) {
     )
     Spacer(modifier = Modifier.height(24.dp))
     Text(
-        text = "Chuẩn bị xác thực",
+        text = "Identity Verification",
         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onBackground
     )
     Spacer(modifier = Modifier.height(12.dp))
     Text(
-        text = "Để bảo mật và tăng độ tin cậy, EzRoom cần xác minh danh tính của bạn. Vui lòng chuẩn bị:",
+        text = "For security and trust, EzRoom needs to verify your identity. Please prepare:",
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(32.dp))
 
+    // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         InstructionItem(
             icon = Icons.Default.DocumentScanner, 
-            title = "Bản gốc CMND/CCCD", 
-            desc = "Giấy tờ hợp lệ, còn hạn sử dụng, không mờ nhòe."
+            title = "Original ID Card", 
+            desc = "Valid document, not blurred or expired."
         )
         InstructionItem(
             icon = Icons.Default.Lightbulb, 
-            title = "Đảm bảo ánh sáng", 
-            desc = "Thực hiện ở nơi đủ sáng, không bị chói hay bóng râm."
+            title = "Good Lighting", 
+            desc = "Perform in a bright area without glare."
         )
         InstructionItem(
             icon = Icons.Default.Face, 
-            title = "Khuôn mặt rõ ràng", 
-            desc = "Vui lòng tháo kính râm và khẩu trang khi chụp ảnh."
+            title = "Clear Face", 
+            desc = "Please remove sunglasses and mask."
         )
     }
 
     Spacer(modifier = Modifier.height(48.dp))
 
+    // Action buttons row
     Button(
         onClick = onStartClick,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text("Bắt đầu xác thực", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Text("Start Verification", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
 
 @Composable
-fun InstructionItem(icon: ImageVector, title: String, desc: String) {
+private fun InstructionItem(icon: ImageVector, title: String, desc: String) {
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -197,7 +195,7 @@ fun InstructionItem(icon: ImageVector, title: String, desc: String) {
 }
 
 @Composable
-fun UploadIdSection(
+private fun UploadIdSection(
     frontUri: Uri?,
     backUri: Uri?,
     onCaptureFront: () -> Unit,
@@ -205,20 +203,20 @@ fun UploadIdSection(
     onNextClick: () -> Unit
 ) {
     Text(
-        text = "Chụp ảnh CCCD/CMND", 
+        text = "Capture ID Card", 
         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.onBackground
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
-        text = "Đảm bảo ảnh rõ nét, không mất góc, không lóa sáng", 
+        text = "Ensure the photo is clear and well-lit", 
         style = MaterialTheme.typography.bodyMedium, 
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(28.dp))
 
     IdCardCaptureBox(
-        title = "Mặt trước",
+        title = "Front Side",
         isCaptured = frontUri != null,
         onClick = onCaptureFront
     )
@@ -226,25 +224,26 @@ fun UploadIdSection(
     Spacer(modifier = Modifier.height(20.dp))
 
     IdCardCaptureBox(
-        title = "Mặt sau",
+        title = "Back Side",
         isCaptured = backUri != null,
         onClick = onCaptureBack
     )
 
     Spacer(modifier = Modifier.height(48.dp))
 
+    // Action buttons row
     Button(
         onClick = onNextClick,
         enabled = frontUri != null && backUri != null,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text("Tiếp tục", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Text("Continue", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
 
 @Composable
-fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> Unit) {
+private fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> Unit) {
     val borderColor = if (isCaptured) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     val containerColor = if (isCaptured) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 
@@ -268,13 +267,13 @@ fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Đã chụp $title", 
+                    text = "$title Captured", 
                     style = MaterialTheme.typography.titleMedium, 
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Chạm để chụp lại", 
+                    text = "Tap to retake", 
                     style = MaterialTheme.typography.bodySmall, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -289,7 +288,7 @@ fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Chụp $title", 
+                    text = "Capture $title", 
                     style = MaterialTheme.typography.bodyLarge, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
@@ -300,15 +299,15 @@ fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClick: () -> Unit) {
+private fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClick: () -> Unit) {
     Text(
-        text = "Xác thực khuôn mặt", 
+        text = "Face Verification", 
         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.onBackground
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
-        text = "Giữ điện thoại ngang tầm mắt và nhìn thẳng vào camera", 
+        text = "Hold phone at eye level and look straight into camera", 
         style = MaterialTheme.typography.bodyMedium, 
         color = MaterialTheme.colorScheme.onSurfaceVariant, 
         textAlign = TextAlign.Center
@@ -347,18 +346,19 @@ fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClick: () ->
 
     Spacer(modifier = Modifier.height(56.dp))
 
+    // Action buttons row
     Button(
         onClick = onCompleteClick,
         enabled = selfieUri != null,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text("Xác nhận khuôn mặt", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Text("Confirm Face", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
 
 @Composable
-fun SuccessSection(onFinishClick: () -> Unit) {
+private fun SuccessSection(onFinishClick: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -371,14 +371,14 @@ fun SuccessSection(onFinishClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Gửi thông tin thành công!",
+            text = "Submission Successful!",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Hệ thống đang xét duyệt hồ sơ của bạn. Kết quả sẽ được thông báo trong vòng 24h tới.",
+            text = "System is reviewing your profile. Results will be notified within 24h.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -389,7 +389,7 @@ fun SuccessSection(onFinishClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = MaterialTheme.shapes.medium
         ) {
-            Text("Quay lại trang cá nhân", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+            Text("Back to Profile", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
         }
     }
 }

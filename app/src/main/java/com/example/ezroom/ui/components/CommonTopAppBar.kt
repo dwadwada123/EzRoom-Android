@@ -18,6 +18,7 @@ fun CommonTopAppBar(
     title: String,
     onBackClick: (() -> Unit)? = null
 ) {
+    // Top app bar
     CenterAlignedTopAppBar(
         title = {
             Text(

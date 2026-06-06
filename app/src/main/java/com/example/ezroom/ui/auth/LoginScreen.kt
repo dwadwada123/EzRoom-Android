@@ -15,25 +15,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ezroom.ui.components.CustomTextField
+import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.components.PasswordTextField
+import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.EzRoomTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
+    // Event callbacks
     onLoginClick: (String, String) -> Unit = { _, _ -> },
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onGoogleLoginClick: () -> Unit = {}
 ) {
+    // State definitions
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val isInspectionMode = LocalInspectionMode.current
     val isEmailValid = if (isInspectionMode) {
@@ -42,6 +49,9 @@ fun LoginScreen(
         android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() || email.isEmpty()
     }
 
+    val isFormValid = email.isNotEmpty() && password.isNotEmpty() && isEmailValid
+
+    // Main layout container
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -57,7 +67,7 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Logo
+            // App logo
             Surface(
                 modifier = Modifier.size(120.dp),
                 shape = MaterialTheme.shapes.large,
@@ -90,26 +100,19 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Email Field
-            OutlinedTextField(
+            // Input fields group
+            CustomTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
-                placeholder = { 
-                    Text(
-                        text = "example@gmail.com",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Email, contentDescription = null)
-                },
+                label = "Email",
+                placeholder = "example@gmail.com",
+                leadingIcon = Icons.Default.Email,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 isError = !isEmailValid && email.isNotEmpty(),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
+                enabled = !isLoading
             )
+            
             if (!isEmailValid && email.isNotEmpty()) {
                 Text(
                     text = "Định dạng email không hợp lệ",
@@ -121,35 +124,16 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password Field
-            OutlinedTextField(
+            PasswordTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { 
-                    Text(
-                        text = "Mật khẩu",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                        Icon(
-                            imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (isPasswordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
-                        )
-                    }
-                },
-                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                label = "Mật khẩu",
+                leadingIcon = Icons.Default.Lock,
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
+                enabled = !isLoading
             )
 
-            // Remember Me & Forgot Password
+            // Form actions row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -158,7 +142,8 @@ fun LoginScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = rememberMe,
-                        onCheckedChange = { rememberMe = it }
+                        onCheckedChange = { rememberMe = it },
+                        enabled = !isLoading
                     )
                     Text(
                         text = "Ghi nhớ tôi",
@@ -167,7 +152,7 @@ fun LoginScreen(
                     )
                 }
 
-                TextButton(onClick = onForgotPasswordClick) {
+                TextButton(onClick = onForgotPasswordClick, enabled = !isLoading) {
                     Text(
                         text = "Quên mật khẩu?",
                         style = MaterialTheme.typography.bodySmall,
@@ -179,28 +164,65 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login Button
-            Button(
-                onClick = { onLoginClick(email, password) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            // Main layout container
+            PrimaryButton(
+                text = "ĐĂNG NHẬP",
+                onClick = { 
+                    if (isFormValid) {
+                        scope.launch {
+                            isLoading = true
+                            delay(1500)
+                            isLoading = false
+                            onLoginClick(email, password)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isFormValid && !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Action buttons row
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "ĐĂNG NHẬP",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "Tài khoản dùng thử nhanh:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AssistChip(
+                        onClick = {
+                            if (!isLoading) {
+                                email = "renter@ezroom.vn"
+                                password = "123456"
+                            }
+                        },
+                        label = { Text("Renter Demo", fontSize = 12.sp) },
+                        shape = MaterialTheme.shapes.extraLarge
+                    )
+                    AssistChip(
+                        onClick = {
+                            if (!isLoading) {
+                                email = "host@ezroom.vn"
+                                password = "123456"
+                            }
+                        },
+                        label = { Text("Host Demo", fontSize = 12.sp) },
+                        shape = MaterialTheme.shapes.extraLarge
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Divider
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -223,25 +245,24 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Google Login
             OutlinedButton(
                 onClick = onGoogleLoginClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = MaterialTheme.shapes.medium,
-                border = ButtonDefaults.outlinedButtonBorder
+                border = ButtonDefaults.outlinedButtonBorder(enabled = !isLoading),
+                enabled = !isLoading
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // Placeholder for Google Icon
                     Icon(
                         imageVector = Icons.Default.AccountCircle,
                         contentDescription = "Google Logo",
                         modifier = Modifier.size(24.dp),
-                        tint = Color.Unspecified // Typically would use actual Google colors
+                        tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
@@ -255,7 +276,6 @@ fun LoginScreen(
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Register Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -266,7 +286,7 @@ fun LoginScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
-                TextButton(onClick = onRegisterClick) {
+                TextButton(onClick = onRegisterClick, enabled = !isLoading) {
                     Text(
                         text = "Đăng ký ngay",
                         style = MaterialTheme.typography.bodyMedium,
@@ -277,6 +297,10 @@ fun LoginScreen(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (isLoading) {
+            LoadingWidget()
         }
     }
 }

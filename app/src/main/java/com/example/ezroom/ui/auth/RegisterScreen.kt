@@ -15,12 +15,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.ezroom.ui.components.CustomTextField
+import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.components.PasswordTextField
+import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.EzRoomTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class UserRole {
     RENTER, HOST
@@ -28,16 +33,28 @@ enum class UserRole {
 
 @Composable
 fun RegisterScreen(
+    // Event callbacks
     onRegisterClick: (String, String, String, String, UserRole) -> Unit = { _, _, _, _, _ -> },
     onBackToLoginClick: () -> Unit = {}
 ) {
+    // State definitions
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf(UserRole.RENTER) }
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
+    val isEmailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() || email.isEmpty()
+    val isPhoneValid = (phoneNumber.length >= 10 && phoneNumber.all { it.isDigit() }) || phoneNumber.isEmpty()
+    
+    val isFormValid = fullName.isNotEmpty() && 
+                      phoneNumber.isNotEmpty() && isPhoneValid &&
+                      email.isNotEmpty() && isEmailValid && 
+                      password.length >= 6
+
+    // Main layout container
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -52,9 +69,8 @@ fun RegisterScreen(
         ) {
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Title
             Text(
-                text = "Tạo Tài Khoản Mới",
+                text = "Tạo tài khoản mới",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
@@ -72,99 +88,64 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Name Field
-            OutlinedTextField(
+            // Input fields group
+            CustomTextField(
                 value = fullName,
                 onValueChange = { fullName = it },
-                label = {
-                    Text(
-                        text = "Họ và tên",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Person, contentDescription = null)
-                },
+                label = "Họ và tên",
+                leadingIcon = Icons.Default.Person,
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Phone Field
-            OutlinedTextField(
+            CustomTextField(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it },
-                label = {
-                    Text(
-                        text = "Số điện thoại",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Phone, contentDescription = null)
-                },
+                label = "Số điện thoại",
+                leadingIcon = Icons.Default.Phone,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
+                isError = !isPhoneValid && phoneNumber.isNotEmpty(),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email Field
-            OutlinedTextField(
+            CustomTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = {
-                    Text(
-                        text = "Email",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Email, contentDescription = null)
-                },
+                label = "Email",
+                leadingIcon = Icons.Default.Email,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
+                isError = !isEmailValid && email.isNotEmpty(),
+                enabled = !isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password Field
-            OutlinedTextField(
+            PasswordTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = {
-                    Text(
-                        text = "Mật khẩu",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                        Icon(
-                            imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (isPasswordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
-                        )
-                    }
-                },
-                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                label = "Mật khẩu",
+                leadingIcon = Icons.Default.Lock,
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
+                enabled = !isLoading,
+                isError = password.isNotEmpty() && password.length < 6
             )
+            if (password.isNotEmpty() && password.length < 6) {
+                Text(
+                    text = "Mật khẩu phải có ít nhất 6 ký tự",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Role Selection
             Text(
                 text = "Bạn là:",
                 style = MaterialTheme.typography.titleMedium,
@@ -175,48 +156,46 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Role selection row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 RoleCard(
-                    text = "Người thuê trọ",
+                    text = "Người thuê",
                     isSelected = selectedRole == UserRole.RENTER,
-                    onClick = { selectedRole = UserRole.RENTER },
+                    onClick = { if (!isLoading) selectedRole = UserRole.RENTER },
                     modifier = Modifier.weight(1f)
                 )
                 RoleCard(
-                    text = "Chủ trọ",
+                    text = "Chủ nhà",
                     isSelected = selectedRole == UserRole.HOST,
-                    onClick = { selectedRole = UserRole.HOST },
+                    onClick = { if (!isLoading) selectedRole = UserRole.HOST },
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Register Button
-            Button(
-                onClick = { onRegisterClick(fullName, phoneNumber, email, password, selectedRole) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Text(
-                    text = "ĐĂNG KÝ",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            // Primary action button
+            PrimaryButton(
+                text = "ĐĂNG KÝ",
+                onClick = { 
+                    if (isFormValid) {
+                        scope.launch {
+                            isLoading = true
+                            delay(1500)
+                            isLoading = false
+                            onRegisterClick(fullName, phoneNumber, email, password, selectedRole)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isFormValid && !isLoading
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login Link
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -227,7 +206,7 @@ fun RegisterScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
-                TextButton(onClick = onBackToLoginClick) {
+                TextButton(onClick = onBackToLoginClick, enabled = !isLoading) {
                     Text(
                         text = "Đăng nhập ngay",
                         style = MaterialTheme.typography.bodyMedium,
@@ -238,6 +217,10 @@ fun RegisterScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (isLoading) {
+            LoadingWidget()
         }
     }
 }
@@ -255,7 +238,7 @@ fun RoleCard(
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        border = if (isSelected) null else ButtonDefaults.outlinedButtonBorder,
+        border = if (isSelected) null else ButtonDefaults.outlinedButtonBorder(enabled = true),
         shadowElevation = if (isSelected) 4.dp else 0.dp
     ) {
         Box(

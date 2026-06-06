@@ -22,24 +22,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.ezroom.data.model.*
 import com.example.ezroom.ui.theme.*
 
-// 1. Khai báo Enum (Sửa lỗi Unresolved reference 'NotificationType')
-enum class NotificationType {
-    BILL,      // Hóa đơn
-    SCHEDULE,  // Lịch hẹn
-    SYSTEM     // Hệ thống
-}
-
-// 2. Khai báo Data Class (Sửa lỗi Unresolved reference 'NotificationItem')
-data class NotificationItem(
-    val id: String,
-    val title: String,
-    val content: String,
-    val time: String,
-    val type: NotificationType,
-    val isRead: Boolean = false,
-    val group: String // "Hôm nay" hoặc "Trước đó"
+// Local UI wrapper to keep the grouping logic
+data class NotificationUI(
+    val item: NotificationItem,
+    val group: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,20 +41,20 @@ fun NotificationScreen(
 
     val notifications = remember {
         listOf(
-            NotificationItem("1", "Hóa đơn mới", "Bạn có hóa đơn tiền phòng tháng 5/2026 cần thanh toán.", "10:30", NotificationType.BILL, isRead = false, group = "Hôm nay"),
-            NotificationItem("2", "Lịch hẹn xem phòng", "Lịch hẹn xem phòng Q7 của bạn đã được chủ trọ duyệt.", "09:15", NotificationType.SCHEDULE, isRead = false, group = "Hôm nay"),
-            NotificationItem("3", "Cập nhật hệ thống", "EzRoom vừa cập nhật tính năng thanh toán qua VNPay.", "Hôm qua", NotificationType.SYSTEM, isRead = true, group = "Trước đó"),
-            NotificationItem("4", "Nhắc nhở lịch hẹn", "Bạn có lịch hẹn xem phòng vào lúc 17:30 chiều nay.", "Hôm qua", NotificationType.SCHEDULE, isRead = true, group = "Trước đó"),
-            NotificationItem("5", "Thanh toán thành công", "Hóa đơn tháng 4 của bạn đã được xác nhận thanh toán.", "01/05", NotificationType.BILL, isRead = true, group = "Trước đó")
+            NotificationUI(NotificationItem("1", "Hóa đơn mới", "Bạn có hóa đơn tiền phòng tháng 5/2026 cần thanh toán.", "10:30", isRead = false, type = "BILL"), group = "Hôm nay"),
+            NotificationUI(NotificationItem("2", "Lịch hẹn xem phòng", "Lịch hẹn xem phòng Q7 của bạn đã được chủ trọ duyệt.", "09:15", isRead = false, type = "SCHEDULE"), group = "Hôm nay"),
+            NotificationUI(NotificationItem("3", "Cập nhật hệ thống", "EzRoom vừa cập nhật tính năng thanh toán qua VNPay.", "Hôm qua", isRead = true, type = "SYSTEM"), group = "Trước đó"),
+            NotificationUI(NotificationItem("4", "Nhắc nhở lịch hẹn", "Bạn có lịch hẹn xem phòng vào lúc 17:30 chiều nay.", "Hôm qua", isRead = true, type = "SCHEDULE"), group = "Trước đó"),
+            NotificationUI(NotificationItem("5", "Thanh toán thành công", "Hóa đơn tháng 4 của bạn đã được xác nhận thanh toán.", "01/05", isRead = true, type = "BILL"), group = "Trước đó")
         )
     }
 
-    val filteredNotifications = if (selectedTab == 1) notifications.filter { !it.isRead } else notifications
+    val filteredNotifications = if (selectedTab == 1) notifications.filter { !it.item.isRead } else notifications
 
     Scaffold(
         containerColor = BackgroundLight,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("THÔNG BÁO", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -77,7 +66,7 @@ fun NotificationScreen(
                         Icon(Icons.Default.DoneAll, null, tint = OrangePrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceLight)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceLight)
             )
         }
     ) { padding ->
@@ -88,7 +77,7 @@ fun NotificationScreen(
                 contentColor = OrangePrimary,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]), // Đã hết lỗi nhờ import trên
+                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
                         color = OrangePrimary
                     )
                 }
@@ -120,7 +109,7 @@ fun NotificationScreen(
                     }
 
                     items(items) { notification ->
-                        NotificationRow(notification)
+                        NotificationRow(notification.item)
                     }
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -131,11 +120,10 @@ fun NotificationScreen(
 
 @Composable
 fun NotificationRow(item: NotificationItem) {
-    // Sửa lỗi 'when' expression must be exhaustive bằng cách thêm else
     val (icon, color) = when (item.type) {
-        NotificationType.BILL -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
-        NotificationType.SCHEDULE -> Icons.Default.EventAvailable to TealAccent
-        NotificationType.SYSTEM -> Icons.Default.Info to Color(0xFF2196F3)
+        "BILL" -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
+        "SCHEDULE" -> Icons.Default.EventAvailable to TealAccent
+        else -> Icons.Default.Info to Color(0xFF2196F3)
     }
 
     Surface(
