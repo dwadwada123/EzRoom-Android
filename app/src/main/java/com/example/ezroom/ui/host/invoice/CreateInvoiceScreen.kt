@@ -1,5 +1,6 @@
 package com.example.ezroom.ui.host.invoice
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.PrimaryButton
+import com.example.ezroom.ui.components.SmallTextField
 import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,21 +41,32 @@ fun CreateInvoiceScreen(
     val scope = rememberCoroutineScope()
     var oldElectricity by remember { mutableStateOf("") }
     var newElectricity by remember { mutableStateOf("") }
+    var elecPrice by remember { mutableStateOf("3500") }
+    
     var oldWater by remember { mutableStateOf("") }
     var newWater by remember { mutableStateOf("") }
+    var waterPrice by remember { mutableStateOf("15000") }
+    
     var otherCosts by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+
+    // Room selection dropdown state
+    var selectedRoom by remember { mutableStateOf(roomName) }
+    var isRoomDropdownExpanded by remember { mutableStateOf(false) }
+    val mockRooms = listOf("Phòng 101", "Phòng 102", "Phòng 201", "Phòng 302")
 
     val formatter = remember { DecimalFormat("#,### đ") }
 
     val elecUsage = (newElectricity.toIntOrNull() ?: 0) - (oldElectricity.toIntOrNull() ?: 0)
     val waterUsage = (newWater.toIntOrNull() ?: 0) - (oldWater.toIntOrNull() ?: 0)
 
-    val totalAmount = remember(oldElectricity, newElectricity, oldWater, newWater, otherCosts) {
+    val totalAmount = remember(oldElectricity, newElectricity, elecPrice, oldWater, newWater, waterPrice, otherCosts) {
         val eUsage = if (elecUsage > 0) elecUsage else 0
         val wUsage = if (waterUsage > 0) waterUsage else 0
+        val ePrice = elecPrice.toLongOrNull() ?: 0L
+        val wPrice = waterPrice.toLongOrNull() ?: 0L
         val other = otherCosts.toLongOrNull() ?: 0L
-        baseRentPrice + (eUsage * 3500L) + (wUsage * 15000L) + other
+        baseRentPrice + (eUsage * ePrice) + (wUsage * wPrice) + other
     }
 
     val isFormValid = oldElectricity.isNotEmpty() && newElectricity.isNotEmpty() && 
@@ -93,46 +106,99 @@ fun CreateInvoiceScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header: Room Info
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = OrangePrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Đang lập hóa đơn cho:", color = OnPrimaryLight.copy(alpha = 0.8f), fontSize = 12.sp)
-                        Text(roomName, color = OnPrimaryLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Home, contentDescription = null, tint = OnPrimaryLight, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Tiền phòng cố định: ${formatter.format(baseRentPrice)}", color = OnPrimaryLight, fontSize = 14.sp)
+                // Room selection dropdown menu
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Chọn phòng trọ",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = OnBackgroundLight,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isLoading) { isRoomDropdownExpanded = true }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedRoom,
+                            onValueChange = {},
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            enabled = true,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    tint = OrangePrimary
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = OrangePrimary,
+                                unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.12f)
+                            )
+                        )
+                        
+                        DropdownMenu(
+                            expanded = isRoomDropdownExpanded,
+                            onDismissRequest = { isRoomDropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            mockRooms.forEach { room ->
+                                DropdownMenuItem(
+                                    text = { Text(room) },
+                                    onClick = {
+                                        // Update selected room state
+                                        selectedRoom = room
+                                        isRoomDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
+                    }
+
+                    Row(
+                        modifier = Modifier.padding(start = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Home, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Tiền phòng cố định: ${formatter.format(baseRentPrice)}", 
+                            color = OnBackgroundLight.copy(alpha = 0.6f), 
+                            fontSize = 13.sp
+                        )
                     }
                 }
 
                 // Input fields group: Electricity
                 InvoiceInputGroup(
-                    title = "Chỉ số Điện (3.500đ/kWh)",
+                    title = "Chỉ số Điện (đ/kWh)",
                     icon = Icons.Default.Bolt,
                     unit = "kWh",
                     oldValue = oldElectricity,
                     newValue = newElectricity,
+                    priceValue = elecPrice,
                     onOldChange = { oldElectricity = it },
                     onNewChange = { newElectricity = it },
+                    onPriceChange = { if (it.all { char -> char.isDigit() }) elecPrice = it },
                     usage = elecUsage,
                     enabled = !isLoading
                 )
 
                 // Input fields group: Water
                 InvoiceInputGroup(
-                    title = "Chỉ số Nước (15.000đ/m³)",
+                    title = "Chỉ số Nước (đ/m³)",
                     icon = Icons.Default.WaterDrop,
                     unit = "m³",
                     oldValue = oldWater,
                     newValue = newWater,
+                    priceValue = waterPrice,
                     onOldChange = { oldWater = it },
                     onNewChange = { newWater = it },
+                    onPriceChange = { if (it.all { char -> char.isDigit() }) waterPrice = it },
                     usage = waterUsage,
                     enabled = !isLoading
                 )
@@ -210,8 +276,10 @@ fun InvoiceInputGroup(
     unit: String,
     oldValue: String,
     newValue: String,
+    priceValue: String,
     onOldChange: (String) -> Unit,
     onNewChange: (String) -> Unit,
+    onPriceChange: (String) -> Unit,
     usage: Int,
     enabled: Boolean = true
 ) {
@@ -238,7 +306,7 @@ fun InvoiceInputGroup(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                CustomTextField(
+                SmallTextField(
                     value = oldValue,
                     onValueChange = onOldChange,
                     label = "Số cũ",
@@ -246,7 +314,7 @@ fun InvoiceInputGroup(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = enabled
                 )
-                CustomTextField(
+                SmallTextField(
                     value = newValue,
                     onValueChange = onNewChange,
                     label = "Số mới",
@@ -254,6 +322,14 @@ fun InvoiceInputGroup(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = enabled,
                     isError = usage < 0 && newValue.isNotEmpty()
+                )
+                SmallTextField(
+                    value = priceValue,
+                    onValueChange = onPriceChange,
+                    label = "Đơn giá",
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    enabled = enabled
                 )
             }
             if (usage < 0 && newValue.isNotEmpty()) {

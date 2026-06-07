@@ -1,6 +1,7 @@
 package com.example.ezroom.ui.host.invoice
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun HostInvoiceListScreen(
     // Event callbacks
-    onNavigateBack: () -> Unit,
     onNavigateToCreate: () -> Unit,
     onInvoiceClick: (String) -> Unit = {}
 ) {
@@ -61,90 +61,67 @@ fun HostInvoiceListScreen(
     }
 
     // Main layout container
-    Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            containerColor = BackgroundLight,
-            topBar = {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            text = "QUẢN LÝ HÓA ĐƠN", 
-                            fontWeight = FontWeight.Bold, 
-                            fontSize = 18.sp, 
-                            color = OrangePrimary
-                        ) 
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack, enabled = !isLoading) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại", tint = OrangePrimary)
-                        }
-                    },
-                    actions = {
-                        TextButton(onClick = onNavigateToCreate, enabled = !isLoading) {
-                            Text("Tạo mới", color = OrangePrimary, fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceLight)
-                )
-            }
-        ) { paddingValues ->
-            Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                // Tab bar section
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = SurfaceLight,
-                    contentColor = OrangePrimary,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                            color = OrangePrimary
-                        )
-                    },
-                    divider = { HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.1f)) }
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = {
-                                Text(
-                                    text = title,
-                                    fontSize = 14.sp,
-                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selectedTabIndex == index) OrangePrimary else OnBackgroundLight.copy(alpha = 0.6f)
-                                )
-                            }
-                        )
-                    }
-                }
-
-                if (isError) {
-                    EmptyState(
-                        title = "Đã có lỗi xảy ra",
-                        description = "Vui lòng thử lại sau giây lát.",
-                        actionText = "Thử lại",
-                        onAction = { refreshData() }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundLight)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Tab layout container
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = SurfaceLight,
+                contentColor = OrangePrimary,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                        color = OrangePrimary
                     )
-                } else if (!isLoading && filteredList.isEmpty()) {
-                    EmptyState(
-                        title = "Chưa có hóa đơn",
-                        description = "Không có hóa đơn nào ở trạng thái này.",
-                        actionText = "Tạo hóa đơn mới",
-                        onAction = onNavigateToCreate
-                    )
-                } else {
-                    // Content scroll area
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filteredList, key = { it.id }) { item ->
-                            InvoiceItemCard(
-                                item = item,
-                                onClick = { if (!isLoading) onInvoiceClick(item.id) }
+                },
+                divider = { HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.1f)) }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontSize = 14.sp,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTabIndex == index) OrangePrimary else OnBackgroundLight.copy(alpha = 0.6f)
                             )
                         }
+                    )
+                }
+            }
+
+            if (isError) {
+                EmptyState(
+                    title = "Đã có lỗi xảy ra",
+                    description = "Vui lòng thử lại sau giây lát.",
+                    actionText = "Thử lại",
+                    onAction = { refreshData() }
+                )
+            } else if (!isLoading && filteredList.isEmpty()) {
+                EmptyState(
+                    title = "Chưa có hóa đơn",
+                    description = "Không có hóa đơn nào ở trạng thái này.",
+                    actionText = "Tạo hóa đơn mới",
+                    onAction = onNavigateToCreate
+                )
+            } else {
+                // Content scroll area
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredList, key = { it.id }) { item ->
+                        InvoiceItemCard(
+                            item = item,
+                            onClick = { if (!isLoading) onInvoiceClick(item.id) }
+                        )
                     }
                 }
             }
@@ -198,6 +175,6 @@ private fun InvoiceItemCard(
 @Composable
 fun HostInvoiceListScreenPreview() {
     EzRoomTheme {
-        HostInvoiceListScreen(onNavigateBack = {}, onNavigateToCreate = {})
+        HostInvoiceListScreen(onNavigateToCreate = {})
     }
 }

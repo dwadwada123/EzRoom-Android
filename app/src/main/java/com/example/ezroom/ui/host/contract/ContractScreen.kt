@@ -41,6 +41,7 @@ fun ContractScreen(
     Scaffold(
         containerColor = BackgroundLight,
         topBar = {
+            // Top app bar
             TopAppBar(
                 title = {
                     Text(
@@ -188,6 +189,7 @@ fun ContractScreen(
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Agreement checkbox
                 Checkbox(
                     checked = isAgreed,
                     onCheckedChange = { isAgreed = it },

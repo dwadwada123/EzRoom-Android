@@ -26,20 +26,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ezroom.data.model.*
 import com.example.ezroom.ui.theme.*
-import com.example.ezroom.ui.auth.UserRole
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoomDetailScreen(
+fun RenterRoomDetailScreen(
     // Event callbacks
     modifier: Modifier = Modifier,
     room: Room? = null,
-    userRole: UserRole = UserRole.RENTER,
     onBackClick: () -> Unit = {},
-    onEditClick: (String) -> Unit = {},
     onFavoriteClick: (String) -> Unit = {},
     onBookAppointment: (String) -> Unit = {},
     onNavigateToChat: (hostName: String) -> Unit = {},
@@ -53,33 +50,29 @@ fun RoomDetailScreen(
     val displayRoom = remember(room) { room ?: mockRoomData() }
 
     // Main layout container
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Top app bar
-        TopAppBar(
-            title = { 
-                Text(
-                    text = "Chi tiết phòng trọ",
-                    fontSize = 18.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                ) 
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
-                }
-            },
-            actions = {
-                if (userRole == UserRole.RENTER) {
-                    IconButton(onClick = { onNavigateToChat("Chủ nhà Trần Vũ Phong") }) {
+    Scaffold(
+        topBar = {
+            // Top app bar
+            TopAppBar(
+                title = { 
+                    Text(
+                        text = "Chi tiết phòng trọ",
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    ) 
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onNavigateToReport(displayRoom.id) }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Chat,
-                            contentDescription = "Nhắn tin với chủ nhà",
-                            tint = OrangePrimary
+                            imageVector = Icons.Default.OutlinedFlag,
+                            contentDescription = "Báo cáo vi phạm",
+                            tint = OnBackgroundLight
                         )
                     }
                     IconButton(onClick = {
@@ -92,26 +85,58 @@ fun RoomDetailScreen(
                             tint = if (isFavorite) MaterialTheme.colorScheme.error else OnBackgroundLight
                         )
                     }
-                    IconButton(onClick = { onNavigateToReport(displayRoom.id) }) {
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = SurfaceLight,
+                    titleContentColor = OnBackgroundLight
+                )
+            )
+        },
+        bottomBar = {
+            // Action buttons row (Bottom Action Bar)
+            Surface(
+                tonalElevation = 8.dp,
+                shadowElevation = 8.dp,
+                color = SurfaceLight
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { onNavigateToChat("Chủ nhà Trần Vũ Phong") }) {
                         Icon(
-                            imageVector = Icons.Default.OutlinedFlag,
-                            contentDescription = "Báo cáo",
-                            tint = OnBackgroundLight
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = "Nhắn tin với chủ nhà",
+                            tint = OrangePrimary
+                        )
+                    }
+                    Button(
+                        onClick = { onBookAppointment(displayRoom.id) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                        shape = Shapes.small
+                    ) {
+                        Text(
+                            text = "ĐẶT LỊCH HẸN XEM PHÒNG",
+                            style = Typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                titleContentColor = OnBackgroundLight
-            )
-        )
-
+            }
+        },
+        containerColor = BackgroundLight
+    ) { paddingValues ->
         // Content scroll area
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             // Image gallery section
             item {
@@ -138,26 +163,17 @@ fun RoomDetailScreen(
             }
 
             // Reviews section
-            if (userRole == UserRole.RENTER) {
-                item {
-                    ReviewsSection(
-                        rating = displayRoom.rating,
-                        onWriteReview = { onNavigateToWriteReview(displayRoom.id) }
-                    )
-                }
+            item {
+                ReviewsSection(
+                    rating = displayRoom.rating,
+                    onWriteReview = { onNavigateToWriteReview(displayRoom.id) }
+                )
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
-
-        // Action buttons row
-        ActionButtonsRow(
-            userRole = userRole,
-            onBook = { onBookAppointment(displayRoom.id) },
-            onEdit = { onEditClick(displayRoom.id) }
-        )
     }
 }
 
@@ -632,56 +648,6 @@ private fun ReviewCard(name: String, date: String, content: String) {
     }
 }
 
-@Composable
-private fun ActionButtonsRow(
-    userRole: UserRole,
-    onBook: () -> Unit,
-    onEdit: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (userRole == UserRole.RENTER) {
-            Button(
-                onClick = onBook,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                shape = Shapes.small
-            ) {
-                Text(
-                    text = "Đặt lịch hẹn xem phòng",
-                    style = Typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        } else {
-            Button(
-                onClick = onEdit,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                shape = Shapes.small
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Chỉnh sửa bài đăng",
-                    style = Typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-    }
-}
-
 private fun getAmenityIcon(name: String) = when (name) {
     "WiFi" -> Icons.Default.Wifi
     "Điều hòa" -> Icons.Default.AcUnit
@@ -692,10 +658,10 @@ private fun mockRoomData() = Room(
     id = "1",
     title = "Phòng trọ cao cấp Quận 7",
     price = 3500000L,
-    priceFormatted = "3,500,000 ₫",
+    priceFormatted = "3.500.000 ₫",
     address = "Quận 7, TP.HCM",
-    detailedAddress = "123 Đường Nguyễn Huệ, Quận 7, TP.HCM",
-    description = "Mô tả phòng trọ chi tiết.",
+    detailedAddress = "123 Nguyễn Huệ, Quận 7, TP.HCM",
+    description = "Mô tả chi tiết phòng trọ.",
     structure = RoomStructure.APARTMENT,
     floorArea = 25.0,
     mezzanineArea = 8.0,
@@ -719,8 +685,8 @@ private fun mockRoomData() = Room(
 
 @Preview(showBackground = true)
 @Composable
-fun RoomDetailScreenPreview() {
+fun RenterRoomDetailScreenPreview() {
     EzRoomTheme {
-        RoomDetailScreen()
+        RenterRoomDetailScreen()
     }
 }

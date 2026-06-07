@@ -26,29 +26,25 @@ import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.PrimaryButton
+import com.example.ezroom.ui.components.SmallTextField
 import com.example.ezroom.ui.theme.EzRoomTheme
-import com.example.ezroom.data.model.RoomStructure
+import com.example.ezroom.data.model.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-// Mock data
-data class DetailedArea(
-    val id: String = UUID.randomUUID().toString(), 
-    val roomName: String = "", 
-    val areaValue: String = ""
-)
-
+// Local UI wrapper for amenities
 data class AmenityItem(
     val name: String, 
-    val defaultSpec: String, 
+    val compensationAmount: String = "", 
     val isChecked: Boolean = false
 )
 
-data class RoomImage(
-    val id: String = UUID.randomUUID().toString(), 
-    val uri: Uri?, 
-    val label: String = "Ảnh phòng khách"
+// Local UI wrapper for images to handle labels in the form
+data class RoomImageUI(
+    val id: String = UUID.randomUUID().toString(),
+    val uri: Uri? = null,
+    val label: String = "Ảnh mới"
 )
 
 val ImageLabels = listOf("Ảnh phòng khách", "Ảnh phòng ngủ", "Ảnh WC", "Ảnh mặt tiền")
@@ -73,14 +69,14 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
 
     val amenities = remember {
         mutableStateListOf(
-            AmenityItem("Wifi", "Băng thông cao"),
-            AmenityItem("Điều hòa", "Inverter tiết kiệm điện"),
-            AmenityItem("Giường", "1m8 x 2m"),
-            AmenityItem("Tủ quần áo", "Gỗ 2 cánh")
+            AmenityItem("Wifi"),
+            AmenityItem("Điều hòa"),
+            AmenityItem("Giường"),
+            AmenityItem("Tủ quần áo")
         )
     }
     
-    val uploadedImages = remember { mutableStateListOf<RoomImage>() }
+    val uploadedImages = remember { mutableStateListOf<RoomImageUI>() }
 
     val isFormValid = title.isNotEmpty() && description.isNotEmpty() && 
                       price.isNotEmpty() && totalArea.isNotEmpty()
@@ -90,8 +86,6 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
         Scaffold(
             // Top app bar
             topBar = {
-                // Wrapping in a Box to ensure the topBar slot always contains at least one node,
-                // preventing a NoSuchElementException in ScaffoldLayout during measurement in Previews.
                 Box(modifier = Modifier.fillMaxWidth()) {
                     CenterAlignedTopAppBar(
                         title = { 
@@ -132,8 +126,6 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
                     enabled = !isLoading
                 )
 
-                // Using a standard Box + DropdownMenu instead of ExposedDropdownMenuBox to resolve 
-                // the java.lang.NoSuchMethodError in the Android Studio Preview environment.
                 Box(modifier = Modifier.fillMaxWidth()) {
                     CustomTextField(
                         value = selectedStructure.displayName, 
@@ -210,8 +202,8 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
                             enabled = !isLoading
                         )
                         CustomTextField(
-                            value = item.areaValue, 
-                            onValueChange = { detailedAreas[index] = item.copy(areaValue = it) }, 
+                            value = item.areaValue.toString(), 
+                            onValueChange = { detailedAreas[index] = item.copy(areaValue = it.toDoubleOrNull() ?: 0.0) }, 
                             label = "Diện tích (m²)", 
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
                             modifier = Modifier.weight(0.9f),
@@ -229,7 +221,7 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
 
                 // Action buttons row
                 OutlinedButton(
-                    onClick = { if (!isLoading) detailedAreas.add(DetailedArea()) }, 
+                    onClick = { if (!isLoading) detailedAreas.add(DetailedArea(id = UUID.randomUUID().toString(), roomName = "", areaValue = 0.0)) }, 
                     modifier = Modifier.fillMaxWidth(), 
                     shape = MaterialTheme.shapes.small, 
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
@@ -242,37 +234,57 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
 
-                FormSectionTitle(title = "Tiện ích đi kèm")
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    amenities.chunked(2).forEach { rowItems ->
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            rowItems.forEach { amenity ->
-                                val index = amenities.indexOf(amenity)
+                FormSectionTitle(title = "Tiện ích và Đền bù")
+                
+                // Input fields group: Amenities with compensation
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    amenities.forEachIndexed { index, amenity ->
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !isLoading) { 
+                                        amenities[index] = amenity.copy(isChecked = !amenity.isChecked) 
+                                    }, 
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = amenity.isChecked, 
+                                    onCheckedChange = { checked -> 
+                                        if (!isLoading) {
+                                            amenities[index] = amenity.copy(isChecked = checked) 
+                                        }
+                                    }, 
+                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+                                    enabled = !isLoading
+                                )
+                                Text(
+                                    text = amenity.name, 
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                            
+                            if (amenity.isChecked) {
                                 Row(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .clickable(enabled = !isLoading) { 
-                                            amenities[index] = amenity.copy(isChecked = !amenity.isChecked) 
-                                        }, 
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .fillMaxWidth()
+                                        .padding(start = 48.dp, top = 4.dp, bottom = 8.dp)
                                 ) {
-                                    Checkbox(
-                                        checked = amenity.isChecked, 
-                                        onCheckedChange = { checked -> 
-                                            if (!isLoading) {
-                                                amenities[index] = amenity.copy(isChecked = checked) 
+                                    SmallTextField(
+                                        value = amenity.compensationAmount,
+                                        onValueChange = { newVal ->
+                                            if (newVal.all { it.isDigit() }) {
+                                                amenities[index] = amenity.copy(compensationAmount = newVal)
                                             }
-                                        }, 
-                                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+                                        },
+                                        label = "Tiền đền bù (đ)",
+                                        modifier = Modifier.fillMaxWidth(0.8f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         enabled = !isLoading
                                     )
-                                    Column(modifier = Modifier.padding(start = 4.dp)) {
-                                        Text(text = amenity.name, style = MaterialTheme.typography.bodyLarge)
-                                        Text(text = amenity.defaultSpec, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                    }
                                 }
                             }
-                            if (rowItems.size < 2) Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -287,7 +299,7 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
                         .height(100.dp)
                         .border(1.dp, color = MaterialTheme.colorScheme.primary, shape = MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                        .clickable(enabled = !isLoading) { uploadedImages.add(RoomImage(uri = null)) },
+                        .clickable(enabled = !isLoading) { uploadedImages.add(RoomImageUI()) },
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -323,13 +335,17 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Action buttons row
                 PrimaryButton(
                     text = if (isEditMode) "Cập nhật bài đăng" else "Đăng bài ngay", 
                     onClick = { 
                         if (isFormValid) {
                             scope.launch {
                                 isLoading = true
+                                // Logic for data packaging
+                                val finalAmenities = amenities
+                                    .filter { it.isChecked }
+                                    .map { Amenity(it.name, null) } // Real app would map compensation too
+
                                 delay(1500)
                                 isLoading = false
                                 onNavigateBack()
@@ -362,12 +378,11 @@ fun FormSectionTitle(title: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageCardWithLabel(
-    roomImage: RoomImage, 
+    roomImage: RoomImageUI, 
     onDelete: () -> Unit,
     onLabelChange: (String) -> Unit,
     enabled: Boolean = true
 ) {
-    // State definitions
     var isLabelDropdownExpanded by remember { mutableStateOf(false) }
 
     Card(

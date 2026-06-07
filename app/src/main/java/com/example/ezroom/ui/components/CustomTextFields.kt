@@ -8,9 +8,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.sp
 import com.example.ezroom.ui.theme.OrangePrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +56,37 @@ fun CustomTextField(
             disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
             disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             disabledPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SmallTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    enabled: Boolean = true
+) {
+    // Input fields group: Compact version
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, fontSize = 11.sp) },
+        textStyle = TextStyle(fontSize = 12.sp),
+        modifier = modifier,
+        singleLine = true,
+        isError = isError,
+        keyboardOptions = keyboardOptions,
+        enabled = enabled,
+        shape = MaterialTheme.shapes.small,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = OrangePrimary,
+            focusedLabelColor = OrangePrimary,
+            cursorColor = OrangePrimary
         )
     )
 }

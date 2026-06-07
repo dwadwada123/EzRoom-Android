@@ -34,13 +34,17 @@ data class NotificationUI(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
-    onNavigateBack: () -> Unit
+    // Event callbacks
+    onNavigateBack: () -> Unit,
+    onNavigateToSignContract: (String) -> Unit = {}
 ) {
+    // State definitions
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Tất cả", "Chưa đọc")
 
     val notifications = remember {
         listOf(
+            NotificationUI(NotificationItem("notif_contract", "Hợp đồng mới", "Chủ nhà đã lập hợp đồng điện tử cho phòng trọ của bạn. Vui lòng nhấn vào đây để kiểm tra và ký xác nhận.", "11:00", isRead = false, type = "CONTRACT"), group = "Hôm nay"),
             NotificationUI(NotificationItem("1", "Hóa đơn mới", "Bạn có hóa đơn tiền phòng tháng 5/2026 cần thanh toán.", "10:30", isRead = false, type = "BILL"), group = "Hôm nay"),
             NotificationUI(NotificationItem("2", "Lịch hẹn xem phòng", "Lịch hẹn xem phòng Q7 của bạn đã được chủ trọ duyệt.", "09:15", isRead = false, type = "SCHEDULE"), group = "Hôm nay"),
             NotificationUI(NotificationItem("3", "Cập nhật hệ thống", "EzRoom vừa cập nhật tính năng thanh toán qua VNPay.", "Hôm qua", isRead = true, type = "SYSTEM"), group = "Trước đó"),
@@ -51,9 +55,11 @@ fun NotificationScreen(
 
     val filteredNotifications = if (selectedTab == 1) notifications.filter { !it.item.isRead } else notifications
 
+    // Main layout container
     Scaffold(
         containerColor = BackgroundLight,
         topBar = {
+            // Top app bar
             CenterAlignedTopAppBar(
                 title = { Text("THÔNG BÁO", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary) },
                 navigationIcon = {
@@ -71,6 +77,7 @@ fun NotificationScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+            // Tab row section
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = SurfaceLight,
@@ -93,6 +100,7 @@ fun NotificationScreen(
                 }
             }
 
+            // Content scroll area
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 val grouped = filteredNotifications.groupBy { it.group }
 
@@ -109,7 +117,14 @@ fun NotificationScreen(
                     }
 
                     items(items) { notification ->
-                        NotificationRow(notification.item)
+                        NotificationRow(
+                            item = notification.item,
+                            onClick = { 
+                                if (notification.item.type == "CONTRACT") {
+                                    onNavigateToSignContract(notification.item.id)
+                                }
+                            }
+                        )
                     }
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -119,10 +134,14 @@ fun NotificationScreen(
 }
 
 @Composable
-fun NotificationRow(item: NotificationItem) {
+fun NotificationRow(
+    item: NotificationItem,
+    onClick: () -> Unit = {}
+) {
     val (icon, color) = when (item.type) {
         "BILL" -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
         "SCHEDULE" -> Icons.Default.EventAvailable to TealAccent
+        "CONTRACT" -> Icons.Default.Description to OrangePrimary
         else -> Icons.Default.Info to Color(0xFF2196F3)
     }
 
@@ -132,7 +151,7 @@ fun NotificationRow(item: NotificationItem) {
     ) {
         Row(
             modifier = Modifier
-                .clickable { }
+                .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.Top
         ) {

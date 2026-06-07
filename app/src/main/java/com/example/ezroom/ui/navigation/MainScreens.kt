@@ -42,6 +42,7 @@ sealed class BottomNavItem(
     object HostRooms : BottomNavItem("host_rooms", "Phòng", Icons.Default.Bed)
     object HostAppointments : BottomNavItem("host_appointments", "Lịch hẹn", Icons.Default.Event)
     object HostMessages : BottomNavItem("host_messages", "Tin nhắn", Icons.Default.Email)
+    object HostInvoices : BottomNavItem("host_invoices", "Hóa đơn", Icons.Default.ReceiptLong)
     object HostProfile : BottomNavItem("host_profile", "Cá nhân", Icons.Default.AccountCircle)
 }
 
@@ -157,7 +158,8 @@ fun HostMainScreen(
         BottomNavItem.Management,
         BottomNavItem.HostRooms,
         BottomNavItem.HostAppointments,
-        BottomNavItem.HostMessages
+        BottomNavItem.HostMessages,
+        BottomNavItem.HostInvoices
     )
     var selectedItem by rememberSaveable { mutableStateOf(0) }
 
@@ -202,12 +204,27 @@ fun HostMainScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onFabClick,
-                containerColor = OrangePrimary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Thêm phòng")
+            // FAB conditional rendering
+            when (items[selectedItem]) {
+                BottomNavItem.HostRooms -> {
+                    FloatingActionButton(
+                        onClick = onFabClick,
+                        containerColor = OrangePrimary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Thêm phòng")
+                    }
+                }
+                BottomNavItem.HostInvoices -> {
+                    FloatingActionButton(
+                        onClick = { onInvoiceClick("create") },
+                        containerColor = OrangePrimary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(imageVector = Icons.Default.PostAdd, contentDescription = "Lập hóa đơn")
+                    }
+                }
+                else -> {}
             }
         }
     ) { innerPadding ->
@@ -233,6 +250,10 @@ fun HostMainScreen(
                     onConversationClick = { _, userName -> 
                         onChatClick(userName)
                     }
+                )
+                BottomNavItem.HostInvoices -> com.example.ezroom.ui.host.invoice.HostInvoiceListScreen(
+                    onNavigateToCreate = { onInvoiceClick("create") },
+                    onInvoiceClick = { invoiceId -> onInvoiceClick(invoiceId) }
                 )
                 else -> {}
             }

@@ -115,7 +115,7 @@ fun RenterHomeScreen(
                                 .weight(1f)
                                 .height(56.dp),
                             placeholder = { Text("Tìm phòng, địa điểm...") },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Tìm kiếm") },
                             singleLine = true,
                             shape = Shapes.small,
                             enabled = !isLoading,

@@ -47,7 +47,7 @@ fun EkycScreen(onNavigateBack: () -> Unit = {}) {
     Scaffold(
         topBar = {
             CommonTopAppBar(
-                title = "Identity Verification",
+                title = "Xác thực danh tính",
                 onBackClick = {
                     when (currentStep) {
                         EkycStep.INSTRUCTIONS, EkycStep.SUCCESS -> onNavigateBack()
@@ -116,14 +116,14 @@ private fun InstructionSection(onStartClick: () -> Unit) {
     )
     Spacer(modifier = Modifier.height(24.dp))
     Text(
-        text = "Identity Verification",
+        text = "Xác thực danh tính",
         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onBackground
     )
     Spacer(modifier = Modifier.height(12.dp))
     Text(
-        text = "For security and trust, EzRoom needs to verify your identity. Please prepare:",
+        text = "Để bảo mật và tăng độ tin cậy, EzRoom cần xác minh danh tính của bạn. Vui lòng chuẩn bị:",
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -134,18 +134,18 @@ private fun InstructionSection(onStartClick: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         InstructionItem(
             icon = Icons.Default.DocumentScanner, 
-            title = "Original ID Card", 
-            desc = "Valid document, not blurred or expired."
+            title = "Bản gốc CMND/CCCD", 
+            desc = "Giấy tờ hợp lệ, còn hạn sử dụng, không mờ nhòe."
         )
         InstructionItem(
             icon = Icons.Default.Lightbulb, 
-            title = "Good Lighting", 
-            desc = "Perform in a bright area without glare."
+            title = "Đảm bảo ánh sáng", 
+            desc = "Thực hiện ở nơi đủ sáng, không bị chói hay bóng râm."
         )
         InstructionItem(
             icon = Icons.Default.Face, 
-            title = "Clear Face", 
-            desc = "Please remove sunglasses and mask."
+            title = "Khuôn mặt rõ ràng", 
+            desc = "Vui lòng tháo kính râm và khẩu trang."
         )
     }
 
@@ -157,7 +157,7 @@ private fun InstructionSection(onStartClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text("Start Verification", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Text("Bắt đầu xác thực", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
 
@@ -203,20 +203,20 @@ private fun UploadIdSection(
     onNextClick: () -> Unit
 ) {
     Text(
-        text = "Capture ID Card", 
+        text = "Chụp ảnh CMND/CCCD", 
         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.onBackground
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
-        text = "Ensure the photo is clear and well-lit", 
+        text = "Đảm bảo ảnh rõ nét và đủ ánh sáng", 
         style = MaterialTheme.typography.bodyMedium, 
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(28.dp))
 
     IdCardCaptureBox(
-        title = "Front Side",
+        title = "Mặt trước",
         isCaptured = frontUri != null,
         onClick = onCaptureFront
     )
@@ -224,7 +224,7 @@ private fun UploadIdSection(
     Spacer(modifier = Modifier.height(20.dp))
 
     IdCardCaptureBox(
-        title = "Back Side",
+        title = "Mặt sau",
         isCaptured = backUri != null,
         onClick = onCaptureBack
     )
@@ -238,7 +238,7 @@ private fun UploadIdSection(
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text("Continue", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Text("Tiếp tục", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
 
@@ -267,13 +267,13 @@ private fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> 
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "$title Captured", 
+                    text = "Đã chụp $title", 
                     style = MaterialTheme.typography.titleMedium, 
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Tap to retake", 
+                    text = "Chạm để chụp lại", 
                     style = MaterialTheme.typography.bodySmall, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -288,7 +288,7 @@ private fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> 
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Capture $title", 
+                    text = "Chụp $title", 
                     style = MaterialTheme.typography.bodyLarge, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
@@ -301,13 +301,13 @@ private fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> 
 @Composable
 private fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClick: () -> Unit) {
     Text(
-        text = "Face Verification", 
+        text = "Xác thực khuôn mặt", 
         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.onBackground
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
-        text = "Hold phone at eye level and look straight into camera", 
+        text = "Giữ điện thoại ngang tầm mắt và nhìn thẳng vào camera", 
         style = MaterialTheme.typography.bodyMedium, 
         color = MaterialTheme.colorScheme.onSurfaceVariant, 
         textAlign = TextAlign.Center
@@ -353,7 +353,7 @@ private fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClic
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
-        Text("Confirm Face", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+        Text("Xác nhận khuôn mặt", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
     }
 }
 
@@ -371,14 +371,14 @@ private fun SuccessSection(onFinishClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Submission Successful!",
+            text = "Gửi thông tin thành công!",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "System is reviewing your profile. Results will be notified within 24h.",
+            text = "Hệ thống đang xét duyệt hồ sơ của bạn. Kết quả sẽ được thông báo trong vòng 24h.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -389,7 +389,7 @@ private fun SuccessSection(onFinishClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = MaterialTheme.shapes.medium
         ) {
-            Text("Back to Profile", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+            Text("Quay lại trang cá nhân", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
         }
     }
 }

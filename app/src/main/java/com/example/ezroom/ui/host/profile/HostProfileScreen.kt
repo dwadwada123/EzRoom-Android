@@ -32,6 +32,7 @@ fun HostProfileScreen(
     // Event callbacks
     onNavigateToEkyc: () -> Unit = {},
     onNavigateToDepositAccount: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
     onLogout: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
@@ -111,6 +112,18 @@ fun HostProfileScreen(
                         title = "Tài khoản nhận tiền",
                         subtitle = "Quản lý thông tin tài khoản nhận tiền đặt cọc",
                         onClick = onNavigateToDepositAccount
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    MenuOptionItem(
+                        icon = Icons.Default.Lock,
+                        title = "Đổi mật khẩu",
+                        onClick = onNavigateToChangePassword
                     )
 
                     HorizontalDivider(
