@@ -24,9 +24,9 @@ object MockData {
             rating = 4.8f,
             images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
             amenities = listOf(
-                Amenity("WiFi", null),
-                Amenity("Máy lạnh", null),
-                Amenity("Máy giặt", null)
+                Amenity("WiFi", iconRes = null),
+                Amenity("Máy lạnh", iconRes = null),
+                Amenity("Máy giặt", iconRes = null)
             ),
             status = RoomStatus.ACTIVE,
             latitude = 16.0678,
@@ -51,9 +51,9 @@ object MockData {
             rating = 4.5f,
             images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
             amenities = listOf(
-                Amenity("WiFi", null),
-                Amenity("Thang máy", null),
-                Amenity("Bảo vệ 24/7", null)
+                Amenity("WiFi", iconRes = null),
+                Amenity("Thang máy", iconRes = null),
+                Amenity("Bảo vệ 24/7", iconRes = null)
             ),
             status = RoomStatus.ACTIVE,
             latitude = 16.0475,
@@ -73,8 +73,8 @@ object MockData {
             rating = 4.2f,
             images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
             amenities = listOf(
-                Amenity("Chỗ để xe", null),
-                Amenity("Tủ lạnh", null)
+                Amenity("Chỗ để xe", iconRes = null),
+                Amenity("Tủ lạnh", iconRes = null)
             ),
             status = RoomStatus.ACTIVE,
             latitude = 16.0620,
@@ -94,8 +94,8 @@ object MockData {
             rating = 4.0f,
             images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
             amenities = listOf(
-                Amenity("WiFi", null),
-                Amenity("Kệ bếp", null)
+                Amenity("WiFi", iconRes = null),
+                Amenity("Kệ bếp", iconRes = null)
             ),
             status = RoomStatus.RENTED,
             latitude = 16.0750,
@@ -115,9 +115,9 @@ object MockData {
             rating = 4.7f,
             images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
             amenities = listOf(
-                Amenity("WiFi", null),
-                Amenity("Điều hòa", null),
-                Amenity("Nước nóng", null)
+                Amenity("WiFi", iconRes = null),
+                Amenity("Điều hòa", iconRes = null),
+                Amenity("Nước nóng", iconRes = null)
             ),
             status = RoomStatus.ACTIVE,
             latitude = 16.0610,
@@ -205,6 +205,7 @@ object MockData {
             newWater = 0,
             otherCosts = 0L,
             status = InvoiceStatus.PAID,
+            type = TransactionType.DEPOSIT,
             dateCreated = "01/05/2026",
             paymentMethod = "VNPAY"
         )

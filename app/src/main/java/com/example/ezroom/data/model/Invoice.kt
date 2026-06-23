@@ -12,6 +12,7 @@ data class Invoice(
     val newWater: Int,
     val otherCosts: Long,
     val status: InvoiceStatus,
+    val type: TransactionType = TransactionType.RENT,
     val dateCreated: String,
     val paymentMethod: String? = null
 )

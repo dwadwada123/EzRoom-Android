@@ -100,9 +100,6 @@ fun ChatRoomScreen(
                 },
                 actions = {
                     IconButton(onClick = { }) {
-                        Icon(Icons.Default.Call, null, tint = OrangePrimary)
-                    }
-                    IconButton(onClick = { }) {
                         Icon(Icons.Default.MoreVert, null, tint = OrangePrimary)
                     }
                 },

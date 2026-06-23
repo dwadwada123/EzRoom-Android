@@ -268,7 +268,7 @@ fun AppNavigation() {
             RenterContractScreen(
                 contract = contract,
                 onNavigateBack = { navController.popBackStack() },
-                onSignContract = {
+                onSignContract = { _ ->
                     // Simulation of successful signing
                     navController.popBackStack()
                 }
@@ -285,7 +285,7 @@ fun AppNavigation() {
             HostContractScreen(
                 contract = contract,
                 onNavigateBack = { navController.popBackStack() },
-                onSignContract = {
+                onSignContract = { _ ->
                     // Update mock data or simulation of status change
                     navController.navigate(Screen.HOST_MAIN) {
                         popUpTo(Screen.HOST_MAIN) { inclusive = true }
@@ -385,7 +385,7 @@ fun AppNavigation() {
             InvoiceDetailScreen(
                 invoice = invoice,
                 onBackClick = { navController.popBackStack() },
-                onPaymentConfirm = { _, _ -> navController.popBackStack() }
+                onPaymentConfirm = { _, _, _ -> navController.popBackStack() }
             )
         }
 

@@ -29,6 +29,15 @@ import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.components.SmallTextField
 import com.example.ezroom.ui.theme.EzRoomTheme
 import com.example.ezroom.data.model.*
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -57,8 +66,18 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
     val scope = rememberCoroutineScope()
 
     var title by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var detailedAddress by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
+    
+    // Default location: Da Nang Center
+    val danangCenter = remember { LatLng(16.0544, 108.2022) }
+    val markerState = rememberMarkerState(position = danangCenter)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(danangCenter, 15f)
+    }
+
     var selectedStructure by remember { mutableStateOf(RoomStructure.SINGLE) }
     var isStructureDropdownExpanded by remember { mutableStateOf(false) }
 
@@ -78,7 +97,8 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
     
     val uploadedImages = remember { mutableStateListOf<RoomImageUI>() }
 
-    val isFormValid = title.isNotEmpty() && description.isNotEmpty() && 
+    val isFormValid = title.isNotEmpty() && address.isNotEmpty() && 
+                      detailedAddress.isNotEmpty() && description.isNotEmpty() && 
                       price.isNotEmpty() && totalArea.isNotEmpty()
 
     // Main layout container
@@ -165,6 +185,68 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading
                 )
+
+                CustomTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = "Địa chỉ (Tỉnh/Thành, Quận/Huyện)",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
+                )
+
+                CustomTextField(
+                    value = detailedAddress,
+                    onValueChange = { detailedAddress = it },
+                    label = "Địa chỉ chi tiết (Số nhà, tên đường)",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
+                )
+
+                // Map location picker
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Ghim vị trí trên bản đồ",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
+                    )
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        GoogleMap(
+                            modifier = Modifier.fillMaxSize(),
+                            cameraPositionState = cameraPositionState,
+                            properties = MapProperties(mapType = MapType.NORMAL),
+                            uiSettings = MapUiSettings(
+                                zoomControlsEnabled = true, // Enable zoom in/out buttons
+                                myLocationButtonEnabled = true,
+                                scrollGesturesEnabled = true,
+                                zoomGesturesEnabled = true
+                            ),
+                            onMapClick = { latLng ->
+                                markerState.position = latLng
+                            }
+                        ) {
+                            Marker(
+                                state = markerState,
+                                draggable = true,
+                                title = "Vị trí trọ"
+                            )
+                        }
+                    }
+                    
+                    // Coordinate display
+                    Text(
+                        text = "Tọa độ đã ghim: ${"%.6f".format(markerState.position.latitude)}, ${"%.6f".format(markerState.position.longitude)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 
                 CustomTextField(
                     value = description, 
@@ -342,9 +424,31 @@ fun RoomFormScreen(isEditMode: Boolean = false, onNavigateBack: () -> Unit = {})
                             scope.launch {
                                 isLoading = true
                                 // Logic for data packaging
-                                val finalAmenities = amenities
-                                    .filter { it.isChecked }
-                                    .map { Amenity(it.name, null) } // Real app would map compensation too
+                                val newRoom = Room(
+                                    id = UUID.randomUUID().toString(),
+                                    title = title,
+                                    address = address,
+                                    detailedAddress = detailedAddress,
+                                    description = description,
+                                    price = price.toLongOrNull() ?: 0L,
+                                    priceFormatted = "${price}đ",
+                                    structure = selectedStructure,
+                                    floorArea = totalArea.toDoubleOrNull() ?: 0.0,
+                                    mezzanineArea = 0.0,
+                                    detailedAreas = detailedAreas.toList(),
+                                    rating = 0f,
+                                    images = emptyList(), // Images would be handled separately
+                                    amenities = amenities
+                                        .filter { it.isChecked }
+                                        .map { 
+                                            Amenity(
+                                                name = it.name, 
+                                                compensationAmount = it.compensationAmount.toLongOrNull() ?: 0L
+                                            ) 
+                                        },
+                                    latitude = markerState.position.latitude,
+                                    longitude = markerState.position.longitude
+                                )
 
                                 delay(1500)
                                 isLoading = false

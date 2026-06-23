@@ -676,8 +676,8 @@ private fun mockRoomData() = Room(
         RoomImage(resId = android.R.drawable.ic_menu_gallery)
     ),
     amenities = listOf(
-        Amenity("WiFi", null),
-        Amenity("Điều hòa", null)
+        Amenity("WiFi", iconRes = null),
+        Amenity("Điều hòa", iconRes = null)
     ),
     latitude = 10.762622,
     longitude = 106.660172

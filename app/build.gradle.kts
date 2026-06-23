@@ -6,18 +6,19 @@ plugins {
 
 android {
     namespace = "com.example.ezroom"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.ezroom"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Ensure API key is injected correctly
+        manifestPlaceholders["MAPS_API_KEY"] = project.findProperty("MAPS_API_KEY") ?: "YOUR_API_KEY_HERE"
     }
 
     buildTypes {
@@ -48,7 +49,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.tv.material)
     implementation(libs.coil.compose)
     implementation(libs.google.maps)
     implementation(libs.maps.compose)

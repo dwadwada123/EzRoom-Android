@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ezroom.data.model.Contract
 import com.example.ezroom.data.model.DepositStatus
+import com.example.ezroom.data.model.TransactionType
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
 
@@ -30,7 +31,7 @@ fun ContractScreen(
     // Event callbacks
     contract: Contract,
     onNavigateBack: () -> Unit,
-    onSignContract: () -> Unit
+    onSignContract: (transactionType: TransactionType) -> Unit
 ) {
     // State definitions
     var isAgreed by remember { mutableStateOf(false) }
@@ -204,7 +205,7 @@ fun ContractScreen(
 
             // Action buttons row (Sign contract action)
             Button(
-                onClick = onSignContract,
+                onClick = { onSignContract(TransactionType.DEPOSIT) },
                 enabled = isAgreed,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -270,7 +271,7 @@ fun ContractScreenPreview() {
         ContractScreen(
             contract = dummyContract,
             onNavigateBack = {},
-            onSignContract = {}
+            onSignContract = { _ -> }
         )
     }
 }

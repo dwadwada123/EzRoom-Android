@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ezroom.data.model.Invoice
 import com.example.ezroom.data.model.InvoiceStatus
+import com.example.ezroom.data.model.TransactionType
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.*
@@ -29,7 +30,7 @@ import java.text.DecimalFormat
 fun InvoiceDetailScreen(
     invoice: Invoice? = null,
     onBackClick: () -> Unit,
-    onPaymentConfirm: (invoiceId: String, paymentMethod: String) -> Unit
+    onPaymentConfirm: (invoiceId: String, paymentMethod: String, transactionType: TransactionType) -> Unit
 ) {
     val formatter = remember { DecimalFormat("#,### đ") }
     
@@ -47,6 +48,7 @@ fun InvoiceDetailScreen(
             newWater = 462,
             otherCosts = 50000L,
             status = InvoiceStatus.UNPAID,
+            type = TransactionType.RENT,
             dateCreated = "10/05/2026"
         )
     }
@@ -215,7 +217,7 @@ fun InvoiceDetailScreen(
             // 6. Nút hành động (Action Button)
             PrimaryButton(
                 text = if (isPaid) "HÓA ĐƠN ĐÃ ĐƯỢC THANH TOÁN" else "XÁC NHẬN THANH TOÁN",
-                onClick = { onPaymentConfirm(displayInvoice.id, selectedPaymentMethod) },
+                onClick = { onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isPaid
             )
@@ -338,7 +340,7 @@ fun InvoiceDetailScreenPreview() {
     EzRoomTheme {
         InvoiceDetailScreen(
             onBackClick = {},
-            onPaymentConfirm = { _, _ -> }
+            onPaymentConfirm = { _, _, _ -> }
         )
     }
 }

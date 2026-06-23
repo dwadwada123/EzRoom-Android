@@ -24,6 +24,7 @@ enum class RoomStatus(val title: String) {
 
 data class Amenity(
     val name: String,
+    val compensationAmount: Long = 0L,
     val iconRes: Int? = null
 )
 
@@ -31,3 +32,9 @@ data class RoomImage(
     val url: String? = null,
     val resId: Int? = null
 )
+
+enum class TransactionType {
+    DEPOSIT,      // Tiền cọc giữ chỗ
+    RENT,         // Tiền phòng định kỳ
+    COMPENSATION  // Tiền đền bù thiệt hại
+}

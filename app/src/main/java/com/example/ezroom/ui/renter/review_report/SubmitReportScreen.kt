@@ -35,10 +35,10 @@ fun SubmitReportScreen(
 
     // Predefined Reasons
     val reasons = listOf(
-        "Thông tin phòng trọ ảo, sai sự thật",
-        "Giá phòng không đúng với thực tế niêm yết",
-        "Chủ nhà có dấu hiệu lừa đảo tiền cọc",
-        "Phòng đã cho thuê nhưng không ẩn bài đăng",
+        "Thông tin ảo",
+        "Giá sai thực tế",
+        "Lừa đảo tiền cọc",
+        "Phòng đã cho thuê",
         "Lý do khác"
     )
 
