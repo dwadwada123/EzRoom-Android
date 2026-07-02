@@ -3,12 +3,10 @@ package com.example.ezroom.ui.splash
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.HomeWork
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,63 +18,59 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.ui.theme.EzRoomTheme
+import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(onSplashFinished: () -> Unit) {
-    val scale = remember { Animatable(0.6f) }
-    val alpha = remember { Animatable(0f) }
+    var startAnimation by remember { mutableStateOf(value = false) }
+    
+    val alphaAnim by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(1000),
+        label = "Alpha",
+    )
+    
+    val scaleAnim by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0.8f,
+        animationSpec = tween(1000, easing = FastOutSlowInEasing),
+        label = "Scale",
+    )
 
     LaunchedEffect(key1 = true) {
-        launch {
-            scale.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(1000, easing = FastOutSlowInEasing)
-            )
-        }
-        launch {
-            alpha.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(800)
-            )
-        }
-        delay(2000L)
+        startAnimation = true
+        delay(2000)
         onSplashFinished()
     }
 
     Box(
-        contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                    )
-                )
-            )
+                    colors = listOf(PrimaryMain, PrimaryMain.copy(alpha = 0.8f)),
+                ),
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .scale(scale.value)
-                .alpha(alpha.value)
+                .scale(scaleAnim)
+                .alpha(alphaAnim),
         ) {
             Surface(
                 modifier = Modifier.size(120.dp),
-                shape = MaterialTheme.shapes.large,
-                color = Color.White.copy(alpha = 0.2f),
-                shadowElevation = 0.dp
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 24.dp,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = "Logo",
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.White
+                        imageVector = Icons.Default.HomeWork,
+                        contentDescription = null,
+                        tint = PrimaryMain,
+                        modifier = Modifier.size(60.dp),
                     )
                 }
             }
@@ -85,29 +79,27 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
             
             Text(
                 text = "EzRoom",
-                fontSize = 40.sp,
-                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.displayMedium,
                 color = Color.White,
-                letterSpacing = 2.sp
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 2.sp,
             )
             
             Text(
-                text = "Nâng tầm trải nghiệm thuê phòng",
-                fontSize = 14.sp,
+                text = "Tìm trọ nhanh - Ở trọ lành",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.8f),
                 fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.7f),
-                letterSpacing = 1.sp
             )
         }
         
-        Text(
-            text = "Version 2.0 • Premium",
+        CircularProgressIndicator(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 48.dp)
-                .alpha(alpha.value * 0.5f),
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium
+                .padding(bottom = 64.dp)
+                .size(32.dp),
+            color = Color.White.copy(alpha = 0.5f),
+            strokeWidth = 3.dp,
         )
     }
 }
@@ -116,7 +108,6 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
 @Composable
 fun SplashScreenPreview() {
     EzRoomTheme {
-        SplashScreen(onSplashFinished = {})
+        SplashScreen {}
     }
 }
-

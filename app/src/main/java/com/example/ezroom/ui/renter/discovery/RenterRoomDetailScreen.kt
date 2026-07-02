@@ -1,7 +1,6 @@
 package com.example.ezroom.ui.renter.discovery
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -41,6 +40,7 @@ import com.example.ezroom.data.model.MockData
 import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.components.SecondaryButton
 import com.example.ezroom.ui.components.UtilityPriceItem
+import com.example.ezroom.ui.navigation.LocalSnackbarProvider
 import com.example.ezroom.ui.theme.*
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -56,19 +56,18 @@ fun RenterRoomDetailScreen(
     modifier: Modifier = Modifier,
     room: Room? = null,
     onBackClick: () -> Unit = {},
-    onFavoriteClick: (String) -> Unit = {},
     onBookAppointment: (String) -> Unit = {},
     onNavigateToChat: (hostName: String) -> Unit = {},
     onNavigateToReport: (roomId: String) -> Unit = {},
-    onNavigateToWriteReview: (roomId: String) -> Unit = {}
+    onNavigateToWriteReview: (roomId: String) -> Unit = {},
 ) {
     val context = LocalContext.current
-    var isFavorite by remember { mutableStateOf(false) }
+    val showSnackbar = LocalSnackbarProvider.current
+    var isFavorite by remember { mutableStateOf(value = false) }
     
-    // Manage dynamic room selection if it's a complex property
+    // Initial room selection logic
     var currentRoom by remember(room) { 
         val initialRoom = room ?: mockRoomData()
-        // If the initial room passed is rented, try to find an active one in the property first
         val defaultRoom = if (initialRoom.status == RoomStatus.RENTED && initialRoom.propertyId != null) {
             val roomsInProp = MockData.rooms.filter { it.propertyId == initialRoom.propertyId }
             roomsInProp.find { it.status == RoomStatus.ACTIVE && !it.isUserHidden } ?: initialRoom
@@ -88,7 +87,7 @@ fun RenterRoomDetailScreen(
         bottomBar = {
             AnimatedVisibility(
                 visibleState = visibleState,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn()
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             ) {
                 Surface(
                     modifier = Modifier
@@ -96,7 +95,7 @@ fun RenterRoomDetailScreen(
                         .shadow(24.dp, shape = CircleShape),
                     color = MaterialTheme.colorScheme.surface,
                     shape = CircleShape,
-                    tonalElevation = 8.dp
+                    tonalElevation = 8.dp,
                 ) {
                     Row(
                         modifier = Modifier
@@ -647,7 +646,8 @@ fun RenterRoomDetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 56.dp, start = 24.dp, end = 24.dp),
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, start = 24.dp, end = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Surface(
@@ -678,7 +678,12 @@ fun RenterRoomDetailScreen(
                     }
 
                     Surface(
-                        onClick = { isFavorite = !isFavorite },
+                        onClick = { 
+                            isFavorite = !isFavorite 
+                            showSnackbar(
+                                if (isFavorite) "Đã thêm vào yêu thích" else "Đã xóa khỏi yêu thích"
+                            )
+                        },
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.3f),
                         contentColor = if (isFavorite) Color.Red else Color.White
@@ -908,5 +913,3 @@ fun RenterRoomDetailScreenPreview() {
         RenterRoomDetailScreen()
     }
 }
-
-

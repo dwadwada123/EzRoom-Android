@@ -48,15 +48,15 @@ fun ChatRoomScreen(
             ChatViewModel(
                 GetConversationsUseCase(repo),
                 GetMessagesUseCase(repo),
-                SendMessageUseCase(repo)
+                SendMessageUseCase(repo),
             )
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.roomState.collectAsState()
     val context = LocalContext.current
     var messageText by remember { mutableStateOf("") }
-    var showAttachmentMenu by remember { mutableStateOf(false) }
+    var showAttachmentMenu by remember { mutableStateOf(value = false) }
     val sheetState = rememberModalBottomSheetState()
 
     LaunchedEffect(conversationId) {
@@ -255,31 +255,31 @@ fun AttachmentMenuContent(onOptionClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
             text = "Chia sẻ nội dung",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold
+            fontWeight = FontWeight.ExtraBold,
         )
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AttachmentOption(
                 icon = Icons.Default.Image,
                 label = "Hình ảnh",
                 color = Color(0xFF10B981),
                 onClick = onOptionClick,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             AttachmentOption(
                 icon = Icons.Default.LocationOn,
                 label = "Vị trí",
                 color = Color(0xFFEF4444),
                 onClick = onOptionClick,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
@@ -309,29 +309,6 @@ fun AttachmentOption(
             Icon(icon, null, tint = color, modifier = Modifier.size(32.dp))
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = color)
-        }
-    }
-}
-
-@Composable
-fun DateSeparator(date: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            shape = CircleShape
-        ) {
-            Text(
-                text = date,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

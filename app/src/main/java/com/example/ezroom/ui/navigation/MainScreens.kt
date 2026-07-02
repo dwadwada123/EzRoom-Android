@@ -19,7 +19,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -39,20 +38,20 @@ import com.example.ezroom.ui.renter.discovery.RenterHomeScreen
 import com.example.ezroom.ui.renter.invoice.RenterInvoiceListScreen
 import com.example.ezroom.ui.theme.EzRoomTheme
 
-sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
+sealed class BottomNavItem(val title: String, val icon: ImageVector) {
     // Renter Items
-    object Discovery : BottomNavItem("discovery", "Khám phá", Icons.Default.Search)
-    object RenterSaved : BottomNavItem("renter_saved", "Yêu thích", Icons.Default.Favorite)
-    object RenterAppointments : BottomNavItem("renter_appointments", "Lịch hẹn", Icons.Default.DateRange)
-    object RenterMessages : BottomNavItem("renter_messages", "Tin nhắn", Icons.AutoMirrored.Filled.Chat)
-    object RenterInvoices : BottomNavItem("renter_invoices", "Hóa đơn", Icons.AutoMirrored.Filled.ReceiptLong)
+    object Discovery : BottomNavItem("Khám phá", Icons.Default.Search)
+    object RenterSaved : BottomNavItem("Yêu thích", Icons.Default.Favorite)
+    object RenterAppointments : BottomNavItem("Lịch hẹn", Icons.Default.DateRange)
+    object RenterMessages : BottomNavItem("Tin nhắn", Icons.AutoMirrored.Filled.Chat)
+    object RenterInvoices : BottomNavItem("Hóa đơn", Icons.AutoMirrored.Filled.ReceiptLong)
 
     // Host Items
-    object Management : BottomNavItem("management", "Quản lý", Icons.Default.Dashboard)
-    object HostRooms : BottomNavItem("host_rooms", "Phòng trọ", Icons.Default.HomeWork)
-    object HostAppointments : BottomNavItem("host_appointments", "Lịch hẹn", Icons.AutoMirrored.Filled.EventNote)
-    object HostMessages : BottomNavItem("host_messages", "Tin nhắn", Icons.Default.QuestionAnswer)
-    object HostInvoices : BottomNavItem("host_invoices", "Hóa đơn", Icons.Default.Payments)
+    object Management : BottomNavItem("Quản lý", Icons.Default.Dashboard)
+    object HostRooms : BottomNavItem("Phòng trọ", Icons.Default.HomeWork)
+    object HostAppointments : BottomNavItem("Lịch hẹn", Icons.AutoMirrored.Filled.EventNote)
+    object HostMessages : BottomNavItem("Tin nhắn", Icons.Default.QuestionAnswer)
+    object HostInvoices : BottomNavItem("Hóa đơn", Icons.Default.Payments)
 }
 
 @Composable
@@ -64,7 +63,7 @@ fun RenterMainScreen(
     onChatClick: (String) -> Unit = {},
     onEditAppointment: (String, String) -> Unit = { _, _ -> },
     onNavigateToFilter: () -> Unit = {},
-    navController: NavController? = null
+    onShowSnackbar: (String) -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Discovery,
@@ -91,17 +90,17 @@ fun RenterMainScreen(
                     transitionSpec = {
                         fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
                     },
-                    label = "MainContentTransition"
+                    label = "MainContentTransition",
                 ) { targetItem ->
                     when (targetItem) {
                         BottomNavItem.Discovery -> RenterHomeScreen(
                             onRoomClick = { room -> onRoomClick(room.id) },
                             onNavigateToFilter = onNavigateToFilter,
-                            navController = navController
                         )
                         BottomNavItem.RenterSaved -> com.example.ezroom.ui.renter.favorite.SavedRoomsScreen(
                             onRoomClick = onRoomClick,
-                            onNavigateToExplore = { selectedItem = 0 }
+                            onNavigateToExplore = { selectedItem = 0 },
+                            onShowSnackbar = onShowSnackbar,
                         )
                         BottomNavItem.RenterAppointments -> com.example.ezroom.ui.renter.appointment.RenterAppointmentListScreen(
                             onNavigateBack = { selectedItem = 0 },
@@ -232,20 +231,20 @@ fun HostMainScreen(
 fun ModernMainTopBar(
     title: String,
     onNotificationClick: () -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
 ) {
     Surface(
-        color = Color.White.copy(alpha = 0.95f), // Refined for "Pro Max" look
-        tonalElevation = 0.dp, // Remove tint that could look grey
+        color = Color.White.copy(alpha = 0.95f), // Glassmorphism
+        tonalElevation = 0.dp,
         shadowElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         CenterAlignedTopAppBar(
             title = { 
                 Text(
                     text = title, 
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.ExtraBold,
                 ) 
             },
             navigationIcon = {
@@ -260,14 +259,14 @@ fun ModernMainTopBar(
                     Surface(
                         modifier = Modifier.size(36.dp),
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.Person, 
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
@@ -275,8 +274,8 @@ fun ModernMainTopBar(
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                 containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent
-            )
+                scrolledContainerColor = Color.Transparent,
+            ),
         )
     }
 }
@@ -285,11 +284,11 @@ fun ModernMainTopBar(
 fun FloatingDockNavigationBar(
     items: List<BottomNavItem>,
     selectedIndex: Int,
-    onItemSelected: (Int) -> Unit
+    onItemSelected: (Int) -> Unit,
 ) {
     val density = LocalDensity.current
     
-    // Weight factors for mathematical calculations
+    // Weight factors
     val selectedWeight = 2.5f
     val unselectedWeight = 1f
     val totalWeight = selectedWeight + ((items.size - 1) * unselectedWeight)
@@ -304,30 +303,30 @@ fun FloatingDockNavigationBar(
         tonalElevation = 8.dp,
         border = androidx.compose.foundation.BorderStroke(
             1.dp, 
-            Brush.linearGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.1f)))
-        )
+            Brush.linearGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.1f))),
+        ),
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .padding(horizontal = 4.dp, vertical = 6.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
         ) {
             val constraints = this
             val maxWidthPx = with(density) { constraints.maxWidth.toPx() }
             
-            // Calculate indicator position and width
+            // Calculate position and width
             val targetWidthPx = (selectedWeight / totalWeight) * maxWidthPx
             val targetOffsetPx = (selectedIndex * unselectedWeight / totalWeight) * maxWidthPx
 
             val animatedWidth by animateFloatAsState(
                 targetValue = targetWidthPx,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
-                label = "IndicatorWidth"
+                label = "IndicatorWidth",
             )
             val animatedOffset by animateFloatAsState(
                 targetValue = targetOffsetPx,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
-                label = "IndicatorOffset"
+                label = "IndicatorOffset",
             )
 
             // Sliding Indicator

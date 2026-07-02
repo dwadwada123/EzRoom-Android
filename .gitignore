@@ -1,47 +1,63 @@
-# Built files
-/build
-.gradle
-.kotlin
-/app/build
+# EzRoom Android - Professional Gitignore
 
-# External native build folder
-.externalNativeBuild
-.cxx
+# Gradle files
+.gradle/
+build/
+/*/build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
 
-# IDE files
-*.iml
+# Kotlin
+.kotlin/
+kotlin-js-store/
+scripts/
+
+# Android Studio / IntelliJ IDEA
 .idea/
+*.iml
 *.ipr
 *.iws
 .navigation/
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-
-# Local configuration (Contains API keys and local paths)
+captures/
+.externalNativeBuild/
+.cxx/
 local.properties
-secrets.xml
+lint/
+# Google Services (Exclude by default for security)
+# google-services.json
 
-# Keystore files (Private signing keys)
+# Signing files
 *.jks
 *.keystore
 *.p12
+signing.properties
 
-# Google Services (Firebase configuration)
-# google-services.json
+# Secrets
+secrets.xml
+
+# Device/Emulator
+*.apk
+*.apks
+*.aab
 
 # OS files
 .DS_Store
 Thumbs.db
+*.swp
+*~
+.AppleDouble
+.LSOverride
 
-# Captures and logs
-/captures
+# Build artifacts
 *.log
+/captures
 
-# AI/Agent Context (Personal context & skills)
+# AI/Agent Context (Internal context & skills)
 .artifacts/
 .skills/
+.cursor/
+.clinerules
+.cline/
 ANDROID_APP_DETAIL_STATE.md
+# android_app_spec.md is NOT ignored as it is for syncing with Web Admin

@@ -12,19 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.domain.model.*
-import com.example.ezroom.data.model.MockData
-import com.example.ezroom.ui.components.EmptyState
-import com.example.ezroom.ui.components.LoadingWidget
-import com.example.ezroom.ui.theme.*
-import kotlinx.coroutines.delay
-
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.InvoiceRepositoryImpl
 import com.example.ezroom.domain.model.*
@@ -34,12 +26,7 @@ import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.invoice.InvoiceViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
-import kotlinx.coroutines.delay
 
-/**
- * EzRoom 2026 "Pro Max" Invoice List
- * Features: High-contrast financial cards, Pill-shaped tabs, and staggered animations.
- */
 @Composable
 fun RenterInvoiceListScreen(
     onNavigateBack: () -> Unit,
@@ -48,8 +35,8 @@ fun RenterInvoiceListScreen(
         factory = viewModelFactory {
             val repository = InvoiceRepositoryImpl()
             InvoiceViewModel(GetInvoicesUseCase(repository), repository)
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val tabs = listOf("Tất cả", "Chưa đóng", "Đã đóng")
@@ -58,7 +45,7 @@ fun RenterInvoiceListScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Pill-shaped Tab Selection
+            // Tab Selection
             Surface(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
@@ -66,11 +53,11 @@ fun RenterInvoiceListScreen(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                shadowElevation = 2.dp
+                shadowElevation = 2.dp,
             ) {
                 Row(
                     modifier = Modifier.padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     tabs.forEachIndexed { index, title ->
                         val isSelected = when (index) {
@@ -82,11 +69,11 @@ fun RenterInvoiceListScreen(
                         
                         val backgroundColor by animateColorAsState(
                             if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            label = "TabBg"
+                            label = "TabBg",
                         )
                         val contentColor by animateColorAsState(
                             if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            label = "TabContent"
+                            label = "TabContent",
                         )
 
                         Surface(
@@ -101,16 +88,16 @@ fun RenterInvoiceListScreen(
                             modifier = Modifier.weight(1f),
                             shape = CircleShape,
                             color = backgroundColor,
-                            contentColor = contentColor
+                            contentColor = contentColor,
                         ) {
                             Box(
                                 modifier = Modifier.padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = title,
                                     style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
                                 )
                             }
                         }
@@ -124,7 +111,7 @@ fun RenterInvoiceListScreen(
                         title = "Trống",
                         description = "Bạn không có hóa đơn nào ở trạng thái này.",
                         actionText = "Về trang chủ",
-                        onAction = onNavigateBack
+                        onAction = onNavigateBack,
                     )
                 }
             } else if (uiState.error != null) {
@@ -133,27 +120,27 @@ fun RenterInvoiceListScreen(
                         title = "Lỗi",
                         description = uiState.error ?: "",
                         actionText = "Thử lại",
-                        onAction = { viewModel.loadInvoices() }
+                        onAction = { viewModel.loadInvoices() },
                     )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 24.dp, end = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     itemsIndexed(
                         items = uiState.invoices, 
                         key = { _, it -> it.id },
-                        contentType = { _, _ -> "InvoiceCard" }
+                        contentType = { _, _ -> "InvoiceCard" },
                     ) { index, item ->
                         AnimatedVisibility(
                             visible = !uiState.isLoading,
-                            enter = slideInVertically(initialOffsetY = { 50 * (index + 1) }) + fadeIn()
+                            enter = slideInVertically(initialOffsetY = { 50 * (index + 1) }) + fadeIn(),
                         ) {
                             RenterInvoiceBentoCard(
                                 item = item,
-                                onClick = { onInvoiceClick(item.id) }
+                                onClick = { onInvoiceClick(item.id) },
                             )
                         }
                     }
@@ -171,29 +158,29 @@ fun RenterInvoiceListScreen(
 @Composable
 private fun RenterInvoiceBentoCard(
     item: Invoice,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, // 28.dp
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-        shadowElevation = 3.dp
+        shadowElevation = 3.dp,
     ) {
         Row(
             modifier = Modifier.padding(20.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     modifier = Modifier.size(52.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     }
                 }
                 
@@ -205,17 +192,17 @@ private fun RenterInvoiceBentoCard(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = "Phòng: ${item.roomName}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = "Ngày tạo: ${item.dateCreated}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     )
                 }
             }
@@ -226,7 +213,7 @@ private fun RenterInvoiceBentoCard(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 18.sp
+                    fontSize = 18.sp,
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -237,13 +224,13 @@ private fun RenterInvoiceBentoCard(
                 Surface(
                     color = statusColor.copy(alpha = 0.1f),
                     contentColor = statusColor,
-                    shape = CircleShape
+                    shape = CircleShape,
                 ) {
                     Text(
                         text = statusText,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -258,5 +245,3 @@ fun RenterInvoiceListScreenPreview() {
         RenterInvoiceListScreen(onNavigateBack = {})
     }
 }
-
-

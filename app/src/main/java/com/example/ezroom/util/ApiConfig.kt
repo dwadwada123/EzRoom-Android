@@ -3,6 +3,7 @@ package com.example.ezroom.util
 import android.os.Build
 
 object ApiConfig {
+    // Check if running on emulator
     private fun isEmulator(): Boolean {
         return (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
                 || Build.FINGERPRINT.startsWith("generic")
@@ -20,11 +21,12 @@ object ApiConfig {
                 || Build.PRODUCT.contains("emulator")
     }
 
+    // Get API base URL
     fun getBaseUrl(): String {
         return if (isEmulator()) {
-            "http://10.0.2.2:3000/"  // IP trỏ ngược về localhost từ máy ảo
+            "http://10.0.2.2:3000/"
         } else {
-            "http://192.168.2.12:3000/" // IP máy tính của tôi trong mạng Wi-Fi local
+            "http://192.168.2.12:3000/"
         }
     }
 }

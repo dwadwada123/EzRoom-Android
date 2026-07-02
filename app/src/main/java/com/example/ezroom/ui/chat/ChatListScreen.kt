@@ -2,7 +2,6 @@ package com.example.ezroom.ui.chat
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -40,10 +39,10 @@ fun ChatListScreen(
             ChatViewModel(
                 GetConversationsUseCase(repo),
                 GetMessagesUseCase(repo),
-                SendMessageUseCase(repo)
+                SendMessageUseCase(repo),
             )
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.listState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
@@ -100,13 +99,13 @@ fun ChatListScreen(
                 itemsIndexed(uiState.conversations, key = { _, it -> it.id }) { index, chat ->
                     AnimatedVisibility(
                         visible = true,
-                        enter = slideInVertically(initialOffsetY = { 40 * (index + 1) }) + fadeIn()
+                        enter = slideInVertically(initialOffsetY = { 40 * (index + 1) }) + fadeIn(),
                     ) {
                         ConversationListItem(
                             chat = chat, 
                             onClick = { 
                                 onConversationClick(chat.id, chat.otherPartyName) 
-                            }
+                            },
                         )
                     }
                 }

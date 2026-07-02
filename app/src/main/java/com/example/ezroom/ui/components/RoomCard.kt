@@ -3,7 +3,6 @@ package com.example.ezroom.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.LocationOn
@@ -37,18 +36,18 @@ fun RoomCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingIcon: @Composable (() -> Unit)? = null,
-    imageOverlay: @Composable (BoxScope.() -> Unit)? = null
+    imageOverlay: @Composable (BoxScope.() -> Unit)? = null,
 ) {
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, // 28.dp from new theme
+        shape = MaterialTheme.shapes.medium, // 16.dp
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), // Following Design System Guidelines
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = androidx.compose.foundation.BorderStroke(
             1.dp, 
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f) // More pronounced border
-        )
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        ),
     ) {
         Column {
             // Hero Image Section with Overlay
@@ -79,24 +78,24 @@ fun RoomCard(
                         )
                 )
 
-                // Floating Rating Badge
+                // Rating Badge
                 Surface(
                     modifier = Modifier
-                        .padding(12.dp) // Reduced padding slightly
+                        .padding(12.dp)
                         .align(Alignment.TopStart),
                     shape = CircleShape,
                     color = Color.White.copy(alpha = 0.95f),
-                    shadowElevation = 4.dp
+                    shadowElevation = 4.dp,
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
                             tint = Color(0xFFF59E0B),
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(12.dp),
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -104,15 +103,13 @@ fun RoomCard(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F172A),
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
                         )
                     }
                 }
 
-                // New Image Overlay slot (e.g., for "X rooms left" badge)
-                if (imageOverlay != null) {
-                    imageOverlay()
-                }
+                // Overlay slot
+                imageOverlay?.invoke(this)
             }
 
             // Info Section

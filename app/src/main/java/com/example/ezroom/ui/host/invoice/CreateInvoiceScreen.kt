@@ -49,18 +49,18 @@ import java.util.UUID
 fun CreateInvoiceScreen(
     // Event callbacks
     roomName: String = "Phòng 101",
-    baseRentPrice: Long = 3000000L,
     onNavigateBack: () -> Unit,
     onInvoiceCreated: () -> Unit,
     viewModel: InvoiceViewModel = viewModel(
         factory = viewModelFactory {
             val repository = InvoiceRepositoryImpl()
             InvoiceViewModel(GetInvoicesUseCase(repository), repository)
-        }
-    )
+        },
+    ),
 ) {
     // State definitions
     val scope = rememberCoroutineScope()
+
     var oldElectricity by remember { mutableStateOf("") }
     var newElectricity by remember { mutableStateOf("") }
     var elecPrice by remember { mutableStateOf("3500") }
@@ -88,7 +88,7 @@ fun CreateInvoiceScreen(
     val elecUsage = (newElectricity.toIntOrNull() ?: 0) - (oldElectricity.toIntOrNull() ?: 0)
     val waterUsage = (newWater.toIntOrNull() ?: 0) - (oldWater.toIntOrNull() ?: 0)
 
-    val totalAmount = remember(oldElectricity, newElectricity, elecPrice, oldWater, newWater, waterPrice, otherCostItems.size, otherCostItems.map { it.amount }.sum(), selectedRoom) {
+    val totalAmount = remember(oldElectricity, newElectricity, elecPrice, oldWater, newWater, waterPrice, otherCostItems.size, otherCostItems.sumOf { it.amount }, selectedRoom) {
         val eUsage = if (elecUsage > 0) elecUsage else 0
         val wUsage = if (waterUsage > 0) waterUsage else 0
         val ePrice = elecPrice.toLongOrNull() ?: 0L
@@ -97,9 +97,9 @@ fun CreateInvoiceScreen(
         selectedRoom.price + (eUsage * ePrice) + (wUsage * wPrice) + otherTotal
     }
 
-    val isFormValid = oldElectricity.isNotEmpty() && newElectricity.isNotEmpty() && 
-                      oldWater.isNotEmpty() && newWater.isNotEmpty() &&
-                      elecUsage >= 0 && waterUsage >= 0
+    val isFormValid = (oldElectricity.isNotEmpty() && newElectricity.isNotEmpty() && 
+                      oldWater.isNotEmpty() && newWater.isNotEmpty()) &&
+                      (elecUsage >= 0 && waterUsage >= 0)
 
     // Main layout container
     Box(modifier = Modifier.fillMaxSize()) {

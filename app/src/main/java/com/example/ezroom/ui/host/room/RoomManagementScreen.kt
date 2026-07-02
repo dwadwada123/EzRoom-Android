@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,10 +23,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.data.model.MockData
 import com.example.ezroom.ui.host.components.RenterReviewDialog
+import com.example.ezroom.ui.navigation.LocalSnackbarProvider
 import com.example.ezroom.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +40,7 @@ fun RoomManagementScreen(
     onCloneRoomClick: (Room) -> Unit = {},
     onAddPropertyClick: () -> Unit = {},
     onAddStandaloneRoomClick: () -> Unit = {},
-    onEditPropertyClick: (Property) -> Unit = {}
+    onEditPropertyClick: (Property) -> Unit = {},
 ) {
     val properties = MockData.properties
     val allRooms = MockData.rooms
@@ -45,21 +48,22 @@ fun RoomManagementScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showAddOptions by remember { mutableStateOf(false) }
     
-    // Deletion Confirmation State
+    // Deletion state
     var propertyToDelete by remember { mutableStateOf<Property?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    val showSnackbar = LocalSnackbarProvider.current
     
-    // Renter Review Dialog State
     var showRenterReview by remember { mutableStateOf(false) }
     var renterNameToReview by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Tabs for Separation (Dãy vs Phòng lẻ)
+            // Tabs - Aligned directly at the top of the screen content
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
-                shadowElevation = 1.dp
+                shadowElevation = 2.dp,
             ) {
                 TabRow(
                     selectedTabIndex = selectedTab,
@@ -68,33 +72,33 @@ fun RoomManagementScreen(
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = PrimaryMain
+                            color = PrimaryMain,
                         )
-                    }
+                    },
+                    divider = {} // Remove default divider for cleaner look
                 ) {
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Quản lý dãy", fontWeight = FontWeight.Bold) }
+                        text = { Text("Quản lý dãy", fontWeight = FontWeight.Bold) },
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Phòng lẻ", fontWeight = FontWeight.Bold) }
+                        text = { Text("Phòng lẻ", fontWeight = FontWeight.Bold) },
                     )
                 }
             }
 
             if (selectedTab == 0) {
-                // Tab 1: Complex Properties (Quản lý dãy)
                 val complexProperties = properties.filter { it.type == PropertyType.COMPLEX }
                 if (complexProperties.isEmpty()) {
-                    EmptyState("Bạn chưa có dãy nào", Icons.Default.Apartment)
+                    EmptyState("Bạn chưa có dãy nào", icon = Icons.Default.Apartment)
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 100.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(top = 12.dp, start = 20.dp, end = 20.dp, bottom = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         items(complexProperties, key = { it.id }) { property ->
                             val propertyRooms = allRooms.filter { it.propertyId == property.id }
@@ -108,25 +112,24 @@ fun RoomManagementScreen(
                                 onDeleteProperty = { 
                                     propertyToDelete = it
                                     showDeleteConfirmation = true
-                                }
+                                },
                             )
                         }
                     }
                 }
             } else {
-                // Tab 2: Standalone Rooms (Phòng lẻ)
                 val standaloneRooms = allRooms.filter { room ->
                     val prop = properties.find { it.id == room.propertyId }
                     prop?.type == PropertyType.SINGLE || room.propertyId == null
                 }
                 
                 if (standaloneRooms.isEmpty()) {
-                    EmptyState("Bạn chưa có phòng lẻ nào", Icons.Default.Home)
+                    EmptyState("Bạn chưa có phòng lẻ nào", icon = Icons.Default.Home)
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 100.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(top = 12.dp, start = 20.dp, end = 20.dp, bottom = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(standaloneRooms, key = { it.id }) { room ->
                             StandaloneRoomCard(
@@ -149,11 +152,12 @@ fun RoomManagementScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 100.dp, end = 20.dp)
+                .zIndex(5f)
         ) {
             Icon(Icons.Default.Add, contentDescription = "Thêm")
         }
 
-        // Add Options Selection Dialog
+        // Add Dialog
         if (showAddOptions) {
             AlertDialog(
                 onDismissRequest = { showAddOptions = false },
@@ -168,7 +172,7 @@ fun RoomManagementScreen(
                             onClick = {
                                 showAddOptions = false
                                 onAddPropertyClick()
-                            }
+                            },
                         )
                         AddOptionItem(
                             title = "Đăng phòng lẻ",
@@ -178,7 +182,7 @@ fun RoomManagementScreen(
                             onClick = {
                                 showAddOptions = false
                                 onAddStandaloneRoomClick()
-                            }
+                            },
                         )
                     }
                 },
@@ -189,23 +193,20 @@ fun RoomManagementScreen(
                     }
                 },
                 containerColor = Color.White,
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
             )
         }
 
-        // Renter Review Dialog
+        // Review Dialog
         if (showRenterReview) {
             RenterReviewDialog(
                 renterName = renterNameToReview,
                 onDismiss = { showRenterReview = false },
-                onSubmit = { rating, tags, comment ->
-                    // In real app, API call to save review
-                    showRenterReview = false
-                }
+                onSubmit = { _, _, _ -> showRenterReview = false },
             )
         }
 
-        // Property Deletion Confirmation Dialog
+        // Property Delete Confirmation
         if (showDeleteConfirmation && propertyToDelete != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmation = false },
@@ -218,13 +219,13 @@ fun RoomManagementScreen(
                             val index = MockData.properties.indexOfFirst { it.id == propertyId }
                             if (index != -1) {
                                 MockData.properties.removeAt(index)
-                                // Also remove associated rooms
                                 MockData.rooms.removeAll { it.propertyId == propertyId }
+                                showSnackbar("Đã xóa dãy trọ thành công")
                             }
                             showDeleteConfirmation = false
                             propertyToDelete = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorRose),
                     ) {
                         Text("Xóa")
                     }
@@ -234,7 +235,7 @@ fun RoomManagementScreen(
                         Text("Hủy")
                     }
                 },
-                containerColor = Color.White
+                containerColor = Color.White,
             )
         }
     }
@@ -246,23 +247,23 @@ fun AddOptionItem(
     desc: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
         color = color.copy(alpha = 0.05f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.1f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.1f)),
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier.size(40.dp).background(color, CircleShape),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -281,9 +282,9 @@ fun PropertyManagementCard(
     onCloneRoom: (Room) -> Unit,
     onAddRoom: () -> Unit,
     onEditProperty: (Property) -> Unit,
-    onDeleteProperty: (Property) -> Unit
+    onDeleteProperty: (Property) -> Unit,
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(value = false) }
 
     Surface(
         modifier = Modifier
@@ -292,20 +293,20 @@ fun PropertyManagementCard(
         shape = MaterialTheme.shapes.medium,
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300),
-        shadowElevation = 2.dp
+        shadowElevation = 2.dp,
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .clickable { isExpanded = !isExpanded }
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier.size(48.dp).background(PrimaryLight, CircleShape),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Default.Apartment, contentDescription = null, tint = PrimaryMain)
+                    Icon(Icons.Default.Apartment, null, tint = PrimaryMain)
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -316,14 +317,14 @@ fun PropertyManagementCard(
                         style = MaterialTheme.typography.titleMedium, 
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = property.address, 
                         style = MaterialTheme.typography.bodySmall, 
                         color = Neutral500,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
 
@@ -337,26 +338,26 @@ fun PropertyManagementCard(
                                     MockData.properties[index] = current.copy(isHidden = !current.isHidden)
                                 }
                             }, 
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
                                 imageVector = if (property.isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff, 
                                 contentDescription = "Ẩn/Hiện dãy", 
                                 tint = Neutral500, 
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                         IconButton(onClick = { onEditProperty(property) }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Edit, contentDescription = "Sửa dãy", tint = PrimaryMain, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Edit, "Sửa dãy", tint = PrimaryMain, modifier = Modifier.size(16.dp))
                         }
                         IconButton(onClick = { onDeleteProperty(property) }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Xóa dãy", tint = ErrorRose, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Delete, "Xóa dãy", tint = ErrorRose, modifier = Modifier.size(16.dp))
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.clickable { isExpanded = !isExpanded },
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(text = "${rooms.size} phòng", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = PrimaryMain)
                         Icon(imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = Neutral300)
@@ -370,7 +371,7 @@ fun PropertyManagementCard(
                         RoomRowItem(
                             room = room,
                             onClick = { onRoomClick(room.id) },
-                            onClone = { onCloneRoom(room) }
+                            onClone = { onCloneRoom(room) },
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -379,9 +380,9 @@ fun PropertyManagementCard(
                         onClick = onAddRoom,
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.small,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryMain)
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryMain),
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "Thêm phòng mới vào dãy", style = MaterialTheme.typography.labelLarge)
                     }
@@ -403,17 +404,17 @@ fun StandaloneRoomCard(
         shape = MaterialTheme.shapes.medium,
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300),
-        shadowElevation = 2.dp
+        shadowElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier.size(48.dp).background(Color(0xFFF0FDFA), CircleShape),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Home, contentDescription = null, tint = AccentTeal)
+                Icon(Icons.Default.Home, null, tint = AccentTeal)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -422,7 +423,7 @@ fun StandaloneRoomCard(
                     style = MaterialTheme.typography.titleMedium, 
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     StatusBadge(status = room.status, isUserHidden = room.isUserHidden)
@@ -433,7 +434,7 @@ fun StandaloneRoomCard(
                         color = PrimaryMain, 
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
-                        softWrap = false
+                        softWrap = false,
                     )
                 }
             }
@@ -441,7 +442,7 @@ fun StandaloneRoomCard(
             // Action Buttons
             Row(modifier = Modifier.padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClone, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
+                    Icon(Icons.Default.ContentCopy, "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
                 }
 
                 if (room.status != RoomStatus.PENDING) {
@@ -453,13 +454,13 @@ fun StandaloneRoomCard(
                                 MockData.rooms[index] = current.copy(isUserHidden = !current.isUserHidden)
                             }
                         }, 
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             imageVector = if (room.isUserHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff, 
                             contentDescription = null, 
                             modifier = Modifier.size(18.dp), 
-                            tint = Neutral500
+                            tint = Neutral500,
                         )
                     }
                 }
@@ -472,14 +473,14 @@ fun StandaloneRoomCard(
 fun RoomRowItem(
     room: Room, 
     onClick: () -> Unit, 
-    onClone: () -> Unit
+    onClone: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().alpha(if (room.isUserHidden) 0.6f else 1.0f),
         shape = MaterialTheme.shapes.small,
         color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100)
+        border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100),
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -488,7 +489,7 @@ fun RoomRowItem(
                     style = MaterialTheme.typography.bodyMedium, 
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     StatusBadge(status = room.status, isUserHidden = room.isUserHidden)
@@ -499,13 +500,13 @@ fun RoomRowItem(
                         color = PrimaryMain, 
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
-                        softWrap = false
+                        softWrap = false,
                     )
                 }
             }
             Row(modifier = Modifier.padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClone, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
+                    Icon(Icons.Default.ContentCopy, "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
                 }
 
                 if (room.status != RoomStatus.PENDING) {
@@ -517,13 +518,13 @@ fun RoomRowItem(
                                 MockData.rooms[index] = current.copy(isUserHidden = !current.isUserHidden)
                             }
                         }, 
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             imageVector = if (room.isUserHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff, 
                             contentDescription = null, 
                             modifier = Modifier.size(18.dp), 
-                            tint = Neutral500
+                            tint = Neutral500,
                         )
                     }
                 }
@@ -547,7 +548,7 @@ fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall,
             color = color,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -556,7 +557,7 @@ fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
 private fun EmptyState(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(64.dp), tint = Neutral300.copy(alpha = 0.5f))
+            Icon(icon, null, modifier = Modifier.size(64.dp), tint = Neutral300.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = text, style = MaterialTheme.typography.bodyMedium, color = Neutral500)
         }
@@ -570,5 +571,3 @@ fun RoomManagementScreenPreview() {
         RoomManagementScreen()
     }
 }
-
-

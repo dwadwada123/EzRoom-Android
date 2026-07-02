@@ -4,58 +4,54 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ezroom.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewReplyDialog(
-    title: String = "Phản hồi đánh giá",
+    title: String,
     reviewerName: String,
     originalComment: String,
     initialText: String = "",
     onDismiss: () -> Unit,
-    onSubmit: (String) -> Unit
+    onSubmit: (String) -> Unit,
 ) {
     var replyText by remember { mutableStateOf(initialText) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initialText.isEmpty()) title else "Chỉnh sửa phản hồi", fontWeight = FontWeight.Bold) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Surface(color = Neutral50, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = reviewerName, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Neutral500)
-                        Text(text = originalComment, style = MaterialTheme.typography.bodySmall, color = Neutral700)
-                    }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Phản hồi đánh giá của $reviewerName",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Text(
+                    text = "\"$originalComment\"",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 OutlinedTextField(
                     value = replyText,
                     onValueChange = { replyText = it },
-                    label = { Text("Nội dung phản hồi") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    shape = MaterialTheme.shapes.medium
+                    placeholder = { Text("Nhập phản hồi...") },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { onSubmit(replyText) },
-                enabled = replyText.isNotBlank() && replyText != initialText,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain)
+                enabled = replyText.isNotBlank() && (replyText != initialText),
             ) {
-                Text(if (initialText.isEmpty()) "Gửi phản hồi" else "Cập nhật")
+                Text("Gửi phản hồi")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Hủy") }
+            TextButton(onClick = onDismiss) {
+                Text("Hủy")
+            }
         },
-        containerColor = Color.White,
-        shape = MaterialTheme.shapes.medium
     )
 }
-

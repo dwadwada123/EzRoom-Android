@@ -18,19 +18,23 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.theme.EzRoomTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ChangePasswordScreen(
     onBackClick: () -> Unit,
     onPasswordChangeSuccess: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
-    var currentPasswordVisible by remember { mutableStateOf(false) }
-    var newPasswordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var currentPasswordVisible by remember { mutableStateOf(value = false) }
+    var newPasswordVisible by remember { mutableStateOf(value = false) }
+    var confirmPasswordVisible by remember { mutableStateOf(value = false) }
 
     var errorText by remember { mutableStateOf<String?>(null) }
 
@@ -39,8 +43,8 @@ fun ChangePasswordScreen(
     Scaffold(
         topBar = {
             CommonTopAppBar(
-                title = "Đổi Mật Khẩu",
-                onBackClick = onBackClick
+                title = "Đổi mật khẩu",
+                onBackClick = onBackClick,
             )
         },
         containerColor = MaterialTheme.colorScheme.background

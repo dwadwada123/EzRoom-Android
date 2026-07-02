@@ -23,7 +23,7 @@ private val DarkColorScheme = darkColorScheme(
     surface = Color(0xFF1E293B),
     onPrimary = White,
     onBackground = White,
-    onSurface = White
+    onSurface = White,
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -46,6 +46,7 @@ private val LightColorScheme = lightColorScheme(
     outline = md_theme_light_outline
 )
 
+// EzRoom theme configuration
 @Composable
 fun EzRoomTheme(
     darkTheme: Boolean = false, 
@@ -57,6 +58,7 @@ fun EzRoomTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            // Transparent system bars
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)

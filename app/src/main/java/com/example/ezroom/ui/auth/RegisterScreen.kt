@@ -1,17 +1,19 @@
 package com.example.ezroom.ui.auth
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -35,14 +37,14 @@ enum class UserRole {
 @Composable
 fun RegisterScreen(
     onRegisterClick: (String, String, String, String, UserRole) -> Unit = { _, _, _, _, _ -> },
-    onBackToLoginClick: () -> Unit = {}
+    onBackToLoginClick: () -> Unit = {},
 ) {
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf(UserRole.RENTER) }
-    var isLoading by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
 
     val isEmailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() || email.isEmpty()
@@ -66,6 +68,22 @@ fun RegisterScreen(
                     )
                 )
         )
+
+        // Back Button
+        IconButton(
+            onClick = onBackToLoginClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(start = 8.dp, top = 8.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Quay lại",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -96,9 +114,9 @@ fun RegisterScreen(
                 value = fullName,
                 onValueChange = { fullName = it },
                 label = "Họ và tên",
-                leadingIcon = Icons.Default.Person,
+                leadingIcon = { Icon(Icons.Default.Person, null) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
+                enabled = !isLoading,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -107,11 +125,10 @@ fun RegisterScreen(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it },
                 label = "Số điện thoại",
-                leadingIcon = Icons.Default.Phone,
+                leadingIcon = { Icon(Icons.Default.Phone, null) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = !isPhoneValid && phoneNumber.isNotEmpty(),
-                enabled = !isLoading
+                enabled = !isLoading,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -120,11 +137,10 @@ fun RegisterScreen(
                 value = email,
                 onValueChange = { email = it },
                 label = "Email",
-                leadingIcon = Icons.Default.Email,
+                leadingIcon = { Icon(Icons.Default.Email, null) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                isError = !isEmailValid && email.isNotEmpty(),
-                enabled = !isLoading
+                enabled = !isLoading,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -133,10 +149,8 @@ fun RegisterScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = "Mật khẩu",
-                leadingIcon = Icons.Default.Lock,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading,
-                isError = password.isNotEmpty() && password.length < 6
             )
             
             Spacer(modifier = Modifier.height(24.dp))

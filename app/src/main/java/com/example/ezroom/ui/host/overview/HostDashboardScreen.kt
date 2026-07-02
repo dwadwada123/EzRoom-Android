@@ -1,9 +1,7 @@
 package com.example.ezroom.ui.host.overview
 
 import android.app.DatePickerDialog
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,14 +40,14 @@ fun HostDashboardScreen(
     viewModel: HostDashboardViewModel = viewModel(
         factory = viewModelFactory {
             HostDashboardViewModel(GetHostStatsUseCase(RoomRepositoryImpl(), AppointmentRepositoryImpl()))
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     
     // Dropdown state
-    var showDropdown by remember { mutableStateOf(false) }
+    var showDropdown by remember { mutableStateOf(value = false) }
 
     val stats = uiState.stats ?: HostStats(0, 0, 0, "0 đ", 0, 0f)
 
@@ -59,13 +57,13 @@ fun HostDashboardScreen(
     val showEndDatePicker = { startStr: String ->
         DatePickerDialog(
             context,
-            { _, year, month, day ->
+            { _, _, month, day ->
                 val endStr = "$day/${month + 1}"
                 viewModel.onTimeRangeSelected("$startStr - $endStr")
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
+            calendar.get(Calendar.DAY_OF_MONTH),
         ).apply {
             setTitle("Đến ngày")
             show()
@@ -74,13 +72,13 @@ fun HostDashboardScreen(
 
     val startDatePickerDialog = DatePickerDialog(
         context,
-        { _, year, month, day ->
+        { _, _, month, day ->
             val startStr = "$day/${month + 1}"
             showEndDatePicker(startStr)
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
+        calendar.get(Calendar.DAY_OF_MONTH),
     ).apply {
         setTitle("Từ ngày")
     }

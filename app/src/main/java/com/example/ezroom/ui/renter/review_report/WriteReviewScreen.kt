@@ -31,6 +31,7 @@ fun WriteReviewScreen(
     onSubmitReview: (Int, String) -> Unit = { _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
+    
     // Mock Data for Room Summary
     val roomTitle = "Phòng trọ cao cấp Q7 - Full nội thất"
     val roomPrice = "3.500.000₫/tháng"
@@ -169,7 +170,7 @@ fun WriteReviewScreen(
                                 isLoading = true
                                 delay(1500)
                                 isLoading = false
-                                onSubmitReview(rating, commentText) 
+                                onSubmitReview(rating, commentText)
                             }
                         }
                     },

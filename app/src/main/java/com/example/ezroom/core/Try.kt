@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
+// Generic result wrapper
 sealed interface Try<out T> {
     data class Success<T>(val value: T) : Try<T>
     data class Failure(val error: AppError) : Try<Nothing>
@@ -19,6 +20,7 @@ sealed interface Try<out T> {
     }
 }
 
+// App error types
 sealed interface AppError {
     data class Network(val message: String) : AppError
     data class Database(val message: String) : AppError

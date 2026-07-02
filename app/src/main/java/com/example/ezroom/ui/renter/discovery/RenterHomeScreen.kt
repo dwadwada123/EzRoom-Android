@@ -3,7 +3,6 @@ package com.example.ezroom.ui.renter.discovery
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -49,12 +48,11 @@ fun RenterHomeScreen(
     modifier: Modifier = Modifier,
     onRoomClick: (Room) -> Unit = {},
     onNavigateToFilter: () -> Unit = {},
-    navController: NavController? = null,
     viewModel: RenterHomeViewModel = viewModel(
         factory = viewModelFactory {
             RenterHomeViewModel(GetDiscoveryItemsUseCase(RoomRepositoryImpl()))
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -92,20 +90,20 @@ fun RenterHomeScreen(
             items(
                 items = uiState.discoveryItems, 
                 key = { it.property.id },
-                contentType = { "DiscoveryCard" }
+                contentType = { "DiscoveryCard" },
             ) { item ->
                 var visible by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { visible = true }
                 
                 AnimatedVisibility(
                     visible = visible,
-                    enter = fadeIn(animationSpec = tween(600)) + scaleIn(initialScale = 0.9f, animationSpec = tween(600))
+                    enter = fadeIn(animationSpec = tween(600)) + scaleIn(initialScale = 0.9f, animationSpec = tween(600)),
                 ) {
                     DiscoveryCard(
                         item = item,
                         onClick = {
                             item.rooms.firstOrNull()?.let { onRoomClick(it) }
-                        }
+                        },
                     )
                 }
             }
@@ -132,23 +130,23 @@ fun DiscoveryCard(item: DiscoveryItem, onClick: () -> Unit) {
     val property = item.property
     val rooms = item.rooms
     
-    // Pro Max Design: Subtle Glassmorphism and Bento-style spacing
+    // Discovery item card
     Box(modifier = Modifier
         .padding(horizontal = 6.dp)
         .graphicsLayer {
-            // Subtle entrance scale effect can be added here if needed
-        }
+            // Animation layer
+        },
     ) {
         RoomCard(
             title = if (property.type == PropertyType.COMPLEX) property.name else rooms.firstOrNull()?.title ?: property.name,
             price = property.priceRange,
             address = property.address,
-            rating = 4.5f, // Mock
+            rating = 4.5f,
             imageUrl = property.images.firstOrNull()?.resId ?: android.R.drawable.ic_menu_gallery,
             onClick = onClick,
             imageOverlay = {
                 if (property.type == PropertyType.COMPLEX) {
-                    // Glassmorphic Badge
+                    // Availability Badge
                     Surface(
                         modifier = Modifier
                             .padding(10.dp)
@@ -158,30 +156,30 @@ fun DiscoveryCard(item: DiscoveryItem, onClick: () -> Unit) {
                         shadowElevation = 8.dp,
                         border = androidx.compose.foundation.BorderStroke(
                             0.5.dp, 
-                            Color.White.copy(alpha = 0.3f)
-                        )
+                            Color.White.copy(alpha = 0.3f),
+                        ),
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                if (property.vacantRoomCount > 0) Icons.Default.HomeWork else Icons.Default.Block, 
+                                imageVector = if (property.vacantRoomCount > 0) Icons.Default.HomeWork else Icons.Default.Block, 
                                 contentDescription = null, 
                                 tint = Color.White, 
-                                modifier = Modifier.size(12.dp)
+                                modifier = Modifier.size(12.dp),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (property.vacantRoomCount > 0) "Còn ${property.vacantRoomCount} phòng" else "Hết phòng",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.ExtraBold,
                             )
                         }
                     }
                 }
-            }
+            },
         )
     }
 }

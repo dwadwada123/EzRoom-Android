@@ -2,7 +2,6 @@ package com.example.ezroom.data.model
 
 import androidx.compose.runtime.mutableStateListOf
 import com.example.ezroom.domain.model.*
-import java.util.UUID
 
 object MockData {
     // Initial Properties
@@ -17,7 +16,7 @@ object MockData {
             commonAmenities = listOf(
                 Amenity("WiFi chung"),
                 Amenity("Nhà xe"),
-                Amenity("Camera an ninh")
+                Amenity("Camera an ninh"),
             ),
             latitude = 16.0678,
             longitude = 108.2208
@@ -57,7 +56,7 @@ object MockData {
             propertyId = "prop_1",
             title = "Phòng 101 - Ban công thoáng",
             price = 3500000L,
-            priceFormatted = "3.500.000₫",
+            priceFormatted = "3.500.000 đ",
             address = "Hải Châu, Đà Nẵng",
             detailedAddress = "Tầng 1, 123 Lê Lợi",
             description = "Phòng tầng trệt, có cửa sổ rộng.",
@@ -76,17 +75,17 @@ object MockData {
             reviews = listOf(
                 RoomReview("rev_101", "Nguyễn Văn A", null, 5, "Phòng rất sạch sẽ!", "12/05/2026", hostReply = "Cảm ơn bạn đã ủng hộ!")
             ),
-            currentRenter = RenterInfo("u1", "Nguyễn Văn A", "0901234567", null, "01/2024 - Hiện tại", true),
+            currentRenter = RenterInfo("u1", "Nguyễn Văn A", "0901234567", null, "01/2024 - Hiện tại", isCurrentlyStaying = true),
             pastRenters = listOf(
-                RenterInfo("u2", "Trần Thị B", "0907654321", null, "01/2023 - 12/2023", false)
-            )
+                RenterInfo("u2", "Trần Thị B", "0907654321", null, "01/2023 - 12/2023", isCurrentlyStaying = false),
+            ),
         ),
         Room(
             id = "room_102",
             propertyId = "prop_1",
             title = "Phòng 102 - Tầng trệt",
             price = 3200000L,
-            priceFormatted = "3.200.000₫",
+            priceFormatted = "3.200.000 đ",
             address = "Hải Châu, Đà Nẵng",
             detailedAddress = "Tầng 1, 123 Lê Lợi",
             description = "Phòng cơ bản, sạch sẽ.",
@@ -103,7 +102,7 @@ object MockData {
             propertyId = "prop_1",
             title = "Phòng 103 - Đã cho thuê (Test)",
             price = 3800000L,
-            priceFormatted = "3.800.000₫",
+            priceFormatted = "3.800.000 đ",
             address = "Hải Châu, Đà Nẵng",
             detailedAddress = "Tầng 2, 123 Lê Lợi",
             description = "Phòng đã có khách thuê để test đánh giá.",
@@ -121,7 +120,7 @@ object MockData {
             propertyId = "prop_2",
             title = "Nhà nguyên căn 2 tầng Điện Biên Phủ",
             price = 8000000L,
-            priceFormatted = "8.000.000₫",
+            priceFormatted = "8.000.000 đ",
             address = "Thanh Khê, Đà Nẵng",
             detailedAddress = "789 Điện Biên Phủ",
             description = "Toàn bộ căn nhà 2 tầng.",
@@ -139,7 +138,7 @@ object MockData {
             propertyId = "prop_3",
             title = "Studio 301 - View Biển",
             price = 6500000L,
-            priceFormatted = "6.500.000₫",
+            priceFormatted = "6.500.000 đ",
             address = "Ngũ Hành Sơn, Đà Nẵng",
             detailedAddress = "Tầng 3, 45 An Thượng 2",
             description = "Căn hộ view biển cực đẹp.",
@@ -161,7 +160,7 @@ object MockData {
             propertyId = null, // Truly standalone
             title = "Phòng trọ lẻ giá rẻ - Ngũ Hành Sơn",
             price = 1500000L,
-            priceFormatted = "1.500.000₫",
+            priceFormatted = "1.500.000 đ",
             address = "Ngũ Hành Sơn, Đà Nẵng",
             detailedAddress = "Kiệt 12 Võ Nguyên Giáp",
             description = "Phòng trọ sinh viên.",
@@ -178,7 +177,7 @@ object MockData {
             propertyId = null,
             title = "Nhà nguyên căn đã thuê (Test Lẻ)",
             price = 12000000L,
-            priceFormatted = "12.000.000₫",
+            priceFormatted = "12.000.000 đ",
             address = "Cẩm Lệ, Đà Nẵng",
             detailedAddress = "45 Nguyễn Hữu Thọ",
             description = "Nhà nguyên căn full nội thất.",
@@ -191,11 +190,6 @@ object MockData {
             longitude = 108.2100
         )
     )
-
-    // Link rooms back to properties for easier helper methods
-    init {
-        // In a real app, this would be handled by a Repository or Database
-    }
 
     val appointments = mutableStateListOf(
         Appointment(

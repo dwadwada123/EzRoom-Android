@@ -55,6 +55,11 @@ fun HostAppointmentListScreen(
     // Reschedule state
     var showRescheduleDialog by remember { mutableStateOf(false) }
     var appointmentToReschedule by remember { mutableStateOf<Appointment?>(null) }
+
+    // Confirmation state
+    var showActionConfirmation by remember { mutableStateOf(false) }
+    var selectedActionStatus by remember { mutableStateOf<AppointmentStatus?>(null) }
+    var selectedAppointmentId by remember { mutableStateOf("") }
     
     val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
 
@@ -143,7 +148,9 @@ fun HostAppointmentListScreen(
                             appointment = item,
                             showActions = uiState.selectedTabIndex == 0,
                             onAction = { newStatus ->
-                                viewModel.updateAppointmentStatus(item.id, newStatus)
+                                selectedAppointmentId = item.id
+                                selectedActionStatus = newStatus
+                                showActionConfirmation = true
                             },
                             onReschedule = {
                                 appointmentToReschedule = item
@@ -170,6 +177,42 @@ fun HostAppointmentListScreen(
                     viewModel.rescheduleAppointment(appointmentToReschedule!!.id, newDate, newTime)
                     showRescheduleDialog = false
                 }
+            )
+        }
+
+        // Action Confirmation Dialog
+        if (showActionConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showActionConfirmation = false },
+                title = { Text("Xác nhận", fontWeight = FontWeight.Bold) },
+                text = { 
+                    Text(
+                        if (selectedActionStatus == AppointmentStatus.APPROVED) 
+                            "Bạn có chắc chắn muốn xác nhận lịch hẹn này?" 
+                        else "Bạn có chắc chắn muốn hủy lịch hẹn này?"
+                    ) 
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            selectedActionStatus?.let { status ->
+                                viewModel.updateAppointmentStatus(selectedAppointmentId, status)
+                            }
+                            showActionConfirmation = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selectedActionStatus == AppointmentStatus.APPROVED) PrimaryMain else ErrorRose
+                        )
+                    ) {
+                        Text("Đồng ý")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showActionConfirmation = false }) {
+                        Text("Hủy")
+                    }
+                },
+                containerColor = Color.White
             )
         }
     }

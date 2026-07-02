@@ -26,11 +26,9 @@ import com.example.ezroom.ui.theme.Neutral50
 
 @Composable
 fun ForgotPasswordScreen(
-    // Event callbacks
     onBackClick: () -> Unit,
     onResetSuccess: () -> Unit,
 ) {
-    // State definitions
     var currentStep by remember { mutableIntStateOf(1) }
     var email by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
@@ -42,9 +40,7 @@ fun ForgotPasswordScreen(
     
     val scrollState = rememberScrollState()
 
-    // Main layout container
     Scaffold(
-        // Top app bar
         topBar = {
             CommonTopAppBar(
                 title = "Khôi Phục Mật Khẩu",
@@ -54,23 +50,22 @@ fun ForgotPasswordScreen(
                     } else {
                         onBackClick()
                     }
-                }
+                },
             )
         },
-        containerColor = Neutral50
+        containerColor = Neutral50,
     ) { paddingValues ->
-        // Content scroll area
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             AnimatedContent(
                 targetState = currentStep,
-                label = "StepTransition"
+                label = "StepTransition",
             ) { step ->
                 when (step) {
                     1 -> StepOneEmailInput(
@@ -85,7 +80,7 @@ fun ForgotPasswordScreen(
                             } else {
                                 errorText = "Email không hợp lệ. Vui lòng kiểm tra lại."
                             }
-                        }
+                        },
                     )
                     2 -> StepTwoResetPassword(
                         otpCode = otpCode,
@@ -105,7 +100,7 @@ fun ForgotPasswordScreen(
                                 newPassword != confirmPassword -> errorText = "Mật khẩu xác nhận không khớp."
                                 else -> onResetSuccess()
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -115,7 +110,7 @@ fun ForgotPasswordScreen(
                     text = errorText!!.uppercase(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(start = 4.dp)
+                    modifier = Modifier.padding(start = 4.dp),
                 )
             }
         }
@@ -126,20 +121,19 @@ fun ForgotPasswordScreen(
 fun StepOneEmailInput(
     email: String,
     onEmailChange: (String) -> Unit,
-    onNextStep: () -> Unit
+    onNextStep: () -> Unit,
 ) {
-    // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Xác thực Email".uppercase(),
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
         )
         
         Text(
             text = "Vui lòng nhập Email đã đăng ký tài khoản. Chúng tôi sẽ gửi mã OTP để xác minh.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         OutlinedTextField(
@@ -150,14 +144,13 @@ fun StepOneEmailInput(
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.small,
         )
 
-        // Action buttons row
         Button(
             onClick = onNextStep,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
         ) {
             Text("GỬI MÃ XÁC THỰC", fontWeight = FontWeight.Bold)
         }
@@ -176,20 +169,19 @@ fun StepTwoResetPassword(
     onTogglePasswordVisibility: () -> Unit,
     isConfirmPasswordVisible: Boolean,
     onToggleConfirmPasswordVisibility: () -> Unit,
-    onResetPassword: () -> Unit
+    onResetPassword: () -> Unit,
 ) {
-    // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = "Thiết lập lại".uppercase(),
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
         )
 
         Text(
             text = "Mã OTP đã được gửi đến Email của bạn. Vui lòng nhập mã và thiết lập mật khẩu mới.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         OutlinedTextField(
@@ -200,7 +192,7 @@ fun StepTwoResetPassword(
             leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.small,
         )
 
         OutlinedTextField(
@@ -213,14 +205,14 @@ fun StepTwoResetPassword(
                 IconButton(onClick = onTogglePasswordVisibility) {
                     Icon(
                         imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = null
+                        contentDescription = null,
                     )
                 }
             },
             visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.small,
         )
 
         OutlinedTextField(
@@ -233,21 +225,20 @@ fun StepTwoResetPassword(
                 IconButton(onClick = onToggleConfirmPasswordVisibility) {
                     Icon(
                         imageVector = if (isConfirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = null
+                        contentDescription = null,
                     )
                 }
             },
             visualTransformation = if (isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
-            shape = MaterialTheme.shapes.small
+            shape = MaterialTheme.shapes.small,
         )
 
-        // Action buttons row
         Button(
             onClick = onResetPassword,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
         ) {
             Text("XÁC NHẬN ĐẶT LẠI MẬT KHẨU", fontWeight = FontWeight.Bold)
         }
@@ -261,4 +252,3 @@ fun ForgotPasswordScreenPreview() {
         ForgotPasswordScreen(onBackClick = {}, onResetSuccess = {})
     }
 }
-

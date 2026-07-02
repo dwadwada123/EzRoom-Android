@@ -4,15 +4,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-/**
- * EzRoom 2026 "Squircle-inspired" Shape System
- * Focus: Large radii, soft edges, and organic feel
- */
+// Shape system
 val Shapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),    // Inputs, Small Buttons
-    medium = RoundedCornerShape(16.dp),   // Cards, Major Buttons
-    large = RoundedCornerShape(24.dp),    // Bottom Sheets, Feature Cards
-    extraLarge = RoundedCornerShape(32.dp) // Page-level containers
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
 )
-

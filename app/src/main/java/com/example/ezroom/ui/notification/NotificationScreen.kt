@@ -45,10 +45,10 @@ fun NotificationScreen(
             NotificationViewModel(
                 GetNotificationsUseCase(repo),
                 MarkNotificationAsReadUseCase(repo),
-                MarkAllNotificationsAsReadUseCase(repo)
+                MarkAllNotificationsAsReadUseCase(repo),
             )
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -137,11 +137,11 @@ fun NotificationScreen(
                         }
 
                         items(items) { notification ->
-                            var visible by remember { mutableStateOf(false) }
+                            var visible by remember { mutableStateOf(value = false) }
                             LaunchedEffect(Unit) { visible = true }
                             AnimatedVisibility(
                                 visible = visible,
-                                enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn()
+                                enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn(),
                             ) {
                                 NotificationRow(
                                     item = notification,
@@ -150,7 +150,7 @@ fun NotificationScreen(
                                         if (notification.type == "CONTRACT") {
                                             onNavigateToSignContract(notification.id)
                                         }
-                                    }
+                                    },
                                 )
                             }
                         }

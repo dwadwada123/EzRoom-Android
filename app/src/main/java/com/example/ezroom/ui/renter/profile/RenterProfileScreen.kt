@@ -1,6 +1,5 @@
 package com.example.ezroom.ui.renter.profile
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -59,13 +59,13 @@ fun RenterProfileScreen(
             ProfileViewModel(
                 GetCurrentUserUseCase(repo),
                 UpdateProfileUseCase(repo),
-                VerifyEkycUseCase(repo)
+                VerifyEkycUseCase(repo),
             )
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var isEditing by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(value = false) }
     
     val user = uiState.user ?: return
     
@@ -145,13 +145,13 @@ fun RenterProfileScreen(
                         Column {
                             MenuItemRow(icon = Icons.Outlined.Lock, title = "Đổi mật khẩu", onClick = onNavigateToChangePassword)
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
-                            MenuItemRow(icon = Icons.Outlined.HelpOutline, title = "Trung tâm hỗ trợ", onClick = {})
+                            MenuItemRow(icon = Icons.AutoMirrored.Outlined.HelpOutline, title = "Trung tâm hỗ trợ", onClick = {})
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
                             MenuItemRow(
                                 icon = Icons.AutoMirrored.Filled.Logout, 
                                 title = "Đăng xuất", 
                                 isError = true, 
-                                onClick = onLogout
+                                onClick = onLogout,
                             )
                         }
                     }
@@ -250,7 +250,7 @@ fun HeaderSection(avatarUrl: String, name: String, email: String, onBackClick: (
 
 @Composable
 fun ReputationScoreBento(reviews: List<RenterReview>, onClick: () -> Unit) {
-    val averageRating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average()
+    val averageRating = if (reviews.isEmpty()) 0.0 else reviews.asSequence().map { it.rating }.average()
     
     Surface(
         onClick = onClick,

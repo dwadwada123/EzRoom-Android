@@ -41,6 +41,8 @@ fun PropertyFormScreen(
     onBack: () -> Unit = {},
     locationViewModel: LocationViewModel = viewModel()
 ) {
+    val scope = rememberCoroutineScope()
+
     var name by remember { mutableStateOf("") }
     var detailedAddress by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -53,7 +55,6 @@ fun PropertyFormScreen(
     var selectedWard by remember { mutableStateOf<Ward?>(null) }
     
     var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     // Pre-fill logic if editing
     LaunchedEffect(propertyId) {
@@ -166,7 +167,8 @@ fun PropertyFormScreen(
                             delay(1000)
                             isLoading = false
                             // In real app, save Property and get ID
-                            onNavigateToCreateFirstRoom(UUID.randomUUID().toString())
+                            val newId = UUID.randomUUID().toString()
+                            onNavigateToCreateFirstRoom(newId)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

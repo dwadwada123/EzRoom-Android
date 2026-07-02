@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.*
@@ -48,10 +49,10 @@ fun HostProfileScreen(
             ProfileViewModel(
                 GetCurrentUserUseCase(repo),
                 UpdateProfileUseCase(repo),
-                VerifyEkycUseCase(repo)
+                VerifyEkycUseCase(repo),
             )
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val user = uiState.user ?: return
@@ -187,13 +188,13 @@ fun HostProfileScreen(
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.error
                 ),
-                border = ButtonDefaults.outlinedButtonBorder(enabled = true)
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true),
             ) {
-                Icon(imageVector = Icons.Default.Logout, contentDescription = "Đăng xuất")
+                Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = "Đăng xuất")
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "ĐĂNG XUẤT",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                 )
             }
 

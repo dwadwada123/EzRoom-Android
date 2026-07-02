@@ -9,10 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for managing location data.
- * Simplified to 2 levels: Province -> Ward.
- */
+// ViewModel for location data
 class LocationViewModel : ViewModel() {
     private val api = LocationApi.create()
 
@@ -22,7 +19,7 @@ class LocationViewModel : ViewModel() {
     private val _wards = MutableStateFlow<List<Ward>>(emptyList())
     val wards: StateFlow<List<Ward>> = _wards
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(value = false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _error = MutableStateFlow<String?>(null)
@@ -47,9 +44,7 @@ class LocationViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Select a province and update the list of available wards.
-     */
+    // Select province and update wards
     fun selectProvince(provinceCode: String) {
         val province = _provinces.value.find { it.code == provinceCode }
         _wards.value = province?.wards ?: emptyList()

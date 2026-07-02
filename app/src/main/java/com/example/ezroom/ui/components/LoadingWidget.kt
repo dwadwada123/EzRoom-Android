@@ -2,34 +2,37 @@ package com.example.ezroom.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.example.ezroom.ui.theme.OrangePrimary
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 
 @Composable
-fun LoadingWidget(modifier: Modifier = Modifier) {
-    // Main layout container
+fun LoadingWidget() {
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.3f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {}
-            ),
-        contentAlignment = Alignment.Center
+            .zIndex(100f)
+            .clickable(enabled = true, onClick = {}),
+        contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(
-            color = OrangePrimary
-        )
+        Surface(
+            modifier = Modifier.size(100.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = Color.White,
+            shadowElevation = 8.dp,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4.dp,
+                )
+            }
+        }
     }
 }
-

@@ -34,12 +34,12 @@ fun LoginScreen(
     onLoginClick: (String, String) -> Unit = { _, _ -> },
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
-    onGoogleLoginClick: () -> Unit = {}
+    onGoogleLoginClick: () -> Unit = {},
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var rememberMe by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(value = false) }
+    var isLoading by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
 
     val isInspectionMode = LocalInspectionMode.current
@@ -113,11 +113,10 @@ fun LoginScreen(
                 onValueChange = { email = it },
                 label = "Email",
                 placeholder = "yourname@gmail.com",
-                leadingIcon = Icons.Default.Email,
+                leadingIcon = { Icon(Icons.Default.Email, null) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                isError = !isEmailValid && email.isNotEmpty(),
-                enabled = !isLoading
+                enabled = !isLoading,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -126,9 +125,8 @@ fun LoginScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = "Mật khẩu",
-                leadingIcon = Icons.Default.Lock,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
+                enabled = !isLoading,
             )
 
             Row(

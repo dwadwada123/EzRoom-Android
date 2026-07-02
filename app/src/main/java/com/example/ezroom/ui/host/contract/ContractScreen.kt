@@ -25,6 +25,8 @@ import com.example.ezroom.domain.model.DepositStatus
 import com.example.ezroom.domain.model.TransactionType
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +36,8 @@ fun ContractScreen(
     onNavigateBack: () -> Unit,
     onSignContract: (transactionType: TransactionType) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     // State
     var isAgreed by remember { mutableStateOf(false) }
     val formatter = remember { DecimalFormat("#,### VND") }
@@ -207,7 +211,9 @@ fun ContractScreen(
 
             // Digital signature
             Button(
-                onClick = { onSignContract(TransactionType.DEPOSIT) },
+                onClick = {
+                    onSignContract(TransactionType.DEPOSIT)
+                },
                 enabled = isAgreed,
                 modifier = Modifier
                     .fillMaxWidth()

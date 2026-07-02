@@ -29,6 +29,7 @@ fun SubmitReportScreen(
     onSubmitReport: (reason: String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    
     // Mock Data for Room Summary
     val roomTitle = "Phòng trọ cao cấp Q7 - Full nội thất"
     val roomPrice = "3.500.000₫/tháng"

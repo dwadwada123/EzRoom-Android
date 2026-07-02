@@ -63,7 +63,9 @@ fun HostInvoiceDetailScreen(
     val waterUsage = displayInvoice.newWater - displayInvoice.oldWater
     val elecAmount = elecUsage * 3500L
     val waterAmount = waterUsage * 15000L
+    val commission = (displayInvoice.roomPrice * 0.05).toLong()
     val totalAmount = displayInvoice.roomPrice + elecAmount + waterAmount + displayInvoice.totalOtherCosts
+    val finalRevenue = totalAmount - commission
 
     Scaffold(
         containerColor = Neutral50,
@@ -117,7 +119,7 @@ fun HostInvoiceDetailScreen(
                         color = Color.White.copy(alpha = 0.8f)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(formatter.format(totalAmount), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Text(formatter.format(if (isPaid) finalRevenue else totalAmount), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))
                     StatusBadge(
                         text = if (isPaid) "ĐÃ ĐỐI SOÁT" else "CHỜ THANH TOÁN", 
@@ -163,6 +165,10 @@ fun HostInvoiceDetailScreen(
                     displayInvoice.otherCosts.forEach { item ->
                         DetailLine(item.reason, formatter.format(item.amount))
                     }
+
+                    if (isPaid) {
+                        DetailLine("Phí nền tảng (5% tiền phòng)", "- ${formatter.format(commission)}")
+                    }
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     
@@ -172,7 +178,7 @@ fun HostInvoiceDetailScreen(
                     ) {
                         Text("Tổng cộng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
-                            text = formatter.format(totalAmount), 
+                            text = formatter.format(if (isPaid) finalRevenue else totalAmount),
                             style = MaterialTheme.typography.titleMedium, 
                             fontWeight = FontWeight.Bold, 
                             color = if (isPaid) PrimaryMain else AccentAmber,
@@ -211,16 +217,6 @@ fun HostInvoiceDetailScreen(
                         onClick = { /* Send notification */ },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedButton(
-                        onClick = { /* Confirm manual payment */ },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        border = BorderStroke(1.dp, SuccessEmerald)
-                    ) {
-                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(20.dp), tint = SuccessEmerald)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("XÁC NHẬN ĐÃ THU TIỀN", color = SuccessEmerald, fontWeight = FontWeight.Bold)
-                    }
                 }
             }
             

@@ -3,13 +3,10 @@ package com.example.ezroom.domain.model
 data class DetailedArea(
     val id: String,
     val roomName: String,
-    val areaValue: Double
+    val areaValue: Double,
 )
 
-/**
- * Property represents a Building or Standalone House.
- * High-level grouping for Host Management and Renter Discovery.
- */
+// Property model
 data class Property(
     val id: String,
     val name: String,
@@ -22,27 +19,28 @@ data class Property(
     val latitude: Double,
     val longitude: Double,
     val rooms: List<Room> = emptyList(),
-    val isHidden: Boolean = false // New: Property-level visibility
+    val isHidden: Boolean = false,
 ) {
     // UI Helpers
     val vacantRoomCount: Int get() = rooms.count { it.status == RoomStatus.ACTIVE }
-    val totalRoomCount: Int get() = rooms.size
+    
     val priceRange: String get() {
         if (rooms.isEmpty()) return "Liên hệ"
         val minPrice = rooms.minOf { it.price }
         val maxPrice = rooms.maxOf { it.price }
+        val formatter = java.text.DecimalFormat("#,###")
         return if (minPrice == maxPrice) {
-            "${minPrice / 1_000_000.0}tr"
+            "${formatter.format(minPrice)} đ"
         } else {
-            "${minPrice / 1_000_000.0}tr - ${maxPrice / 1_000_000.0}tr"
+            "${formatter.format(minPrice)} - ${formatter.format(maxPrice)} đ"
         }
     }
 }
 
 data class Room(
     val id: String,
-    val propertyId: String? = null, // Links to a Property Building
-    val title: String, // E.g., "Phòng 101" or "Nhà nguyên căn Thủ Đức"
+    val propertyId: String? = null,
+    val title: String,
     val price: Long,
     val priceFormatted: String,
     val electricityPrice: Long = 3500L,
@@ -64,7 +62,7 @@ data class Room(
     val longitude: Double,
     val currentRenter: RenterInfo? = null,
     val pastRenters: List<RenterInfo> = emptyList(),
-    val isUserHidden: Boolean = false // New: Manual hide by host
+    val isUserHidden: Boolean = false,
 )
 
 data class RenterInfo(

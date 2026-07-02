@@ -6,36 +6,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommonTopAppBar(
     title: String,
     onBackClick: () -> Unit,
-    navigationIcon: ImageVector = Icons.AutoMirrored.Filled.ArrowBack
+    navigationIcon: ImageVector = Icons.AutoMirrored.Filled.ArrowBack,
 ) {
-    CenterAlignedTopAppBar(
-        title = {
-            Text(
-                text = title.uppercase(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.primary
-            )
-        },
+    TopAppBar(
+        title = { Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
         navigationIcon = {
             IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = navigationIcon,
-                    contentDescription = "Quay lại",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Icon(imageVector = navigationIcon, contentDescription = "Quay lại")
             }
         },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
     )
 }
-

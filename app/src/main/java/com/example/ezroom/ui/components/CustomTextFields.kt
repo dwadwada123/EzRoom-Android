@@ -1,5 +1,8 @@
 package com.example.ezroom.ui.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -7,14 +10,12 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import com.example.ezroom.ui.theme.Neutral500
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomTextField(
     value: String,
@@ -22,75 +23,58 @@ fun CustomTextField(
     label: String,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
-    leadingIcon: ImageVector? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    isError: Boolean = false,
-    singleLine: Boolean = true,
     readOnly: Boolean = false,
-    enabled: Boolean = true
+    singleLine: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    enabled: Boolean = true,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth(),
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+        leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
-        visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions,
-        isError = isError,
-        singleLine = singleLine,
         readOnly = readOnly,
+        singleLine = singleLine,
+        keyboardOptions = keyboardOptions,
         enabled = enabled,
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small, // 12.dp bo góc
+        shape = MaterialTheme.shapes.small,
         colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
             focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
-            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            errorContainerColor = MaterialTheme.colorScheme.errorContainer,
-            errorBorderColor = MaterialTheme.colorScheme.error
-        )
+        ),
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmallTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    isError: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isError: Boolean = false,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, fontSize = 11.sp) },
-        textStyle = TextStyle(fontSize = 12.sp),
         modifier = modifier,
-        singleLine = true,
-        isError = isError,
+        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
         keyboardOptions = keyboardOptions,
         enabled = enabled,
-        shape = MaterialTheme.shapes.small,
+        isError = isError,
+        singleLine = true,
+        shape = MaterialTheme.shapes.extraSmall,
+        textStyle = MaterialTheme.typography.bodyMedium,
         colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
             focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            errorBorderColor = MaterialTheme.colorScheme.error
-        )
+        ),
     )
 }
 
@@ -98,32 +82,32 @@ fun SmallTextField(
 fun PasswordTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String = "Mật khẩu",
+    label: String,
     modifier: Modifier = Modifier,
-    leadingIcon: ImageVector? = null,
-    isError: Boolean = false,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    var isPasswordVisible by remember { mutableStateOf(value = false) }
 
-    CustomTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = label,
-        leadingIcon = leadingIcon,
+        modifier = modifier.fillMaxWidth(),
+        label = { Text(label) },
+        enabled = enabled,
+        singleLine = true,
+        shape = CircleShape,
+        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
-            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }, enabled = enabled) {
+            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
                 Icon(
                     imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                    contentDescription = if (isPasswordVisible) "Hide password" else "Show password"
+                    contentDescription = null,
                 )
             }
         },
-        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = modifier,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        isError = isError,
-        enabled = enabled
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+        ),
     )
 }
-

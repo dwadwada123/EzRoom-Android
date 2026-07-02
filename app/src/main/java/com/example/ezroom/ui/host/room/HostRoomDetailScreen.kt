@@ -1,10 +1,8 @@
 package com.example.ezroom.ui.host.room
 
-import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,17 +22,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.example.ezroom.domain.model.*
-import com.example.ezroom.data.model.MockData
 import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.components.ReviewReplyDialog
 import com.example.ezroom.ui.components.UtilityPriceItem
@@ -42,9 +37,7 @@ import com.example.ezroom.ui.renter.discovery.BentoAmenityBadge
 import com.example.ezroom.ui.renter.discovery.BentoStatCard
 import com.example.ezroom.ui.renter.discovery.ReviewCard
 import com.example.ezroom.ui.theme.*
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,22 +47,24 @@ fun HostRoomDetailScreen(
     onBackClick: () -> Unit = {},
     onEditClick: (String) -> Unit = {},
     onDeleteClick: (String) -> Unit = {},
-    onRateRenter: (String) -> Unit = {}
 ) {
-    // Force use mock data if room is null or for testing the Renter List feature
+    val scope = rememberCoroutineScope()
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    // Initial room data
     val displayRoom = remember(room) { room ?: mockRoomWithRenters() }
     val reviews = remember { mutableStateListOf<RoomReview>().apply { addAll(displayRoom.reviews) } }
 
-    var showRenterReview by remember { mutableStateOf(false) }
+    var showRenterReview by remember { mutableStateOf(value = false) }
     var renterNameToReview by remember { mutableStateOf("") }
 
     // Filter & Reply State
     var selectedFilter by remember { mutableStateOf("Tất cả") }
     val filters = listOf("Tất cả", "5 sao", "4 sao", "3 sao", "Dưới 2 sao", "Chưa phản hồi")
     
-    var showReplyDialog by remember { mutableStateOf(false) }
+    var showReplyDialog by remember { mutableStateOf(value = false) }
     var reviewToReply by remember { mutableStateOf<RoomReview?>(null) }
-    var isEditingReply by remember { mutableStateOf(false) }
+    var isEditingReply by remember { mutableStateOf(value = false) }
     
     val filteredReviews = remember(selectedFilter, reviews.toList()) {
         when (selectedFilter) {
@@ -84,21 +79,38 @@ fun HostRoomDetailScreen(
 
     val visibleState = remember { MutableTransitionState(false) }.apply { targetState = true }
 
-    // Renter Review Dialog Integration
     if (showRenterReview) {
         com.example.ezroom.ui.host.components.RenterReviewDialog(
             renterName = renterNameToReview,
             onDismiss = { showRenterReview = false },
-            onSubmit = { _, _, _ -> showRenterReview = false }
+            onSubmit = { _, _, _ -> showRenterReview = false },
         )
     }
 
     Scaffold(
         bottomBar = {
-            AnimatedVisibility(visibleState = visibleState, enter = slideInVertically(initialOffsetY = { it }) + fadeIn()) {
-                Surface(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp).shadow(24.dp, shape = CircleShape), color = MaterialTheme.colorScheme.surface, shape = CircleShape, tonalElevation = 8.dp) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(onClick = { onDeleteClick(displayRoom.id) }, modifier = Modifier.size(56.dp), shape = CircleShape, color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), contentColor = MaterialTheme.colorScheme.error) {
+            AnimatedVisibility(
+                visibleState = visibleState,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            ) {
+                Surface(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp).shadow(24.dp, shape = CircleShape),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = CircleShape,
+                    tonalElevation = 8.dp,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.size(56.dp), 
+                            shape = CircleShape, 
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), 
+                            contentColor = MaterialTheme.colorScheme.error
+                        ) {
                             Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Delete, contentDescription = "Xóa bài") }
                         }
                         
@@ -107,15 +119,31 @@ fun HostRoomDetailScreen(
                 }
             }
         },
-        containerColor = Neutral50
+        containerColor = Neutral50,
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(bottom = paddingValues.calculateBottomPadding())) {
             LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))) {
-                        AsyncImage(model = displayRoom.images.firstOrNull()?.resId, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop, placeholder = painterResource(id = android.R.drawable.ic_menu_gallery))
-                        Surface(modifier = Modifier.align(Alignment.BottomStart).padding(24.dp), color = if (displayRoom.status == RoomStatus.ACTIVE) SuccessEmerald else AccentAmber, contentColor = Color.White, shape = CircleShape) {
-                            Text(text = displayRoom.status.title, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
+                        AsyncImage(
+                            model = displayRoom.images.firstOrNull()?.resId,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                        )
+                        Surface(
+                            modifier = Modifier.align(Alignment.BottomStart).padding(24.dp),
+                            color = if (displayRoom.status == RoomStatus.ACTIVE) SuccessEmerald else AccentAmber,
+                            contentColor = Color.White,
+                            shape = CircleShape,
+                        ) {
+                            Text(
+                                text = displayRoom.status.title,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                            )
                         }
                     }
                 }
@@ -160,10 +188,10 @@ fun HostRoomDetailScreen(
                     }
                 }
 
-                // New: Renters Management Section (Collapsible)
+                // Renters Management
                 if (displayRoom.currentRenter != null || displayRoom.pastRenters.isNotEmpty()) {
                     item {
-                        var isRentersExpanded by remember { mutableStateOf(false) }
+                        var isRentersExpanded by remember { mutableStateOf(value = false) }
                         
                         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                             Surface(
@@ -171,12 +199,12 @@ fun HostRoomDetailScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = MaterialTheme.shapes.medium,
                                 color = MaterialTheme.colorScheme.surface,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100)
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100),
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.Default.Group, null, tint = PrimaryMain)
@@ -184,13 +212,13 @@ fun HostRoomDetailScreen(
                                         Text(
                                             text = "Quản lý khách thuê",
                                             style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
                                         )
                                     }
                                     Icon(
                                         imageVector = if (isRentersExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                         contentDescription = null,
-                                        tint = Neutral300
+                                        tint = Neutral300,
                                     )
                                 }
                             }
@@ -205,7 +233,7 @@ fun HostRoomDetailScreen(
                                             style = MaterialTheme.typography.labelLarge,
                                             color = SuccessEmerald,
                                             fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(bottom = 8.dp)
+                                            modifier = Modifier.padding(bottom = 8.dp),
                                         )
                                         RenterManagementCard(
                                             renter = currentRenter,
@@ -213,7 +241,7 @@ fun HostRoomDetailScreen(
                                             onRateClick = {
                                                 renterNameToReview = currentRenter.name
                                                 showRenterReview = true
-                                            }
+                                            },
                                         )
                                     }
                                     
@@ -225,7 +253,7 @@ fun HostRoomDetailScreen(
                                             style = MaterialTheme.typography.labelLarge,
                                             color = Neutral500,
                                             fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(bottom = 8.dp)
+                                            modifier = Modifier.padding(bottom = 8.dp),
                                         )
                                         displayRoom.pastRenters.forEach { renter ->
                                             RenterManagementCard(
@@ -234,7 +262,7 @@ fun HostRoomDetailScreen(
                                                 onRateClick = {
                                                     renterNameToReview = renter.name
                                                     showRenterReview = true
-                                                }
+                                                },
                                             )
                                             Spacer(modifier = Modifier.height(8.dp))
                                         }
@@ -245,7 +273,7 @@ fun HostRoomDetailScreen(
                     }
                 }
 
-                // Reviews Section with Filters
+                // Reviews Section
                 item {
                     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                         Text("Đánh giá từ khách thuê", style = MaterialTheme.typography.titleLarge)
@@ -256,7 +284,7 @@ fun HostRoomDetailScreen(
                                     selected = selectedFilter == filter,
                                     onClick = { selectedFilter = filter },
                                     label = { Text(filter) },
-                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = PrimaryMain, selectedLabelColor = Color.White)
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = PrimaryMain, selectedLabelColor = Color.White),
                                 )
                             }
                         }
@@ -284,7 +312,7 @@ fun HostRoomDetailScreen(
                                         onDeleteReply = {
                                             val index = reviews.indexOfFirst { it.id == review.id }
                                             if (index != -1) { reviews[index] = reviews[index].copy(hostReply = null) }
-                                        }
+                                        },
                                     )
                                 }
                             }
@@ -295,7 +323,13 @@ fun HostRoomDetailScreen(
                 item { Spacer(modifier = Modifier.height(100.dp)) }
             }
 
-            IconButton(onClick = onBackClick, modifier = Modifier.padding(top = 48.dp, start = 24.dp).background(Color.Black.copy(alpha = 0.3f), CircleShape)) {
+            IconButton(
+                onClick = onBackClick, 
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, start = 24.dp)
+                    .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+            ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
             }
         }
@@ -311,7 +345,32 @@ fun HostRoomDetailScreen(
                     val index = reviews.indexOfFirst { it.id == reviewToReply!!.id }
                     if (index != -1) { reviews[index] = reviews[index].copy(hostReply = text) }
                     showReplyDialog = false
-                }
+                },
+            )
+        }
+
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("Xác nhận xóa", fontWeight = FontWeight.Bold) },
+                text = { Text("Bạn có chắc chắn muốn xóa phòng này? Thao tác này không thể hoàn tác.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteConfirm = false
+                            onDeleteClick(displayRoom.id)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Xóa")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) {
+                        Text("Hủy")
+                    }
+                },
+                containerColor = Color.White
             )
         }
     }
@@ -321,29 +380,29 @@ fun HostRoomDetailScreen(
 fun RenterManagementCard(
     renter: RenterInfo,
     isCurrent: Boolean,
-    onRateClick: () -> Unit
+    onRateClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100),
-        shadowElevation = 1.dp
+        shadowElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = if (isCurrent) PrimarySurface else Neutral100
+                color = if (isCurrent) PrimarySurface else Neutral100,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = if (isCurrent) PrimaryMain else Neutral500
+                        tint = if (isCurrent) PrimaryMain else Neutral500,
                     )
                 }
             }
@@ -354,12 +413,12 @@ fun RenterManagementCard(
                 Text(
                     text = renter.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = renter.stayPeriod,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Neutral500
+                    color = Neutral500,
                 )
             }
             
@@ -368,10 +427,10 @@ fun RenterManagementCard(
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isCurrent) PrimaryMain else Neutral100,
-                    contentColor = if (isCurrent) Color.White else Neutral700
+                    contentColor = if (isCurrent) Color.White else Neutral700,
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                modifier = Modifier.height(36.dp)
+                modifier = Modifier.height(36.dp),
             ) {
                 Icon(Icons.Default.Star, null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -399,5 +458,3 @@ private fun mockRoomWithRenters() = Room(
 @Preview(showBackground = true)
 @Composable
 fun HostRoomDetailScreenPreview() { EzRoomTheme { HostRoomDetailScreen() } }
-
-

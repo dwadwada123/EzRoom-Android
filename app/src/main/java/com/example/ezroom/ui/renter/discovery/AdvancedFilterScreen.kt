@@ -1,6 +1,5 @@
 package com.example.ezroom.ui.renter.discovery
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -38,8 +37,8 @@ fun AdvancedFilterScreen(
     viewModel: FilterViewModel = viewModel(
         factory = viewModelFactory {
             FilterViewModel(GetSearchMetadataUseCase(SearchRepositoryImpl()))
-        }
-    )
+        },
+    ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
@@ -64,7 +63,7 @@ fun AdvancedFilterScreen(
             Surface(
                 color = Color.White,
                 tonalElevation = 4.dp,
-                shadowElevation = 8.dp
+                shadowElevation = 8.dp,
             ) {
                 CenterAlignedTopAppBar(
                     title = { 
@@ -83,7 +82,8 @@ fun AdvancedFilterScreen(
                         }
                     },
                     actions = {
-                        TextButton(onClick = {
+                    TextButton(
+                        onClick = {
                             viewModel.resetFilters()
                             selectedProvince = null
                             selectedWard = null
@@ -91,10 +91,11 @@ fun AdvancedFilterScreen(
                             priceRange = 1f..15f
                             areaRange = 15f..50f
                             selectedAmenities = setOf()
-                        }) {
-                            Text("Xóa hết", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        }
-                    },
+                        },
+                    ) {
+                        Text("Xóa hết", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
+                },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color.Transparent
                     )
@@ -201,10 +202,12 @@ fun AdvancedFilterScreen(
                                 row.forEach { type ->
                                     Box(modifier = Modifier.weight(1f)) {
                                         FilterChip(
-                                            text = type,
-                                            selected = selectedRoomType == type,
-                                            onSelect = { selectedRoomType = if (selectedRoomType == type) "" else type }
-                                        )
+                                        text = type,
+                                        selected = selectedRoomType == type,
+                                        onSelect = { 
+                                            selectedRoomType = if (selectedRoomType == type) "" else type 
+                                        },
+                                    )
                                     }
                                 }
                                 if (row.size < 2) Spacer(modifier = Modifier.weight(1f))
@@ -322,9 +325,9 @@ private fun FilterDropdown(
     options: List<String>,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(value = false) }
     Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(bottom = 4.dp))
         Box {

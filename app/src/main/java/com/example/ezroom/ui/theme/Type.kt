@@ -9,15 +9,11 @@ import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
 import com.example.ezroom.R
 
-/**
- * EzRoom 2026 Typography System
- * Focus: High readability, bold hierarchy, and tight display spacing
- */
-
+// Typography system
 val provider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
     providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
+    certificates = R.array.com_google_android_gms_fonts_certs,
 )
 
 val fontName = GoogleFont("Inter")
@@ -93,7 +89,7 @@ val Typography = Typography(
         fontWeight = FontWeight.ExtraBold,
         fontSize = 11.sp,
         lineHeight = 16.sp,
-        letterSpacing = (-0.2).sp // Thắt chặt khoảng cách chữ
-    )
+        letterSpacing = (-0.2).sp,
+    ),
 )
 
