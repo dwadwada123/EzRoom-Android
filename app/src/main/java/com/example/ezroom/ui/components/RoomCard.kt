@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
 /**
- * EzRoom 2026 "Pro Max" Room Card
+ * EzRoom Room Card
  * Features: Bento design, subtle gradients, and high contrast typography
  */
 @Composable

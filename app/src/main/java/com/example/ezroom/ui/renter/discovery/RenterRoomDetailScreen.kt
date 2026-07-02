@@ -47,7 +47,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 
 /**
- * EzRoom 2026 "Pro Max" Room Detail Screen
+ * EzRoom Room Detail Screen
  * Features: Bento Grid layout, Glassmorphism, and Staggered entry animations.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

@@ -36,7 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * EzRoom 2026 "Pro Max" Appointment List
+ * EzRoom Appointment List
  * Features: Staggered entrance, Pill-shaped tabs, and Bento card design.
  */
 @Composable

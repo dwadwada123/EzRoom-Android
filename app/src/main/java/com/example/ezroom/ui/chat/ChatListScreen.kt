@@ -119,7 +119,7 @@ private fun ConversationListItem(
     chat: Conversation,
     onClick: () -> Unit
 ) {
-    // Pro Max styling: pulse online status logic can be added here
+    // Styling: pulse online status logic can be added here
     val isOnline = chat.unreadCount > 0 // Mocking online status if there are unread messages for visual variety
     
     Surface(

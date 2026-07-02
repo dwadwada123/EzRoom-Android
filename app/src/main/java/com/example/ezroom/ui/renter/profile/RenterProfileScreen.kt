@@ -40,7 +40,7 @@ import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 
 /**
- * EzRoom 2026 "Pro Max" Renter Profile Screen
+ * EzRoom Renter Profile Screen
  * Features: High-impact header, Bento menu grid, and Reputation access.
  */
 @OptIn(ExperimentalMaterial3Api::class)

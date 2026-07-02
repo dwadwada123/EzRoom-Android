@@ -29,7 +29,7 @@ import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
 
 /**
- * EzRoom 2026 "Pro Max" Host-Specific Invoice Detail
+ * EzRoom Host-Specific Invoice Detail
  * Focuses on Revenue transparency, Renter payment verification, and Business audit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +95,7 @@ fun HostInvoiceDetailScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Revenue Card (The "Pro Max" look)
+            // Revenue Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,

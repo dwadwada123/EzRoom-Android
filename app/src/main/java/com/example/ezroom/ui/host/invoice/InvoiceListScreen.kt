@@ -63,7 +63,7 @@ fun HostInvoiceListScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Pro Max Pill-shaped Tab Selection
+            // Pill-shaped Tab Selection
             Surface(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)

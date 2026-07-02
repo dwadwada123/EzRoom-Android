@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * EzRoom 2026 "Pro Max" Theme Configuration
+ * EzRoom Theme Configuration
  */
 
 private val DarkColorScheme = darkColorScheme(
