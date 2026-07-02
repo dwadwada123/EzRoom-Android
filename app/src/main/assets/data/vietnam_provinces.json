@@ -1,0 +1,94 @@
+[
+  {
+    "name": "Thành phố Hà Nội",
+    "code": 1,
+    "districts": [
+      { "name": "Quận Ba Đình", "code": 1, "wards": [ { "name": "Phường Phúc Xá", "code": 1 }, { "name": "Phường Trúc Bạch", "code": 4 } ] },
+      { "name": "Quận Hoàn Kiếm", "code": 2, "wards": [ { "name": "Phường Đồng Xuân", "code": 37 }, { "name": "Phường Hàng Đào", "code": 40 } ] },
+      { "name": "Quận Tây Hồ", "code": 3, "wards": [ { "name": "Phường Bưởi", "code": 64 }, { "name": "Phường Nhật Tân", "code": 73 } ] },
+      { "name": "Quận Long Biên", "code": 4, "wards": [ { "name": "Phường Bồ Đề", "code": 103 }, { "name": "Phường Gia Thụy", "code": 106 } ] },
+      { "name": "Quận Cầu Giấy", "code": 5, "wards": [ { "name": "Phường Dịch Vọng", "code": 157 }, { "name": "Phường Mai Dịch", "code": 160 } ] }
+    ]
+  },
+  {
+    "name": "Thành phố Hải Phòng",
+    "code": 31,
+    "districts": [
+      { "name": "Quận Hồng Bàng", "code": 303, "wards": [ { "name": "Phường Minh Khai", "code": 10834 } ] },
+      { "name": "Quận Lê Chân", "code": 305, "wards": [ { "name": "Phường Cát Dài", "code": 10885 } ] }
+    ]
+  },
+  {
+    "name": "Tỉnh Quảng Ninh",
+    "code": 33,
+    "districts": [
+      { "name": "Thành phố Hạ Long", "code": 329, "wards": [ { "name": "Phường Bãi Cháy", "code": 11842 } ] },
+      { "name": "Thành phố Móng Cái", "code": 330, "wards": [ { "name": "Phường Hòa Lạc", "code": 11929 } ] }
+    ]
+  },
+  {
+    "name": "Tỉnh Hải Dương",
+    "code": 34,
+    "districts": [
+      { "name": "Thành phố Hải Dương", "code": 370, "wards": [ { "name": "Phường Phạm Ngũ Lão", "code": 14083 } ] }
+    ]
+  },
+  {
+    "name": "Tỉnh Thái Bình",
+    "code": 36,
+    "districts": [
+      { "name": "Thành phố Thái Bình", "code": 336, "wards": [ { "name": "Phường Lê Hồng Phong", "code": 12517 } ] }
+    ]
+  },
+  {
+    "name": "Thành phố Đà Nẵng",
+    "code": 48,
+    "districts": [
+      { "name": "Quận Hải Châu", "code": 490, "wards": [ { "name": "Phường Thạch Thang", "code": 20197 }, { "name": "Phường Hải Châu I", "code": 20200 }, { "name": "Phường Phước Ninh", "code": 20209 }, { "name": "Phường Hòa Thuận Đông", "code": 20212 } ] },
+      { "name": "Quận Thanh Khê", "code": 491, "wards": [ { "name": "Phường Tam Thuận", "code": 20233 }, { "name": "Phường Thanh Khê Tây", "code": 20236 }, { "name": "Phường Xuân Hà", "code": 20245 } ] },
+      { "name": "Quận Sơn Trà", "code": 492, "wards": [ { "name": "Phường An Hải Bắc", "code": 20263 }, { "name": "Phường Phước Mỹ", "code": 20269 } ] },
+      { "name": "Quận Ngũ Hành Sơn", "code": 493, "wards": [ { "name": "Phường Mỹ An", "code": 20281 }, { "name": "Phường Khuê Mỹ", "code": 20284 } ] },
+      { "name": "Quận Liên Chiểu", "code": 494, "wards": [ { "name": "Phường Hòa Hiệp Bắc", "code": 20293 }, { "name": "Phường Hòa Khánh Nam", "code": 20299 } ] }
+    ]
+  },
+  {
+    "name": "Tỉnh Quảng Nam",
+    "code": 49,
+    "districts": [
+      { "name": "Thành phố Tam Kỳ", "code": 502, "wards": [ { "name": "Phường An Mỹ", "code": 20509 } ] },
+      { "name": "Thành phố Hội An", "code": 503, "wards": [ { "name": "Phường Minh An", "code": 20539 } ] }
+    ]
+  },
+  {
+    "name": "Tỉnh Khánh Hòa",
+    "code": 56,
+    "districts": [
+      { "name": "Thành phố Nha Trang", "code": 568, "wards": [ { "name": "Phường Lộc Thọ", "code": 22441 } ] }
+    ]
+  },
+  {
+    "name": "Tỉnh Lâm Đồng",
+    "code": 68,
+    "districts": [
+      { "name": "Thành phố Đà Lạt", "code": 672, "wards": [ { "name": "Phường 1", "code": 24715 } ] }
+    ]
+  },
+  {
+    "name": "Thành phố Hồ Chí Minh",
+    "code": 79,
+    "districts": [
+      { "name": "Quận 1", "code": 760, "wards": [ { "name": "Phường Tân Định", "code": 26734 }, { "name": "Phường Đa Kao", "code": 26737 }, { "name": "Phường Bến Nghé", "code": 26740 }, { "name": "Phường Bến Thành", "code": 26743 } ] },
+      { "name": "Quận 3", "code": 770, "wards": [ { "name": "Phường Võ Thị Sáu", "code": 26890 }, { "name": "Phường 1", "code": 26893 }, { "name": "Phường 2", "code": 26896 } ] },
+      { "name": "Quận Bình Thạnh", "code": 765, "wards": [ { "name": "Phường 1", "code": 26827 }, { "name": "Phường 15", "code": 26857 } ] },
+      { "name": "Quận Gò Vấp", "code": 764, "wards": [ { "name": "Phường 1", "code": 26797 }, { "name": "Phường 10", "code": 26809 } ] },
+      { "name": "Quận 7", "code": 778, "wards": [ { "name": "Phường Tân Phong", "code": 27502 }, { "name": "Phường Phú Mỹ", "code": 27511 } ] }
+    ]
+  },
+  {
+    "name": "Thành phố Cần Thơ",
+    "code": 92,
+    "districts": [
+      { "name": "Quận Ninh Kiều", "code": 916, "wards": [ { "name": "Phường Cái Khế", "code": 31123 } ] }
+    ]
+  }
+]

@@ -3,8 +3,10 @@ package com.example.ezroom.ui.renter.appointment
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
@@ -12,12 +14,13 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.data.model.Appointment
+import com.example.ezroom.domain.model.Appointment
 import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.PrimaryButton
@@ -57,27 +60,31 @@ fun BookingFormScreen(
     // Main layout container
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            containerColor = BackgroundLight,
+            containerColor = Neutral50,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
                             text = if (appointment != null) "CẬP NHẬT LỊCH HẸN" else "ĐẶT LỊCH XEM PHÒNG",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = OrangePrimary
+                            color = MaterialTheme.colorScheme.primary
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack, enabled = !isLoading) {
+                        IconButton(
+                            onClick = onNavigateBack, 
+                            enabled = !isLoading,
+                            modifier = Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Quay lại",
-                                tint = OrangePrimary
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceLight)
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
                 )
             }
         ) { paddingValues ->
@@ -85,76 +92,62 @@ fun BookingFormScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text(
-                    text = if (appointment != null) 
-                        "Bạn đang cập nhật lịch hẹn xem phòng:\n$roomName"
-                    else 
-                        "Bạn đang đặt lịch hẹn xem phòng:\n$roomName",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = OnBackgroundLight
-                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                ) {
+                    Text(
+                        text = if (appointment != null) 
+                            "Bạn đang cập nhật lịch hẹn xem phòng:\n$roomName"
+                        else 
+                            "Bạn đang đặt lịch hẹn xem phòng:\n$roomName",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
 
                 // Input fields group: Date Picker
-                Box(
+                CustomTextField(
+                    value = selectedDate,
+                    onValueChange = {},
+                    label = "Ngày xem phòng",
+                    placeholder = "Chọn ngày",
+                    readOnly = true,
+                    enabled = !isLoading,
+                    trailingIcon = {
+                        Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !isLoading) {
                             showDatePicker(context, selectedDate) { date -> selectedDate = date }
                         }
-                ) {
-                    CustomTextField(
-                        value = selectedDate,
-                        onValueChange = {},
-                        label = "Ngày xem phòng",
-                        placeholder = "Chọn ngày",
-                        readOnly = true,
-                        enabled = !isLoading,
-                        trailingIcon = {
-                            Icon(Icons.Default.DateRange, contentDescription = null, tint = OrangePrimary)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(enabled = !isLoading) {
-                                showDatePicker(context, selectedDate) { date -> selectedDate = date }
-                            }
-                    )
-                }
+                )
 
                 // Input fields group: Time Picker
-                Box(
+                CustomTextField(
+                    value = selectedTime,
+                    onValueChange = {},
+                    label = "Giờ xem phòng",
+                    placeholder = "Chọn giờ",
+                    readOnly = true,
+                    enabled = !isLoading,
+                    trailingIcon = {
+                        Icon(Icons.Default.Schedule, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(enabled = !isLoading) {
                             showTimePicker(context, selectedTime) { time -> selectedTime = time }
                         }
-                ) {
-                    CustomTextField(
-                        value = selectedTime,
-                        onValueChange = {},
-                        label = "Giờ xem phòng",
-                        placeholder = "Chọn giờ",
-                        readOnly = true,
-                        enabled = !isLoading,
-                        trailingIcon = {
-                            Icon(Icons.Default.Schedule, contentDescription = null, tint = OrangePrimary)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(enabled = !isLoading) {
-                                showTimePicker(context, selectedTime) { time -> selectedTime = time }
-                            }
-                    )
-                }
+                )
 
                 // Input fields group: Notes
                 CustomTextField(
@@ -164,7 +157,7 @@ fun BookingFormScreen(
                     placeholder = "Ví dụ: Mình có thể đến vào buổi chiều...",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp),
+                        .height(150.dp),
                     singleLine = false,
                     enabled = !isLoading
                 )
@@ -184,7 +177,7 @@ fun BookingFormScreen(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     enabled = isFormValid && !isLoading
                 )
             }
@@ -266,3 +259,4 @@ fun BookingFormScreenPreview() {
         )
     }
 }
+

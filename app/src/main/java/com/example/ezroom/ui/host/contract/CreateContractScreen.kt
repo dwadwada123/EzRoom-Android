@@ -19,8 +19,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.ezroom.data.model.Contract
-import com.example.ezroom.data.model.DepositStatus
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.ContractRepositoryImpl
+import com.example.ezroom.domain.model.Contract
+import com.example.ezroom.domain.model.DepositStatus
+import com.example.ezroom.domain.usecase.GetContractsUseCase
+import com.example.ezroom.domain.usecase.SignContractUseCase
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.components.LoadingWidget
@@ -36,7 +41,18 @@ import java.util.*
 fun CreateContractScreen(
     // Event callbacks
     onBackClick: () -> Unit = {},
-    onProceedToTerms: (Contract) -> Unit = {}
+    onProceedToTerms: (Contract) -> Unit = {},
+    viewModel: ContractViewModel = viewModel(
+        factory = viewModelFactory {
+            val repository = ContractRepositoryImpl()
+            ContractViewModel(
+                GetContractsUseCase(repository),
+                SignContractUseCase(repository),
+                repository,
+                isHost = true
+            )
+        }
+    )
 ) {
     // State definitions
     val context = LocalContext.current
@@ -295,6 +311,7 @@ fun CreateContractScreen(
                                     depositAmount = depositAmount.toLongOrNull() ?: 0L,
                                     depositStatus = if (selectedStatus == "Đã đóng") DepositStatus.PAID else DepositStatus.UNPAID
                                 )
+                                viewModel.createContract(contract)
                                 onProceedToTerms(contract)
                             }
                         }
@@ -330,3 +347,4 @@ fun CreateContractScreenPreview() {
         CreateContractScreen()
     }
 }
+

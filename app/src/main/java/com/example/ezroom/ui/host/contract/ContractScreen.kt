@@ -20,9 +20,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.data.model.Contract
-import com.example.ezroom.data.model.DepositStatus
-import com.example.ezroom.data.model.TransactionType
+import com.example.ezroom.domain.model.Contract
+import com.example.ezroom.domain.model.DepositStatus
+import com.example.ezroom.domain.model.TransactionType
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
 
@@ -34,15 +34,15 @@ fun ContractScreen(
     onNavigateBack: () -> Unit,
     onSignContract: (transactionType: TransactionType) -> Unit
 ) {
-    // State definitions
+    // State
     var isAgreed by remember { mutableStateOf(false) }
     val formatter = remember { DecimalFormat("#,### VND") }
 
-    // Main layout container
+    // Content
     Scaffold(
         containerColor = BackgroundLight,
         topBar = {
-            // Top app bar
+            // Top Bar
             TopAppBar(
                 title = {
                     Text(
@@ -68,7 +68,7 @@ fun ContractScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Legal document container
+            // Document container
             OutlinedCard(
                 modifier = Modifier
                     .weight(1f)
@@ -83,7 +83,7 @@ fun ContractScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Header: Document title
+                    // Header
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -123,7 +123,7 @@ fun ContractScreen(
 
                     HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.08f))
 
-                    // Party information section
+                    // Parties info
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Card(
                             colors = CardDefaults.cardColors(containerColor = BackgroundLight.copy(alpha = 0.5f)),
@@ -157,7 +157,7 @@ fun ContractScreen(
 
                     HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.08f))
 
-                    // Dynamic terms content
+                    // Content
                     ContractSectionItem(title = "ĐIỀU 1: THỜI HẠN THUÊ TRỌ") {
                         Text(
                             text = "• Bên B thuê phòng: ${contract.roomName}\n• Thời hạn: Từ ngày ${contract.startDate} đến ngày ${contract.endDate}.\n• Bên B cam kết ở tối thiểu đủ thời hạn nêu trên. Mọi trường hợp đơn phương chấm dứt hợp đồng sớm sẽ chịu mất toàn bộ số tiền đặt cọc.",
@@ -182,7 +182,7 @@ fun ContractScreen(
                 }
             }
 
-            // Input fields group: Agreement checkbox
+            // Action buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,7 +190,7 @@ fun ContractScreen(
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Agreement checkbox
+                // Checkbox
                 Checkbox(
                     checked = isAgreed,
                     onCheckedChange = { isAgreed = it },
@@ -205,7 +205,7 @@ fun ContractScreen(
                 )
             }
 
-            // Action buttons row: Digital signature action
+            // Digital signature
             Button(
                 onClick = { onSignContract(TransactionType.DEPOSIT) },
                 enabled = isAgreed,
@@ -277,3 +277,4 @@ fun ContractScreenPreview() {
         )
     }
 }
+

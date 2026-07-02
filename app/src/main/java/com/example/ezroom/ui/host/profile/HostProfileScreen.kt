@@ -19,7 +19,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.UserRepositoryImpl
+import com.example.ezroom.domain.usecase.GetCurrentUserUseCase
+import com.example.ezroom.domain.usecase.UpdateProfileUseCase
+import com.example.ezroom.domain.usecase.VerifyEkycUseCase
 import com.example.ezroom.ui.components.CommonTopAppBar
+import com.example.ezroom.ui.profile.ProfileViewModel
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.EzRoomTheme
 
 enum class EkycStatus {
@@ -34,21 +41,37 @@ fun HostProfileScreen(
     onNavigateToDepositAccount: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onLogout: () -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    viewModel: ProfileViewModel = viewModel(
+        factory = viewModelFactory {
+            val repo = UserRepositoryImpl()
+            ProfileViewModel(
+                GetCurrentUserUseCase(repo),
+                UpdateProfileUseCase(repo),
+                VerifyEkycUseCase(repo)
+            )
+        }
+    )
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val user = uiState.user ?: return
+    
     // State definitions
     val scrollState = rememberScrollState()
-    val hostName by remember { mutableStateOf("Nguyễn Văn A") }
-    val hostId by remember { mutableStateOf("EZ-HOST-88291") }
-    var ekycStatus by remember { mutableStateOf(EkycStatus.UNVERIFIED) }
+    val ekycStatus = if (user.isEkycVerified) EkycStatus.VERIFIED else EkycStatus.UNVERIFIED
 
     // Main layout container
     Scaffold(
         topBar = {
-            CommonTopAppBar(
-                title = "Hồ sơ cá nhân",
-                onBackClick = onBack
-            )
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 4.dp
+            ) {
+                CommonTopAppBar(
+                    title = "Hồ sơ cá nhân",
+                    onBackClick = onBack
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
@@ -79,12 +102,12 @@ fun HostProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = hostName,
+                text = user.name,
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Mã chủ trọ: $hostId",
+                text = "Mã chủ trọ: EZ-HOST-${user.id.takeLast(5).uppercase()}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -316,3 +339,4 @@ fun HostProfileScreenPreview() {
         HostProfileScreen()
     }
 }
+

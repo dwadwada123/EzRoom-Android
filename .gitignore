@@ -1,16 +1,47 @@
-*.iml
+# Built files
+/build
 .gradle
-/local.properties
+.kotlin
+/app/build
+
+# External native build folder
+.externalNativeBuild
+.cxx
+
+# IDE files
+*.iml
+.idea/
+*.ipr
+*.iws
+.navigation/
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# Local configuration (Contains API keys and local paths)
 local.properties
-.idea/
+secrets.xml
+
+# Keystore files (Private signing keys)
+*.jks
+*.keystore
+*.p12
+
+# Google Services (Firebase configuration)
+# google-services.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Captures and logs
+/captures
+*.log
+
+# AI/Agent Context (Personal context & skills)
+.artifacts/
+.skills/
+ANDROID_APP_DETAIL_STATE.md

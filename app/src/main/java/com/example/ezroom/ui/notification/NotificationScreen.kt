@@ -1,5 +1,6 @@
 package com.example.ezroom.ui.notification
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,58 +23,68 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.ezroom.data.model.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.NotificationRepositoryImpl
+import com.example.ezroom.domain.model.*
+import com.example.ezroom.domain.usecase.GetNotificationsUseCase
+import com.example.ezroom.domain.usecase.MarkAllNotificationsAsReadUseCase
+import com.example.ezroom.domain.usecase.MarkNotificationAsReadUseCase
+import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
-
-// Local UI wrapper to keep the grouping logic
-data class NotificationUI(
-    val item: NotificationItem,
-    val group: String
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
     // Event callbacks
     onNavigateBack: () -> Unit,
-    onNavigateToSignContract: (String) -> Unit = {}
+    onNavigateToSignContract: (String) -> Unit = {},
+    viewModel: NotificationViewModel = viewModel(
+        factory = viewModelFactory {
+            val repo = NotificationRepositoryImpl()
+            NotificationViewModel(
+                GetNotificationsUseCase(repo),
+                MarkNotificationAsReadUseCase(repo),
+                MarkAllNotificationsAsReadUseCase(repo)
+            )
+        }
+    )
 ) {
-    // State definitions
+    val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Tất cả", "Chưa đọc")
 
-    val notifications = remember {
-        listOf(
-            NotificationUI(NotificationItem("notif_contract", "Hợp đồng mới", "Chủ nhà đã lập hợp đồng điện tử cho phòng trọ của bạn. Vui lòng nhấn vào đây để kiểm tra và ký xác nhận.", "11:00", isRead = false, type = "CONTRACT"), group = "Hôm nay"),
-            NotificationUI(NotificationItem("1", "Hóa đơn mới", "Bạn có hóa đơn tiền phòng tháng 5/2026 cần thanh toán.", "10:30", isRead = false, type = "BILL"), group = "Hôm nay"),
-            NotificationUI(NotificationItem("2", "Lịch hẹn xem phòng", "Lịch hẹn xem phòng Q7 của bạn đã được chủ trọ duyệt.", "09:15", isRead = false, type = "SCHEDULE"), group = "Hôm nay"),
-            NotificationUI(NotificationItem("3", "Cập nhật hệ thống", "EzRoom vừa cập nhật tính năng thanh toán qua VNPay.", "Hôm qua", isRead = true, type = "SYSTEM"), group = "Trước đó"),
-            NotificationUI(NotificationItem("4", "Nhắc nhở lịch hẹn", "Bạn có lịch hẹn xem phòng vào lúc 17:30 chiều nay.", "Hôm qua", isRead = true, type = "SCHEDULE"), group = "Trước đó"),
-            NotificationUI(NotificationItem("5", "Thanh toán thành công", "Hóa đơn tháng 4 của bạn đã được xác nhận thanh toán.", "01/05", isRead = true, type = "BILL"), group = "Trước đó")
-        )
+    val filteredNotifications = if (selectedTab == 1) {
+        uiState.notifications.filter { !it.isRead }
+    } else {
+        uiState.notifications
     }
-
-    val filteredNotifications = if (selectedTab == 1) notifications.filter { !it.item.isRead } else notifications
 
     // Main layout container
     Scaffold(
         containerColor = BackgroundLight,
         topBar = {
             // Top app bar
-            CenterAlignedTopAppBar(
-                title = { Text("THÔNG BÁO", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = OrangePrimary)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.DoneAll, null, tint = OrangePrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceLight)
-            )
+            Surface(
+                color = SurfaceLight,
+                tonalElevation = 4.dp,
+                shadowElevation = 8.dp
+            ) {
+                CenterAlignedTopAppBar(
+                    title = { Text("THÔNG BÁO", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = OrangePrimary)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.onMarkAllAsRead() }) {
+                            Icon(Icons.Default.DoneAll, null, tint = OrangePrimary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                )
+            }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
@@ -100,34 +111,52 @@ fun NotificationScreen(
                 }
             }
 
-            // Content scroll area
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                val grouped = filteredNotifications.groupBy { it.group }
-
-                grouped.forEach { (header, items) ->
-                    item {
-                        Text(
-                            text = header.uppercase(),
-                            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            letterSpacing = 1.sp
-                        )
-                    }
-
-                    items(items) { notification ->
-                        NotificationRow(
-                            item = notification.item,
-                            onClick = { 
-                                if (notification.item.type == "CONTRACT") {
-                                    onNavigateToSignContract(notification.item.id)
-                                }
-                            }
-                        )
-                    }
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    LoadingWidget()
                 }
-                item { Spacer(modifier = Modifier.height(24.dp)) }
+            } else if (filteredNotifications.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Không có thông báo nào", color = Color.Gray)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    // Grouping logic (Simplified for mock since we don't have many dates)
+                    val grouped = filteredNotifications.groupBy { if (it.time.contains("trước")) "Hôm nay" else "Trước đó" }
+
+                    grouped.forEach { (header, items) ->
+                        item {
+                            Text(
+                                text = header.uppercase(),
+                                modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray,
+                                letterSpacing = 1.sp
+                            )
+                        }
+
+                        items(items) { notification ->
+                            var visible by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) { visible = true }
+                            AnimatedVisibility(
+                                visible = visible,
+                                enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn()
+                            ) {
+                                NotificationRow(
+                                    item = notification,
+                                    onClick = { 
+                                        viewModel.onNotificationRead(notification.id)
+                                        if (notification.type == "CONTRACT") {
+                                            onNavigateToSignContract(notification.id)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
             }
         }
     }

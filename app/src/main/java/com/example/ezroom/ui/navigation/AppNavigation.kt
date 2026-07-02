@@ -1,5 +1,7 @@
 package com.example.ezroom.ui.navigation
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -17,6 +19,7 @@ import com.example.ezroom.ui.host.room.HostRoomDetailScreen
 import com.example.ezroom.ui.renter.appointment.BookingFormScreen
 import com.example.ezroom.ui.renter.invoice.InvoiceDetailScreen
 import com.example.ezroom.ui.renter.profile.RenterProfileScreen
+import com.example.ezroom.ui.renter.profile.RenterReputationScreen
 import com.example.ezroom.ui.host.profile.HostProfileScreen
 import com.example.ezroom.ui.renter.review_report.SubmitReportScreen
 import com.example.ezroom.ui.renter.review_report.WriteReviewScreen
@@ -29,11 +32,13 @@ import com.example.ezroom.ui.components.ChangePasswordScreen
 import com.example.ezroom.ui.host.contract.CreateContractScreen
 import com.example.ezroom.ui.host.contract.ContractScreen as HostContractScreen
 import com.example.ezroom.ui.renter.contract.ContractScreen as RenterContractScreen
-import com.example.ezroom.data.model.Contract
-import com.example.ezroom.data.model.DepositStatus
+import com.example.ezroom.domain.model.Contract
+import com.example.ezroom.domain.model.DepositStatus
 import com.example.ezroom.ui.host.invoice.CreateInvoiceScreen
+import com.example.ezroom.ui.host.invoice.HostInvoiceDetailScreen
+import com.example.ezroom.ui.renter.discovery.AdvancedFilterScreen
+import com.example.ezroom.ui.host.room.PropertyFormScreen
 import com.google.gson.Gson
-import java.util.UUID
 
 object Screen {
     const val SPLASH = "splash"
@@ -52,7 +57,7 @@ object Screen {
     const val CHAT_ROOM = "chat_room/{userName}"
     const val SUBMIT_REPORT = "submit_report/{roomId}"
     const val WRITE_REVIEW = "write_review/{roomId}"
-    const val ROOM_FORM = "room_form/{isEditMode}"
+    const val ROOM_FORM = "room_form/{isEditMode}?propertyId={propertyId}&cloneFromId={cloneFromId}"
     const val EKYC = "ekyc"
     const val DEPOSIT_ACCOUNT = "deposit_account"
     const val CHANGE_PASSWORD = "change_password"
@@ -60,6 +65,10 @@ object Screen {
     const val RENTER_CONTRACT = "renter_contract/{contractJson}"
     const val HOST_CONTRACT = "host_contract/{contractJson}"
     const val CREATE_INVOICE = "create_invoice"
+    const val HOST_INVOICE_DETAIL = "host_invoice_detail/{invoiceId}"
+    const val ADVANCED_FILTER = "advanced_filter"
+    const val PROPERTY_FORM = "property_form?propertyId={propertyId}"
+    const val RENTER_REPUTATION = "renter_reputation"
 }
 
 @Composable
@@ -71,6 +80,10 @@ fun AppNavigation() {
     NavHost(
         navController = navController,
         startDestination = Screen.SPLASH,
+        enterTransition = { fadeIn(animationSpec = tween(400)) + slideInHorizontally(initialOffsetX = { 300 }, animationSpec = tween(400)) },
+        exitTransition = { fadeOut(animationSpec = tween(400)) + slideOutHorizontally(targetOffsetX = { -300 }, animationSpec = tween(400)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(400)) + slideInHorizontally(initialOffsetX = { -300 }, animationSpec = tween(400)) },
+        popExitTransition = { fadeOut(animationSpec = tween(400)) + slideOutHorizontally(targetOffsetX = { 300 }, animationSpec = tween(400)) }
     ) {
         // Splash Screen
         composable(Screen.SPLASH) {
@@ -139,7 +152,11 @@ fun AppNavigation() {
                 },
                 onEditAppointment = { roomId, apptId ->
                     navController.navigate("booking_form/$roomId?appointmentId=$apptId")
-                }
+                },
+                onNavigateToFilter = {
+                    navController.navigate(Screen.ADVANCED_FILTER)
+                },
+                navController = navController
             )
         }
 
@@ -148,11 +165,19 @@ fun AppNavigation() {
             RenterProfileScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToChangePassword = { navController.navigate(Screen.CHANGE_PASSWORD) },
+                onNavigateToReputation = { navController.navigate(Screen.RENTER_REPUTATION) },
                 onLogout = {
                     navController.navigate(Screen.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // Renter Reputation Screen
+        composable(Screen.RENTER_REPUTATION) {
+            RenterReputationScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -187,13 +212,29 @@ fun AppNavigation() {
                     if (invoiceId == "create") {
                         navController.navigate(Screen.CREATE_INVOICE)
                     } else {
-                        navController.navigate("invoice_detail/$invoiceId") 
+                        navController.navigate("host_invoice_detail/$invoiceId") 
                     }
                 },
                 onProfileClick = { navController.navigate(Screen.HOST_PROFILE) },
                 onNotificationClick = { navController.navigate(Screen.NOTIFICATION) },
-                onFabClick = { navController.navigate("room_form/false") },
-                onEditRoomClick = { roomId -> navController.navigate("room_form/true") },
+                onCloneRoomClick = { roomId ->
+                    navController.navigate("room_form/false?cloneFromId=$roomId")
+                },
+                onAddRoomToProperty = { propertyId ->
+                    navController.navigate("room_form/false?propertyId=$propertyId")
+                },
+                onAddPropertyClick = {
+                    navController.navigate(Screen.PROPERTY_FORM)
+                },
+                onAddStandaloneRoomClick = {
+                    navController.navigate("room_form/false")
+                },
+                onRenterReputationClick = { _ ->
+                    navController.navigate(Screen.RENTER_REPUTATION)
+                },
+                onEditPropertyClick = { propertyId ->
+                    navController.navigate("property_form?propertyId=$propertyId")
+                },
                 onCreateContractClick = { navController.navigate(Screen.CREATE_CONTRACT) },
                 onChatClick = { userName ->
                     val encodedName = android.net.Uri.encode(userName)
@@ -202,14 +243,42 @@ fun AppNavigation() {
             )
         }
 
-        // Room Form
+        // Property Form
+        composable(
+            route = Screen.PROPERTY_FORM,
+            arguments = listOf(
+                navArgument("propertyId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
+            val propertyId = backStackEntry.arguments?.getString("propertyId")
+            PropertyFormScreen(
+                propertyId = propertyId,
+                onNavigateToCreateFirstRoom = { propId ->
+                    navController.navigate("room_form/false?propertyId=$propId") {
+                        popUpTo(Screen.PROPERTY_FORM) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Room Form (Supports Add, Edit, Clone and Property association)
         composable(
             route = Screen.ROOM_FORM,
-            arguments = listOf(navArgument("isEditMode") { type = NavType.BoolType })
+            arguments = listOf(
+                navArgument("isEditMode") { type = NavType.BoolType },
+                navArgument("propertyId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("cloneFromId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
         ) { backStackEntry ->
             val isEditMode = backStackEntry.arguments?.getBoolean("isEditMode") ?: false
+            val propertyId = backStackEntry.arguments?.getString("propertyId")
+            val cloneFromId = backStackEntry.arguments?.getString("cloneFromId")
+            
             RoomFormScreen(
                 isEditMode = isEditMode,
+                propertyId = propertyId,
+                cloneFromRoomId = cloneFromId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -324,7 +393,8 @@ fun AppNavigation() {
             HostRoomDetailScreen(
                 room = room,
                 onBackClick = { navController.popBackStack() },
-                onEditClick = { navController.navigate("room_form/true") }
+                onEditClick = { id -> navController.navigate("room_form/true?cloneFromId=$id") },
+                onDeleteClick = { _ -> navController.popBackStack() }
             )
         }
 
@@ -389,6 +459,19 @@ fun AppNavigation() {
             )
         }
 
+        // Host Invoice Detail
+        composable(
+            route = Screen.HOST_INVOICE_DETAIL,
+            arguments = listOf(navArgument("invoiceId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val invoiceId = backStackEntry.arguments?.getString("invoiceId")
+            val invoice = MockData.invoices.find { it.id == invoiceId }
+            HostInvoiceDetailScreen(
+                invoice = invoice,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
         // Create Invoice Screen
         composable(Screen.CREATE_INVOICE) {
             CreateInvoiceScreen(
@@ -408,5 +491,17 @@ fun AppNavigation() {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
+        // Advanced Filter Screen
+        composable(Screen.ADVANCED_FILTER) {
+            AdvancedFilterScreen(
+                onFilterApply = { _ ->
+                    // Just navigate back for now as per user request
+                    navController.popBackStack()
+                },
+                onDismiss = { navController.popBackStack() }
+            )
+        }
     }
 }
+

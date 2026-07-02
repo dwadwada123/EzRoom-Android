@@ -1,262 +1,276 @@
 package com.example.ezroom.ui.renter.discovery
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.HomeWork
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.ezroom.data.model.MockData
+import com.example.ezroom.data.repository.RoomRepositoryImpl
+import com.example.ezroom.domain.model.*
+import com.example.ezroom.domain.usecase.GetDiscoveryItemsUseCase
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.RoomCard
 import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-data class RoomItem(
-    val id: String,
-    val title: String,
-    val price: String,
-    val address: String,
-    val rating: Float,
-    val imageUrl: Any? = null
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RenterHomeScreen(
     modifier: Modifier = Modifier,
-    // Event callbacks
-    onRoomClick: (RoomItem) -> Unit = {}
+    onRoomClick: (Room) -> Unit = {},
+    onNavigateToFilter: () -> Unit = {},
+    navController: NavController? = null,
+    viewModel: RenterHomeViewModel = viewModel(
+        factory = viewModelFactory {
+            RenterHomeViewModel(GetDiscoveryItemsUseCase(RoomRepositoryImpl()))
+        }
+    )
 ) {
-    val scope = rememberCoroutineScope()
-    // State definitions
-    var query by remember { mutableStateOf("") }
-    var currentScreen by remember { mutableStateOf("HOME") }
-    var selectedFilter by remember { mutableStateOf(FilterParams()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var isError by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
 
-    val categories = listOf("Phòng đơn", "Studio", "Gác lửng", "Nguyên căn")
-    val sampleRooms = remember {
-        MockData.rooms.map { room ->
-            RoomItem(
-                id = room.id, 
-                title = room.title, 
-                price = room.priceFormatted, 
-                address = room.address, 
-                rating = room.rating,
-                imageUrl = room.images.firstOrNull()?.resId
-            )
-        }
-    }
-
-    fun refreshData() {
-        scope.launch {
-            isLoading = true
-            isError = false
-            delay(1200) // Simulate fetching
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        refreshData()
-    }
-
-    val filteredRooms = remember(selectedFilter) {
-        if (selectedFilter.selectedDistrict.isNotEmpty() ||
-            selectedFilter.priceRange != (1f..10f) ||
-            selectedFilter.selectedAreaRange.isNotEmpty() ||
-            selectedFilter.selectedAmenities.isNotEmpty()
+    Box(modifier = modifier.fillMaxSize().background(Neutral50)) {
+        LazyVerticalStaggeredGrid(
+            columns = StaggeredGridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalItemSpacing = 16.dp
         ) {
-            sampleRooms.filter {
-                val matchDistrict = if (selectedFilter.selectedDistrict.isNotEmpty())
-                    it.address.contains(selectedFilter.selectedDistrict) else true
-                matchDistrict
+            item(span = StaggeredGridItemSpan.FullLine) {
+                SearchBarSection(
+                    query = uiState.query,
+                    onQueryChange = { viewModel.onQueryChange(it) },
+                    onFilterClick = onNavigateToFilter
+                )
             }
-        } else {
-            sampleRooms
-        }
-    }
 
-    // Main layout container
-    Box(modifier = modifier.fillMaxSize()) {
-        when (currentScreen) {
-            "HOME" -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(16.dp)
-                ) {
-                    // Input fields group
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            placeholder = { Text("Tìm phòng, địa điểm...") },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Tìm kiếm") },
-                            singleLine = true,
-                            shape = Shapes.small,
-                            enabled = !isLoading,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = OrangePrimary,
-                                unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.12f),
-                                focusedLeadingIconColor = OrangePrimary,
-                                cursorColor = OrangePrimary
-                            )
-                        )
+            item(span = StaggeredGridItemSpan.FullLine) {
+                CategorySection()
+            }
 
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        IconButton(
-                            onClick = { if (!isLoading) currentScreen = "FILTER" },
-                            modifier = Modifier
-                                .size(56.dp)
-                                .background(MaterialTheme.colorScheme.surface, CircleShape),
-                            enabled = !isLoading
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = "Bộ lọc",
-                                tint = OrangePrimary
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Categories scroll area
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(categories, key = { it }) { cat ->
-                            AssistChip(
-                                onClick = { if (!isLoading) currentScreen = "SEARCH_RESULT" },
-                                label = { Text(cat, style = Typography.bodySmall) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Home, contentDescription = null, tint = OrangePrimary)
-                                },
-                                shape = Shapes.small,
-                                enabled = !isLoading
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Gợi ý cho bạn",
-                        style = Typography.titleLarge,
-                        color = OnBackgroundLight
+            if (uiState.error != null) {
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    com.example.ezroom.ui.components.EmptyState(
+                        title = "Lỗi tải dữ liệu",
+                        description = uiState.error ?: "",
+                        actionText = "Thử lại",
+                        onAction = { viewModel.refresh() }
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (isError) {
-                        DiscoveryEmptyState(
-                            title = "Đã có lỗi xảy ra",
-                            desc = "Chúng tôi không thể tải danh sách phòng. Vui lòng thử lại.",
-                            onRetry = { refreshData() }
-                        )
-                    } else if (!isLoading && sampleRooms.isEmpty()) {
-                        DiscoveryEmptyState(
-                            title = "Không có phòng trống",
-                            desc = "Vui lòng quay lại sau để xem thêm các bài đăng mới.",
-                            onRetry = { refreshData() }
-                        )
-                    } else {
-                        // Content scroll area
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(sampleRooms, key = { it.id }) { room ->
-                                RoomCard(
-                                    title = room.title,
-                                    price = room.price,
-                                    address = room.address,
-                                    rating = room.rating,
-                                    imageUrl = room.imageUrl,
-                                    onClick = { if (!isLoading) onRoomClick(room) }
-                                )
-                            }
-                        }
-                    }
                 }
             }
-            "FILTER" -> {
-                AdvancedFilterScreen(
-                    onFilterApply = { params ->
-                        selectedFilter = params
-                        currentScreen = "SEARCH_RESULT"
-                    },
-                    onDismiss = { currentScreen = "HOME" }
-                )
-            }
-            "SEARCH_RESULT" -> {
-                SearchResultScreen(
-                    rooms = filteredRooms,
-                    filterParams = selectedFilter,
-                    onRoomClick = { room -> onRoomClick(room) },
-                    onBackClick = { currentScreen = "HOME" },
-                    onFilterClick = { currentScreen = "FILTER" }
-                )
+
+            items(
+                items = uiState.discoveryItems, 
+                key = { it.property.id },
+                contentType = { "DiscoveryCard" }
+            ) { item ->
+                var visible by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { visible = true }
+                
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = tween(600)) + scaleIn(initialScale = 0.9f, animationSpec = tween(600))
+                ) {
+                    DiscoveryCard(
+                        item = item,
+                        onClick = {
+                            item.rooms.firstOrNull()?.let { onRoomClick(it) }
+                        }
+                    )
+                }
             }
         }
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             LoadingWidget()
         }
     }
 }
 
+// Utility for simple manual DI
+@Suppress("UNCHECKED_CAST")
+fun <VM : ViewModel> viewModelFactory(initializer: () -> VM): androidx.lifecycle.ViewModelProvider.Factory {
+    return object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return initializer() as T
+        }
+    }
+}
+
 @Composable
-fun DiscoveryEmptyState(title: String, desc: String, onRetry: () -> Unit) {
+fun DiscoveryCard(item: DiscoveryItem, onClick: () -> Unit) {
+    val property = item.property
+    val rooms = item.rooms
+    
+    // Pro Max Design: Subtle Glassmorphism and Bento-style spacing
+    Box(modifier = Modifier
+        .padding(horizontal = 6.dp)
+        .graphicsLayer {
+            // Subtle entrance scale effect can be added here if needed
+        }
+    ) {
+        RoomCard(
+            title = if (property.type == PropertyType.COMPLEX) property.name else rooms.firstOrNull()?.title ?: property.name,
+            price = property.priceRange,
+            address = property.address,
+            rating = 4.5f, // Mock
+            imageUrl = property.images.firstOrNull()?.resId ?: android.R.drawable.ic_menu_gallery,
+            onClick = onClick,
+            imageOverlay = {
+                if (property.type == PropertyType.COMPLEX) {
+                    // Glassmorphic Badge
+                    Surface(
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .align(Alignment.BottomStart),
+                        color = if (property.vacantRoomCount > 0) PrimaryMain.copy(alpha = 0.9f) else Neutral500.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(12.dp),
+                        shadowElevation = 8.dp,
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.5.dp, 
+                            Color.White.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (property.vacantRoomCount > 0) Icons.Default.HomeWork else Icons.Default.Block, 
+                                contentDescription = null, 
+                                tint = Color.White, 
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (property.vacantRoomCount > 0) "Còn ${property.vacantRoomCount} phòng" else "Hết phòng",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun SearchBarSection(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onFilterClick: () -> Unit
+) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = OnBackgroundLight.copy(alpha = 0.2f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = title, style = Typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(text = desc, style = Typography.bodyMedium, color = OnBackgroundLight.copy(alpha = 0.6f), textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-            shape = Shapes.small
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .shadow(12.dp, shape = CircleShape, ambientColor = PrimaryMain.copy(alpha = 0.2f)),
+            shape = CircleShape,
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300.copy(alpha = 0.5f))
         ) {
-            Text("Thử lại")
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = PrimaryMain)
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                // Real Input for search
+                TextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    placeholder = { 
+                        Text("Tìm khu vực, tòa nhà...", style = MaterialTheme.typography.bodyMedium, color = Neutral500) 
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+                
+                VerticalDivider(modifier = Modifier.height(24.dp).padding(horizontal = 12.dp))
+                
+                IconButton(
+                    onClick = onFilterClick,
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(PrimarySurface)
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = "Lọc", tint = PrimaryMain, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategorySection() {
+    val categories = listOf("Tất cả", "Dãy trọ", "Chung cư mini", "Nhà riêng", "Ở ghép")
+    var selectedCategory by remember { mutableStateOf("Tất cả") }
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        items(categories) { cat ->
+            val isSelected = selectedCategory == cat
+            Surface(
+                onClick = { selectedCategory = cat },
+                shape = CircleShape,
+                color = if (isSelected) PrimaryMain else Neutral50,
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) PrimaryMain else Neutral300),
+                contentColor = if (isSelected) Color.White else Neutral700
+            ) {
+                Text(
+                    text = cat,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -268,3 +282,4 @@ fun RenterHomeScreenPreview() {
         RenterHomeScreen()
     }
 }
+

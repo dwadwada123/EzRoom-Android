@@ -1,140 +1,138 @@
 package com.example.ezroom.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.ui.renter.discovery.RenterHomeScreen
-import com.example.ezroom.ui.renter.favorite.SavedRoomsScreen
-import com.example.ezroom.ui.renter.appointment.RenterAppointmentListScreen
-import com.example.ezroom.ui.renter.invoice.RenterInvoiceListScreen
+import androidx.compose.ui.zIndex
+import androidx.navigation.NavController
+import com.example.ezroom.domain.model.*
 import com.example.ezroom.ui.chat.ChatListScreen
 import com.example.ezroom.ui.host.appointment.HostAppointmentListScreen
 import com.example.ezroom.ui.host.overview.HostDashboardScreen
 import com.example.ezroom.ui.host.room.RoomManagementScreen
-import com.example.ezroom.ui.theme.OrangePrimary
+import com.example.ezroom.ui.renter.discovery.RenterHomeScreen
+import com.example.ezroom.ui.renter.invoice.RenterInvoiceListScreen
+import com.example.ezroom.ui.theme.EzRoomTheme
 
-// Navigation routing
-sealed class BottomNavItem(
-    val route: String,
-    val title: String,
-    val icon: ImageVector
-) {
-    object Explore : BottomNavItem("explore", "Khám phá", Icons.Default.Search)
-    object Favorite : BottomNavItem("favorite", "Yêu thích", Icons.Default.FavoriteBorder)
+sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
+    // Renter Items
+    object Discovery : BottomNavItem("discovery", "Khám phá", Icons.Default.Search)
+    object RenterSaved : BottomNavItem("renter_saved", "Yêu thích", Icons.Default.Favorite)
     object RenterAppointments : BottomNavItem("renter_appointments", "Lịch hẹn", Icons.Default.DateRange)
     object RenterMessages : BottomNavItem("renter_messages", "Tin nhắn", Icons.AutoMirrored.Filled.Chat)
-    object RenterInvoices : BottomNavItem("renter_invoices", "Hóa đơn", Icons.Default.ReceiptLong)
+    object RenterInvoices : BottomNavItem("renter_invoices", "Hóa đơn", Icons.AutoMirrored.Filled.ReceiptLong)
 
-    object Management : BottomNavItem("management", "Quản lý", Icons.Default.HomeWork)
-    object HostRooms : BottomNavItem("host_rooms", "Phòng", Icons.Default.Bed)
-    object HostAppointments : BottomNavItem("host_appointments", "Lịch hẹn", Icons.Default.Event)
-    object HostMessages : BottomNavItem("host_messages", "Tin nhắn", Icons.Default.Email)
-    object HostInvoices : BottomNavItem("host_invoices", "Hóa đơn", Icons.Default.ReceiptLong)
-    object HostProfile : BottomNavItem("host_profile", "Cá nhân", Icons.Default.AccountCircle)
+    // Host Items
+    object Management : BottomNavItem("management", "Quản lý", Icons.Default.Dashboard)
+    object HostRooms : BottomNavItem("host_rooms", "Phòng trọ", Icons.Default.HomeWork)
+    object HostAppointments : BottomNavItem("host_appointments", "Lịch hẹn", Icons.AutoMirrored.Filled.EventNote)
+    object HostMessages : BottomNavItem("host_messages", "Tin nhắn", Icons.Default.QuestionAnswer)
+    object HostInvoices : BottomNavItem("host_invoices", "Hóa đơn", Icons.Default.Payments)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RenterMainScreen(
-    // Event callbacks
     onRoomClick: (String) -> Unit = {},
     onInvoiceClick: (String) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onChatClick: (String) -> Unit = {},
-    onEditAppointment: (String, String) -> Unit = { _, _ -> }
+    onEditAppointment: (String, String) -> Unit = { _, _ -> },
+    onNavigateToFilter: () -> Unit = {},
+    navController: NavController? = null
 ) {
-    // State definitions
     val items = listOf(
-        BottomNavItem.Explore,
-        BottomNavItem.Favorite,
+        BottomNavItem.Discovery,
+        BottomNavItem.RenterSaved,
         BottomNavItem.RenterAppointments,
         BottomNavItem.RenterMessages,
         BottomNavItem.RenterInvoices
     )
-    var selectedItem by rememberSaveable { mutableStateOf(0) }
+    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
 
-    // Main layout container
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { 
-                    Text(
-                        text = items[selectedItem].title.uppercase(), 
-                        fontWeight = FontWeight.Bold,
-                        color = OrangePrimary
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNotificationClick) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            tint = OrangePrimary
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onProfileClick) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
-                            tint = OrangePrimary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        },
-        bottomBar = {
-            EzBottomNavigationBar(
-                items = items,
-                selectedIndex = selectedItem,
-                onItemSelected = { selectedItem = it }
+            ModernMainTopBar(
+                title = items[selectedItem].title,
+                onNotificationClick = onNotificationClick,
+                onProfileClick = onProfileClick
             )
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (items[selectedItem]) {
-                BottomNavItem.Explore -> RenterHomeScreen(
-                    onRoomClick = { roomItem -> onRoomClick(roomItem.id) }
-                )
-                BottomNavItem.Favorite -> SavedRoomsScreen(
-                    onRoomClick = onRoomClick
-                )
-                BottomNavItem.RenterAppointments -> RenterAppointmentListScreen(
-                    onNavigateBack = { selectedItem = 0 },
-                    onEditAppointment = { appt -> onEditAppointment(appt.roomId, appt.id) }
-                )
-                BottomNavItem.RenterMessages -> ChatListScreen(
-                    onNavigateBack = { selectedItem = 0 },
-                    onConversationClick = { _, userName -> 
-                        onChatClick(userName)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                AnimatedContent(
+                    targetState = items[selectedItem],
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                    },
+                    label = "MainContentTransition"
+                ) { targetItem ->
+                    when (targetItem) {
+                        BottomNavItem.Discovery -> RenterHomeScreen(
+                            onRoomClick = { room -> onRoomClick(room.id) },
+                            onNavigateToFilter = onNavigateToFilter,
+                            navController = navController
+                        )
+                        BottomNavItem.RenterSaved -> com.example.ezroom.ui.renter.favorite.SavedRoomsScreen(
+                            onRoomClick = onRoomClick,
+                            onNavigateToExplore = { selectedItem = 0 }
+                        )
+                        BottomNavItem.RenterAppointments -> com.example.ezroom.ui.renter.appointment.RenterAppointmentListScreen(
+                            onNavigateBack = { selectedItem = 0 },
+                            onEditAppointment = { appointment -> 
+                                onEditAppointment(appointment.roomId, appointment.id)
+                            }
+                        )
+                        BottomNavItem.RenterMessages -> ChatListScreen(
+                            onConversationClick = { _, userName -> onChatClick(userName) }
+                        )
+                        BottomNavItem.RenterInvoices -> RenterInvoiceListScreen(
+                            onNavigateBack = { selectedItem = 0 },
+                            onInvoiceClick = onInvoiceClick
+                        )
+                        else -> {}
                     }
+                }
+            }
+
+            // Floating Dock Navigation
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .zIndex(10f)
+            ) {
+                FloatingDockNavigationBar(
+                    items = items,
+                    selectedIndex = selectedItem,
+                    onItemSelected = { selectedItem = it }
                 )
-                BottomNavItem.RenterInvoices -> RenterInvoiceListScreen(
-                    onNavigateBack = { selectedItem = 0 },
-                    onInvoiceClick = onInvoiceClick
-                )
-                else -> {}
             }
         }
     }
@@ -143,17 +141,19 @@ fun RenterMainScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostMainScreen(
-    // Event callbacks
     onRoomClick: (String) -> Unit = {},
     onInvoiceClick: (String) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    onFabClick: () -> Unit = {},
-    onEditRoomClick: (String) -> Unit = {},
+    onCloneRoomClick: (String) -> Unit = {},
     onCreateContractClick: () -> Unit = {},
-    onChatClick: (String) -> Unit = {}
+    onChatClick: (String) -> Unit = {},
+    onAddRoomToProperty: (String) -> Unit = {},
+    onAddPropertyClick: () -> Unit = {},
+    onAddStandaloneRoomClick: () -> Unit = {},
+    onRenterReputationClick: (String) -> Unit = {},
+    onEditPropertyClick: (String) -> Unit = {}
 ) {
-    // State definitions
     val items = listOf(
         BottomNavItem.Management,
         BottomNavItem.HostRooms,
@@ -161,155 +161,251 @@ fun HostMainScreen(
         BottomNavItem.HostMessages,
         BottomNavItem.HostInvoices
     )
-    var selectedItem by rememberSaveable { mutableStateOf(0) }
+    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
 
-    // Main layout container
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { 
-                    Text(
-                        text = items[selectedItem].title.uppercase(), 
-                        fontWeight = FontWeight.Bold,
-                        color = OrangePrimary
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNotificationClick) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Notifications",
-                            tint = OrangePrimary
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onProfileClick) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
-                            tint = OrangePrimary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+            ModernMainTopBar(
+                title = items[selectedItem].title,
+                onNotificationClick = onNotificationClick,
+                onProfileClick = onProfileClick
             )
-        },
-        bottomBar = {
-            EzBottomNavigationBar(
-                items = items,
-                selectedIndex = selectedItem,
-                onItemSelected = { selectedItem = it }
-            )
-        },
-        floatingActionButton = {
-            // FAB conditional rendering
-            when (items[selectedItem]) {
-                BottomNavItem.HostRooms -> {
-                    FloatingActionButton(
-                        onClick = onFabClick,
-                        containerColor = OrangePrimary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Thêm phòng")
-                    }
-                }
-                BottomNavItem.HostInvoices -> {
-                    FloatingActionButton(
-                        onClick = { onInvoiceClick("create") },
-                        containerColor = OrangePrimary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ) {
-                        Icon(imageVector = Icons.Default.PostAdd, contentDescription = "Lập hóa đơn")
-                    }
-                }
-                else -> {}
-            }
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (items[selectedItem]) {
-                BottomNavItem.Management -> HostDashboardScreen(
-                    onCreateContract = onCreateContractClick
-                )
-                BottomNavItem.HostRooms -> RoomManagementScreen(
-                    onRoomClick = onRoomClick,
-                    onEditClick = { room -> onEditRoomClick(room.id) }
-                )
-                BottomNavItem.HostAppointments -> HostAppointmentListScreen(
-                    onNavigateBack = { selectedItem = 0 },
-                    onCreateContract = onCreateContractClick
-                )
-                BottomNavItem.HostMessages -> ChatListScreen(
-                    onNavigateBack = { selectedItem = 0 },
-                    onConversationClick = { _, userName -> 
-                        onChatClick(userName)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                AnimatedContent(
+                    targetState = items[selectedItem],
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                    },
+                    label = "HostContentTransition"
+                ) { targetItem ->
+                    when (targetItem) {
+                        BottomNavItem.Management -> HostDashboardScreen(
+                            onCreateContract = onCreateContractClick
+                        )
+                        BottomNavItem.HostRooms -> RoomManagementScreen(
+                            onRoomClick = onRoomClick,
+                            onCloneRoomClick = { room -> onCloneRoomClick(room.id) },
+                            onAddRoomClick = { property -> onAddRoomToProperty(property.id) },
+                            onAddPropertyClick = onAddPropertyClick,
+                            onAddStandaloneRoomClick = onAddStandaloneRoomClick,
+                            onEditPropertyClick = { property -> onEditPropertyClick(property.id) }
+                        )
+                        BottomNavItem.HostAppointments -> HostAppointmentListScreen(
+                            onNavigateBack = { selectedItem = 0 },
+                            onCreateContract = onCreateContractClick,
+                            onRenterClick = onRenterReputationClick
+                        )
+                        BottomNavItem.HostMessages -> ChatListScreen(
+                            onConversationClick = { _, userName -> onChatClick(userName) }
+                        )
+                        BottomNavItem.HostInvoices -> com.example.ezroom.ui.host.invoice.HostInvoiceListScreen(
+                            onNavigateToCreate = { onInvoiceClick("create") },
+                            onInvoiceClick = { invoiceId -> onInvoiceClick(invoiceId) }
+                        )
+                        else -> {}
                     }
+                }
+            }
+
+            // Floating Dock Navigation for Host
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .zIndex(10f)
+            ) {
+                FloatingDockNavigationBar(
+                    items = items,
+                    selectedIndex = selectedItem,
+                    onItemSelected = { selectedItem = it }
                 )
-                BottomNavItem.HostInvoices -> com.example.ezroom.ui.host.invoice.HostInvoiceListScreen(
-                    onNavigateToCreate = { onInvoiceClick("create") },
-                    onInvoiceClick = { invoiceId -> onInvoiceClick(invoiceId) }
-                )
-                else -> {}
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EzBottomNavigationBar(
+fun ModernMainTopBar(
+    title: String,
+    onNotificationClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
+    Surface(
+        color = Color.White.copy(alpha = 0.95f), // Refined for "Pro Max" look
+        tonalElevation = 0.dp, // Remove tint that could look grey
+        shadowElevation = 8.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        CenterAlignedTopAppBar(
+            title = { 
+                Text(
+                    text = title, 
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold
+                ) 
+            },
+            navigationIcon = {
+                IconButton(onClick = onNotificationClick) {
+                    BadgedBox(badge = { Badge { Text("3") } }) {
+                        Icon(Icons.Default.Notifications, contentDescription = null)
+                    }
+                }
+            },
+            actions = {
+                IconButton(onClick = onProfileClick) {
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Person, 
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent
+            )
+        )
+    }
+}
+
+@Composable
+fun FloatingDockNavigationBar(
     items: List<BottomNavItem>,
     selectedIndex: Int,
     onItemSelected: (Int) -> Unit
 ) {
-    // Main layout container
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 8.dp
+    val density = LocalDensity.current
+    
+    // Weight factors for mathematical calculations
+    val selectedWeight = 2.5f
+    val unselectedWeight = 1f
+    val totalWeight = selectedWeight + ((items.size - 1) * unselectedWeight)
+
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .fillMaxWidth()
+            .shadow(24.dp, shape = CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 8.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, 
+            Brush.linearGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.1f)))
+        )
     ) {
-        items.forEachIndexed { index, item ->
-            NavigationBarItem(
-                icon = { Icon(item.icon, contentDescription = item.title) },
-                label = { 
-                    Text(
-                        text = item.title,
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                        softWrap = false
-                    ) 
-                },
-                selected = selectedIndex == index,
-                onClick = { onItemSelected(index) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = OrangePrimary,
-                    selectedTextColor = OrangePrimary,
-                    indicatorColor = OrangePrimary.copy(alpha = 0.15f),
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        BoxWithConstraints(
+            modifier = Modifier
+                .padding(horizontal = 4.dp, vertical = 6.dp)
+                .fillMaxWidth()
+        ) {
+            val constraints = this
+            val maxWidthPx = with(density) { constraints.maxWidth.toPx() }
+            
+            // Calculate indicator position and width
+            val targetWidthPx = (selectedWeight / totalWeight) * maxWidthPx
+            val targetOffsetPx = (selectedIndex * unselectedWeight / totalWeight) * maxWidthPx
+
+            val animatedWidth by animateFloatAsState(
+                targetValue = targetWidthPx,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
+                label = "IndicatorWidth"
             )
+            val animatedOffset by animateFloatAsState(
+                targetValue = targetOffsetPx,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow),
+                label = "IndicatorOffset"
+            )
+
+            // Sliding Indicator
+            Box(
+                modifier = Modifier
+                    .offset(x = with(density) { animatedOffset.toDp() })
+                    .width(with(density) { animatedWidth.toDp() })
+                    .height(48.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+            )
+
+            // Icons and Labels Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEachIndexed { index, item ->
+                    val isSelected = selectedIndex == index
+                    
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.1f else 1.0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "IconScale"
+                    )
+
+                    val contentColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary 
+                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        animationSpec = tween(300),
+                        label = "ContentColor"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(if (isSelected) selectedWeight else unselectedWeight)
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onItemSelected(index) }
+                            )
+                            .height(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.title,
+                                tint = contentColor,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .graphicsLayer(scaleX = scale, scaleY = scale)
+                            )
+                            
+                            AnimatedVisibility(
+                                visible = isSelected,
+                                enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+                                exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+                            ) {
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = contentColor,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Visible
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-@Composable
-fun PlaceholderContent(title: String) {
-    // Main layout container
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}

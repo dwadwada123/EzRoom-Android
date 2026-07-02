@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.theme.EzRoomTheme
+import com.example.ezroom.ui.theme.Neutral50
 
 @Composable
 fun ForgotPasswordScreen(
@@ -46,16 +47,17 @@ fun ForgotPasswordScreen(
         // Top app bar
         topBar = {
             CommonTopAppBar(
-                title = "Khôi Phục Mật Khẩu"
-            ) {
-                if (currentStep == 2) {
-                    currentStep = 1
-                } else {
-                    onBackClick()
+                title = "Khôi Phục Mật Khẩu",
+                onBackClick = {
+                    if (currentStep == 2) {
+                        currentStep = 1
+                    } else {
+                        onBackClick()
+                    }
                 }
-            }
+            )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Neutral50
     ) { paddingValues ->
         // Content scroll area
         Column(
@@ -81,7 +83,7 @@ fun ForgotPasswordScreen(
                             if (email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                                 currentStep = 2
                             } else {
-                                errorText = "Vui lòng nhập email hợp lệ."
+                                errorText = "Email không hợp lệ. Vui lòng kiểm tra lại."
                             }
                         }
                     )
@@ -98,8 +100,8 @@ fun ForgotPasswordScreen(
                         onToggleConfirmPasswordVisibility = { isConfirmPasswordVisible = !isConfirmPasswordVisible },
                         onResetPassword = {
                             when {
-                                otpCode.length < 4 -> errorText = "Mã OTP không hợp lệ."
-                                newPassword.length < 6 -> errorText = "Mật khẩu phải có ít nhất 6 ký tự."
+                                otpCode.length < 4 -> errorText = "Mã OTP phải có 4-6 ký tự."
+                                newPassword.length < 6 -> errorText = "Mật khẩu quá ngắn (tối thiểu 6 ký tự)."
                                 newPassword != confirmPassword -> errorText = "Mật khẩu xác nhận không khớp."
                                 else -> onResetSuccess()
                             }
@@ -110,9 +112,9 @@ fun ForgotPasswordScreen(
 
             if (errorText != null) {
                 Text(
-                    text = errorText!!,
+                    text = errorText!!.uppercase(),
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
@@ -129,6 +131,12 @@ fun StepOneEmailInput(
     // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
+            text = "Xác thực Email".uppercase(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        Text(
             text = "Vui lòng nhập Email đã đăng ký tài khoản. Chúng tôi sẽ gửi mã OTP để xác minh.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -142,7 +150,7 @@ fun StepOneEmailInput(
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.small
         )
 
         // Action buttons row
@@ -173,6 +181,12 @@ fun StepTwoResetPassword(
     // Input fields group
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
+            text = "Thiết lập lại".uppercase(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Text(
             text = "Mã OTP đã được gửi đến Email của bạn. Vui lòng nhập mã và thiết lập mật khẩu mới.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -186,7 +200,7 @@ fun StepTwoResetPassword(
             leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.small
         )
 
         OutlinedTextField(
@@ -206,7 +220,7 @@ fun StepTwoResetPassword(
             visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.small
         )
 
         OutlinedTextField(
@@ -226,7 +240,7 @@ fun StepTwoResetPassword(
             visualTransformation = if (isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.small
         )
 
         // Action buttons row
@@ -247,3 +261,4 @@ fun ForgotPasswordScreenPreview() {
         ForgotPasswordScreen(onBackClick = {}, onResetSuccess = {})
     }
 }
+

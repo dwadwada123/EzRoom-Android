@@ -25,7 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.UserRepositoryImpl
+import com.example.ezroom.domain.usecase.GetCurrentUserUseCase
+import com.example.ezroom.domain.usecase.UpdateProfileUseCase
+import com.example.ezroom.domain.usecase.VerifyEkycUseCase
 import com.example.ezroom.ui.components.CommonTopAppBar
+import com.example.ezroom.ui.profile.ProfileViewModel
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.EzRoomTheme
 
 enum class EkycStep {
@@ -36,12 +43,33 @@ enum class EkycStep {
 }
 
 @Composable
-fun EkycScreen(onNavigateBack: () -> Unit = {}) {
+fun EkycScreen(
+    onNavigateBack: () -> Unit = {},
+    viewModel: ProfileViewModel = viewModel(
+        factory = viewModelFactory {
+            val repo = UserRepositoryImpl()
+            ProfileViewModel(
+                GetCurrentUserUseCase(repo),
+                UpdateProfileUseCase(repo),
+                VerifyEkycUseCase(repo)
+            )
+        }
+    )
+) {
     // State definitions
     var currentStep by remember { mutableStateOf(EkycStep.INSTRUCTIONS) }
     var frontIdUri by remember { mutableStateOf<Uri?>(null) }
     var backIdUri by remember { mutableStateOf<Uri?>(null) }
     var selfieUri by remember { mutableStateOf<Uri?>(null) }
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Handle success transition
+    LaunchedEffect(uiState.isEkycSuccess) {
+        if (uiState.isEkycSuccess) {
+            currentStep = EkycStep.SUCCESS
+        }
+    }
 
     // Main layout container
     Scaffold(
@@ -61,47 +89,55 @@ fun EkycScreen(onNavigateBack: () -> Unit = {}) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Content scroll area
-            when (currentStep) {
-                EkycStep.INSTRUCTIONS -> {
-                    InstructionSection(
-                        onStartClick = { currentStep = EkycStep.UPLOAD_ID }
-                    )
-                }
-                EkycStep.UPLOAD_ID -> {
-                    UploadIdSection(
-                        frontUri = frontIdUri,
-                        backUri = backIdUri,
-                        onCaptureFront = { frontIdUri = Uri.EMPTY },
-                        onCaptureBack = { backIdUri = Uri.EMPTY },
-                        onNextClick = { currentStep = EkycStep.SELFIE }
-                    )
-                }
-                EkycStep.SELFIE -> {
-                    SelfieSection(
-                        selfieUri = selfieUri,
-                        onCapture = { selfieUri = Uri.EMPTY },
-                        onCompleteClick = { currentStep = EkycStep.SUCCESS }
-                    )
-                }
-                EkycStep.SUCCESS -> {
-                    SuccessSection(
-                        onFinishClick = onNavigateBack
-                    )
-                }
+        if (uiState.isLoading && currentStep != EkycStep.SUCCESS) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-            
-            Spacer(modifier = Modifier.height(32.dp))
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Content scroll area
+                when (currentStep) {
+                    EkycStep.INSTRUCTIONS -> {
+                        InstructionSection(
+                            onStartClick = { currentStep = EkycStep.UPLOAD_ID }
+                        )
+                    }
+                    EkycStep.UPLOAD_ID -> {
+                        UploadIdSection(
+                            frontUri = frontIdUri,
+                            backUri = backIdUri,
+                            onCaptureFront = { frontIdUri = Uri.EMPTY },
+                            onCaptureBack = { backIdUri = Uri.EMPTY },
+                            onNextClick = { currentStep = EkycStep.SELFIE }
+                        )
+                    }
+                    EkycStep.SELFIE -> {
+                        SelfieSection(
+                            selfieUri = selfieUri,
+                            onCapture = { selfieUri = Uri.EMPTY },
+                            onCompleteClick = { 
+                                viewModel.onVerifyEkyc("123456789", "front", "back")
+                            }
+                        )
+                    }
+                    EkycStep.SUCCESS -> {
+                        SuccessSection(
+                            onFinishClick = onNavigateBack
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }
@@ -401,3 +437,4 @@ fun EkycScreenPreview() {
         EkycScreen()
     }
 }
+

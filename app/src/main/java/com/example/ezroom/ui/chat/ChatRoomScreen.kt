@@ -1,5 +1,7 @@
 package com.example.ezroom.ui.chat
 
+import android.content.Intent
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,176 +9,306 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.data.model.*
+import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.ChatRepositoryImpl
+import com.example.ezroom.domain.model.*
+import com.example.ezroom.domain.usecase.GetConversationsUseCase
+import com.example.ezroom.domain.usecase.GetMessagesUseCase
+import com.example.ezroom.domain.usecase.SendMessageUseCase
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
-
-// Mock data
-data class MessageUI(
-    val message: Message? = null,
-    val dateHeader: String? = null
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatRoomScreen(
+    conversationId: String = "conv_1",
     userName: String = "Trần Vũ Phong",
     isOnline: Boolean = true,
-    // Event callbacks
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: ChatViewModel = viewModel(
+        factory = viewModelFactory {
+            val repo = ChatRepositoryImpl()
+            ChatViewModel(
+                GetConversationsUseCase(repo),
+                GetMessagesUseCase(repo),
+                SendMessageUseCase(repo)
+            )
+        }
+    )
 ) {
-    // State definitions
+    val uiState by viewModel.roomState.collectAsState()
+    val context = LocalContext.current
     var messageText by remember { mutableStateOf("") }
+    var showAttachmentMenu by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
 
-    // Mock data
-    val messages = remember {
-        mutableStateListOf(
-            MessageUI(dateHeader = "10 Tháng 05, 2026"),
-            MessageUI(message = Message("1", "other", "Chào anh, phòng Q7 bên mình còn trống không ạ?", 1715310000000L, false)),
-            MessageUI(message = Message("2", "me", "Chào bạn, phòng đó vẫn còn nhé. Bạn muốn xem lúc nào?", 1715310120000L, true)),
-            MessageUI(dateHeader = "Hôm nay"),
-            MessageUI(message = Message("4", "other", "Dạ chiều nay tầm 5h30 mình qua xem được không anh?", 1715396700000L, false)),
-            MessageUI(message = Message("5", "me", "Được nhé, khi nào đến bạn gọi số 090xxxxxxx.", 1715397000000L, true))
-        )
+    LaunchedEffect(conversationId) {
+        viewModel.loadMessages(conversationId, userName)
     }
 
-    // Main layout container
-    Scaffold(
-        containerColor = BackgroundLight,
-        // Top app bar
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, null, tint = OrangePrimary)
-                    }
-                },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            modifier = Modifier.size(40.dp),
-                            shape = CircleShape,
-                            color = OrangePrimary.copy(alpha = 0.1f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(userName.take(1), fontWeight = FontWeight.Bold, color = OrangePrimary)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = userName,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = OnBackgroundLight
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (isOnline) {
-                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(TealAccent))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                }
-                                Text(
-                                    text = if (isOnline) "Đang hoạt động" else "Ngoại tuyến",
-                                    fontSize = 12.sp,
-                                    color = if (isOnline) TealAccent else Color.Gray
-                                )
-                            }
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.MoreVert, null, tint = OrangePrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SurfaceLight,
-                    scrolledContainerColor = SurfaceLight
-                )
+    if (showAttachmentMenu) {
+        ModalBottomSheet(
+            onDismissRequest = { showAttachmentMenu = false },
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            AttachmentMenuContent(
+                onOptionClick = {
+                    showAttachmentMenu = false
+                }
             )
+        }
+    }
+
+    Scaffold(
+        containerColor = Neutral50,
+        topBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                tonalElevation = 4.dp,
+                shadowElevation = 8.dp
+            ) {
+                CenterAlignedTopAppBar(
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = uiState.otherPartyName.take(1).ifEmpty { "C" }, 
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.ExtraBold, 
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Text(
+                                    text = uiState.otherPartyName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (isOnline) {
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(SuccessEmerald))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    Text(
+                                        text = if (isOnline) "Đang hoạt động" else "Ngoại tuyến",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (isOnline) SuccessEmerald else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_DIAL, "tel:0898990543".toUri())
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        ) {
+                            Icon(Icons.Default.Call, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            }
         },
-        // Input fields group
         bottomBar = {
             Surface(
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp,
-                color = SurfaceLight
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(16.dp, RectangleShape),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(horizontal = 8.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                         .fillMaxWidth()
                         .navigationBarsPadding(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Image, null, tint = Color.Gray)
+                    IconButton(
+                        onClick = { showAttachmentMenu = true },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                    ) {
+                        Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
                     }
 
-                    OutlinedTextField(
-                        value = messageText,
-                        onValueChange = { messageText = it },
-                        placeholder = { Text("Gửi tin nhắn cho chủ trọ...", fontSize = 14.sp) },
+                    Surface(
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(28.dp),
-                        maxLines = 4,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = OnBackgroundLight.copy(alpha = 0.1f),
-                            focusedContainerColor = BackgroundLight,
-                            unfocusedContainerColor = BackgroundLight
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilledIconButton(
-                        onClick = { if (messageText.isNotBlank()) messageText = "" },
-                        enabled = messageText.isNotBlank(),
-                        modifier = Modifier.size(48.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = OrangePrimary,
-                            disabledContainerColor = Color.LightGray.copy(alpha = 0.3f)
-                        )
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     ) {
-                        Icon(Icons.Default.Send, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        TextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            placeholder = { Text("Gửi tin nhắn...", style = MaterialTheme.typography.bodyMedium) },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 4,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { 
+                            if (messageText.isNotBlank()) {
+                                viewModel.onSendMessage(conversationId, messageText)
+                                messageText = "" 
+                            }
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (messageText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send, 
+                            null, 
+                            tint = if (messageText.isNotBlank()) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
         }
     ) { padding ->
-        // Content scroll area
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             items(
-                items = messages,
-                key = { it.message?.id ?: it.dateHeader ?: "" }
-            ) { msgUI ->
-                if (msgUI.dateHeader != null) {
-                    DateSeparator(msgUI.dateHeader)
-                } else if (msgUI.message != null) {
-                    ChatBubble(msgUI.message)
+                items = uiState.messages,
+                key = { it.id }
+            ) { message ->
+                var visible by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { visible = true }
+                
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = slideInVertically(initialOffsetY = { 20 }) + fadeIn()
+                ) {
+                    ChatBubble(message)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun AttachmentMenuContent(onOptionClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Chia sẻ nội dung",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.ExtraBold
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            AttachmentOption(
+                icon = Icons.Default.Image,
+                label = "Hình ảnh",
+                color = Color(0xFF10B981),
+                onClick = onOptionClick,
+                modifier = Modifier.weight(1f)
+            )
+            AttachmentOption(
+                icon = Icons.Default.LocationOn,
+                label = "Vị trí",
+                color = Color(0xFFEF4444),
+                onClick = onOptionClick,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun AttachmentOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = color.copy(alpha = 0.1f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = color)
         }
     }
 }
@@ -186,19 +318,19 @@ fun DateSeparator(date: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = OnBackgroundLight.copy(alpha = 0.05f),
-            shape = RoundedCornerShape(12.dp)
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            shape = CircleShape
         ) {
             Text(
                 text = date,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Gray
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -208,35 +340,36 @@ fun DateSeparator(date: String) {
 fun ChatBubble(message: Message) {
     val isMe = message.isFromMe
     val alignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
-    val bubbleColor = if (isMe) OrangePrimary else SurfaceLight
-    val textColor = if (isMe) Color.White else OnBackgroundLight
+    val bubbleColor = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val textColor = if (isMe) Color.White else MaterialTheme.colorScheme.onSurface
 
     val shape = if (isMe)
-        RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp)
+        RoundedCornerShape(24.dp, 24.dp, 4.dp, 24.dp)
     else
-        RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp)
+        RoundedCornerShape(24.dp, 24.dp, 24.dp, 4.dp)
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
         Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
             Surface(
                 color = bubbleColor,
                 shape = shape,
-                shadowElevation = if (isMe) 2.dp else 1.dp,
-                modifier = Modifier.widthIn(max = 300.dp)
+                shadowElevation = if (isMe) 8.dp else 2.dp,
+                modifier = Modifier.widthIn(max = 280.dp),
+                border = if (!isMe) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)) else null
             ) {
                 Text(
                     text = message.text,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
                     color = textColor,
-                    fontSize = 15.sp, 
-                    lineHeight = 22.sp
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 24.sp
                 )
             }
             Text(
                 text = "10:00", 
-                fontSize = 11.sp, 
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 6.dp, start = 8.dp, end = 8.dp)
             )
         }
     }

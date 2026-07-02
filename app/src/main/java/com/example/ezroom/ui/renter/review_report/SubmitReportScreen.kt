@@ -19,6 +19,7 @@ import coil.compose.AsyncImage
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.theme.EzRoomTheme
+import com.example.ezroom.ui.theme.Neutral50
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -60,7 +61,7 @@ fun SubmitReportScreen(
                     onBackClick = onBackClick
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = Neutral50
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -239,3 +240,4 @@ fun SubmitReportScreenPreview() {
         SubmitReportScreen()
     }
 }
+

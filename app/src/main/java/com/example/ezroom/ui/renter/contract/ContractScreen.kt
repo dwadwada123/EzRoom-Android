@@ -19,9 +19,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.data.model.Contract
-import com.example.ezroom.data.model.DepositStatus
-import com.example.ezroom.data.model.TransactionType
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.ContractRepositoryImpl
+import com.example.ezroom.domain.model.Contract
+import com.example.ezroom.domain.model.DepositStatus
+import com.example.ezroom.domain.model.TransactionType
+import com.example.ezroom.domain.usecase.GetContractsUseCase
+import com.example.ezroom.domain.usecase.SignContractUseCase
+import com.example.ezroom.ui.host.contract.ContractViewModel
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
 
@@ -31,7 +37,18 @@ fun ContractScreen(
     // Event callbacks
     contract: Contract,
     onNavigateBack: () -> Unit,
-    onSignContract: (transactionType: TransactionType) -> Unit
+    onSignContract: (transactionType: TransactionType) -> Unit,
+    viewModel: ContractViewModel = viewModel(
+        factory = viewModelFactory {
+            val repository = ContractRepositoryImpl()
+            ContractViewModel(
+                GetContractsUseCase(repository),
+                SignContractUseCase(repository),
+                repository,
+                isHost = false
+            )
+        }
+    )
 ) {
     // State definitions
     var isAgreed by remember { mutableStateOf(false) }
@@ -205,7 +222,10 @@ fun ContractScreen(
 
             // Action buttons row (Sign contract action)
             Button(
-                onClick = { onSignContract(TransactionType.DEPOSIT) },
+                onClick = { 
+                    viewModel.signContract(contract.id)
+                    onSignContract(TransactionType.DEPOSIT) 
+                },
                 enabled = isAgreed,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -275,3 +295,4 @@ fun ContractScreenPreview() {
         )
     }
 }
+

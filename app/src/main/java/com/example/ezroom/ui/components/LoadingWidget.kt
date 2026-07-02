@@ -32,3 +32,4 @@ fun LoadingWidget(modifier: Modifier = Modifier) {
         )
     }
 }
+

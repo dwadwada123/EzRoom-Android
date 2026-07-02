@@ -1,40 +1,52 @@
 package com.example.ezroom.ui.renter.invoice
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.data.model.Invoice
-import com.example.ezroom.data.model.InvoiceStatus
-import com.example.ezroom.data.model.TransactionType
-import com.example.ezroom.ui.components.CommonTopAppBar
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.InvoiceRepositoryImpl
+import com.example.ezroom.domain.model.*
+import com.example.ezroom.domain.usecase.GetInvoicesUseCase
 import com.example.ezroom.ui.components.PrimaryButton
+import com.example.ezroom.ui.components.StatusBadge
+import com.example.ezroom.ui.invoice.InvoiceViewModel
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceDetailScreen(
     invoice: Invoice? = null,
     onBackClick: () -> Unit,
-    onPaymentConfirm: (invoiceId: String, paymentMethod: String, transactionType: TransactionType) -> Unit
+    onPaymentConfirm: (invoiceId: String, paymentMethod: String, transactionType: TransactionType) -> Unit,
+    viewModel: InvoiceViewModel = viewModel(
+        factory = viewModelFactory {
+            val repository = InvoiceRepositoryImpl()
+            InvoiceViewModel(GetInvoicesUseCase(repository), repository)
+        }
+    )
 ) {
     val formatter = remember { DecimalFormat("#,### đ") }
     
-    // Mock Data if null
     val defaultInvoice = remember {
         Invoice(
             id = "INV-2026-05-001",
@@ -46,7 +58,7 @@ fun InvoiceDetailScreen(
             newElectricity = 1380,
             oldWater = 450,
             newWater = 462,
-            otherCosts = 50000L,
+            otherCosts = listOf(OtherCostItem("Phí vệ sinh", 50000L)),
             status = InvoiceStatus.UNPAID,
             type = TransactionType.RENT,
             dateCreated = "10/05/2026"
@@ -58,17 +70,24 @@ fun InvoiceDetailScreen(
     val waterUsage = displayInvoice.newWater - displayInvoice.oldWater
     val elecAmount = elecUsage * 3500L
     val waterAmount = waterUsage * 15000L
-    val totalAmount = displayInvoice.roomPrice + elecAmount + waterAmount + displayInvoice.otherCosts
+    val totalAmount = displayInvoice.roomPrice + elecAmount + waterAmount + displayInvoice.totalOtherCosts
 
     var selectedPaymentMethod by remember { mutableStateOf("VNPAY") }
     val isPaid = displayInvoice.status == InvoiceStatus.PAID
 
     Scaffold(
-        containerColor = BackgroundLight,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CommonTopAppBar(
-                title = "Chi tiết hóa đơn",
-                onBackClick = onBackClick
+            CenterAlignedTopAppBar(
+                title = { Text("Chi tiết hóa đơn", fontWeight = FontWeight.ExtraBold) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { paddingValues ->
@@ -77,152 +96,134 @@ fun InvoiceDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // 2. Thẻ tổng quan trạng thái (Status Card)
-            Card(
+            // Summary Header Card
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Mã hóa đơn: ${displayInvoice.id}",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = OnBackgroundLight
-                        )
-                        Text(
-                            text = "Kỳ thanh toán:\nTháng ${displayInvoice.period}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = OnBackgroundLight.copy(alpha = 0.6f)
-                        )
-                    }
-                    val badgeColor = if (isPaid) TealAccent else OrangeSecondary
-                    Surface(
-                        color = badgeColor.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = if (isPaid) "Đã thanh toán" else "Chưa thanh toán",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = badgeColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            // 3. Khối chi tiết chi phí dòng tiền (Bill Breakdown Layout)
-            Text(
-                text = "Chi tiết chi phí",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = OnBackgroundLight,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    DetailRow(label = "Tiền phòng cố định", value = formatter.format(displayInvoice.roomPrice))
-                    
-                    HorizontalDivider(thickness = 0.5.dp, color = OnBackgroundLight.copy(alpha = 0.05f))
-                    
-                    UtilityDetailRow(
-                        title = "Tiền Điện (3.500đ/kWh)",
-                        usageText = "${displayInvoice.oldElectricity} - ${displayInvoice.newElectricity} ($elecUsage kWh)",
-                        amount = formatter.format(elecAmount)
-                    )
-
-                    HorizontalDivider(thickness = 0.5.dp, color = OnBackgroundLight.copy(alpha = 0.05f))
-
-                    UtilityDetailRow(
-                        title = "Tiền Nước (15.000đ/m³)",
-                        usageText = "${displayInvoice.oldWater} - ${displayInvoice.newWater} ($waterUsage m³)",
-                        amount = formatter.format(waterAmount)
-                    )
-
-                    HorizontalDivider(thickness = 0.5.dp, color = OnBackgroundLight.copy(alpha = 0.05f))
-
-                    DetailRow(label = "Chi phí khác (Rác, Wifi)", value = formatter.format(displayInvoice.otherCosts))
-                }
-            }
-
-            // 4. Khối tổng tiền (Total Card)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = OrangePrimary.copy(alpha = 0.05f)),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.2f))
+                color = MaterialTheme.colorScheme.primary,
+                shape = MaterialTheme.shapes.medium,
+                shadowElevation = 8.dp
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalAlignment = Alignment.End
+                    modifier = Modifier
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                )
+                            )
+                        )
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = if (isPaid) "TỔNG TIỀN ĐÃ THANH TOÁN" else "TỔNG TIỀN CẦN THANH TOÁN",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                        color = OnBackgroundLight.copy(alpha = 0.6f)
+                        text = "Tổng thanh toán",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White.copy(alpha = 0.8f)
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = formatter.format(totalAmount),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp
-                        ),
-                        color = OrangePrimary,
-                        maxLines = 1
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        fontSize = 32.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StatusBadge(
+                        text = if (isPaid) "ĐÃ THANH TOÁN" else "CHƯA THANH TOÁN",
+                        color = if (isPaid) Color.White else AccentAmber
                     )
                 }
             }
 
-            // 5. Khối chọn cổng thanh toán (Payment Method Selector)
-            Text(
-                text = "Chọn phương thức thanh toán",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = OnBackgroundLight,
-                modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-            )
+            // Billing Details
+            Column {
+                Text(
+                    text = "Chi tiết các hạng mục",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-            PaymentMethodItem(
-                title = "Cổng thanh toán VNPay",
-                selected = selectedPaymentMethod == "VNPAY",
-                enabled = !isPaid,
-                icon = Icons.Default.AccountBalance,
-                onClick = { if (!isPaid) selectedPaymentMethod = "VNPAY" }
-            )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        DetailRow(label = "Giá thuê phòng", value = formatter.format(displayInvoice.roomPrice))
+                        
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                        
+                        UtilityDetailRow(
+                            title = "Tiền Điện",
+                            usageText = "$elecUsage kWh ($3.500đ/kWh)",
+                            amount = formatter.format(elecAmount)
+                        )
 
-            PaymentMethodItem(
-                title = "Ví điện tử MoMo",
-                selected = selectedPaymentMethod == "MOMO",
-                enabled = !isPaid,
-                icon = Icons.Default.Wallet,
-                onClick = { if (!isPaid) selectedPaymentMethod = "MOMO" }
-            )
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
-            Spacer(modifier = Modifier.height(24.dp))
+                        UtilityDetailRow(
+                            title = "Tiền Nước",
+                            usageText = "$waterUsage m³ ($15.000đ/m³)",
+                            amount = formatter.format(waterAmount)
+                        )
 
-            // 6. Nút hành động (Action Button)
+                        displayInvoice.otherCosts.forEach { item ->
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            DetailRow(label = item.reason, value = formatter.format(item.amount))
+                        }
+                    }
+                }
+            }
+
+            // Payment Methods
+            if (!isPaid) {
+                Column {
+                    Text(
+                        text = "Phương thức thanh toán",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    PaymentMethodItem(
+                        title = "VNPay Gateway",
+                        selected = selectedPaymentMethod == "VNPAY",
+                        icon = Icons.Default.AccountBalance,
+                        onClick = { selectedPaymentMethod = "VNPAY" }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    PaymentMethodItem(
+                        title = "MoMo Wallet",
+                        selected = selectedPaymentMethod == "MOMO",
+                        icon = Icons.Default.AccountBalanceWallet,
+                        onClick = { selectedPaymentMethod = "MOMO" }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             PrimaryButton(
-                text = if (isPaid) "HÓA ĐƠN ĐÃ ĐƯỢC THANH TOÁN" else "XÁC NHẬN THANH TOÁN",
-                onClick = { onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isPaid
+                text = if (isPaid) "XUẤT HÓA ĐƠN PDF" else "THANH TOÁN NGAY",
+                onClick = { 
+                    if (!isPaid) {
+                        viewModel.markAsPaid(displayInvoice.id)
+                    }
+                    onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type) 
+                },
+                modifier = Modifier.fillMaxWidth()
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -236,45 +237,39 @@ fun DetailRow(label: String, value: String) {
     ) {
         Text(
             text = label, 
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), 
-            color = OnBackgroundLight.copy(alpha = 0.7f),
-            maxLines = 1
+            style = MaterialTheme.typography.bodyLarge, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value, 
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold), 
-            color = OnBackgroundLight,
-            maxLines = 1
+            style = MaterialTheme.typography.titleMedium, 
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 @Composable
 fun UtilityDetailRow(title: String, usageText: String, amount: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(), 
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(), 
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
             Text(
                 text = title, 
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), 
-                color = OnBackgroundLight.copy(alpha = 0.7f),
-                maxLines = 1
+                style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                text = amount, 
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold), 
-                color = OnBackgroundLight,
-                maxLines = 1
+                text = usageText, 
+                style = MaterialTheme.typography.bodySmall, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(
-            text = usageText, 
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), 
-            color = OnBackgroundLight.copy(alpha = 0.4f),
-            maxLines = 1
+            text = amount, 
+            style = MaterialTheme.typography.titleMedium, 
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -283,21 +278,18 @@ fun UtilityDetailRow(title: String, usageText: String, amount: String) {
 fun PaymentMethodItem(
     title: String,
     selected: Boolean,
-    enabled: Boolean = true,
     icon: ImageVector,
     onClick: () -> Unit
 ) {
-    val borderColor = if (selected) OrangePrimary else OnBackgroundLight.copy(alpha = 0.1f)
-    val containerColor = if (selected) OrangePrimary.copy(alpha = 0.02f) else SurfaceLight
-    val alpha = if (enabled) 1f else 0.6f
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick() },
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor.copy(alpha = alpha)),
-        border = BorderStroke(1.dp, borderColor.copy(alpha = alpha))
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -307,13 +299,13 @@ fun PaymentMethodItem(
             Surface(
                 modifier = Modifier.size(40.dp),
                 shape = CircleShape,
-                color = if (selected) OrangePrimary else OnBackgroundLight.copy(alpha = 0.05f)
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (selected) androidx.compose.ui.graphics.Color.White else OnBackgroundLight.copy(alpha = 0.4f),
+                        tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -321,14 +313,13 @@ fun PaymentMethodItem(
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
-                color = OnBackgroundLight.copy(alpha = alpha)
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
             )
             RadioButton(
                 selected = selected,
-                onClick = if (enabled) onClick else null,
-                enabled = enabled,
-                colors = RadioButtonDefaults.colors(selectedColor = OrangePrimary, disabledSelectedColor = OrangePrimary.copy(alpha = 0.6f))
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
             )
         }
     }
@@ -344,3 +335,5 @@ fun InvoiceDetailScreenPreview() {
         )
     }
 }
+
+

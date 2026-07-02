@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,11 +34,9 @@ enum class UserRole {
 
 @Composable
 fun RegisterScreen(
-    // Event callbacks
     onRegisterClick: (String, String, String, String, UserRole) -> Unit = { _, _, _, _, _ -> },
     onBackToLoginClick: () -> Unit = {}
 ) {
-    // State definitions
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -54,12 +53,20 @@ fun RegisterScreen(
                       email.isNotEmpty() && isEmailValid && 
                       password.length >= 6
 
-    // Main layout container
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -67,28 +74,24 @@ fun RegisterScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
             Text(
-                text = "Tạo tài khoản mới",
+                text = "Tạo tài khoản",
                 style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Tham gia cộng đồng EzRoom ngay hôm nay",
+                text = "Tham gia cộng đồng EzRoom để trải nghiệm tốt nhất",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
-            // Input fields group
             CustomTextField(
                 value = fullName,
                 onValueChange = { fullName = it },
@@ -135,51 +138,42 @@ fun RegisterScreen(
                 enabled = !isLoading,
                 isError = password.isNotEmpty() && password.length < 6
             )
-            if (password.isNotEmpty() && password.length < 6) {
-                Text(
-                    text = "Mật khẩu phải có ít nhất 6 ký tự",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, top = 4.dp)
-                )
-            }
-
+            
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Bạn là:",
-                style = MaterialTheme.typography.titleMedium,
+                text = "Tôi muốn đăng ký làm:",
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.onBackground
+                modifier = Modifier.align(Alignment.Start)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Role selection row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                RoleCard(
+                ModernRoleCard(
                     text = "Người thuê",
+                    icon = Icons.Default.PersonSearch,
                     isSelected = selectedRole == UserRole.RENTER,
                     onClick = { if (!isLoading) selectedRole = UserRole.RENTER },
                     modifier = Modifier.weight(1f)
                 )
-                RoleCard(
+                ModernRoleCard(
                     text = "Chủ nhà",
+                    icon = Icons.Default.HomeWork,
                     isSelected = selectedRole == UserRole.HOST,
                     onClick = { if (!isLoading) selectedRole = UserRole.HOST },
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
-            // Primary action button
             PrimaryButton(
-                text = "ĐĂNG KÝ",
+                text = "Đăng ký ngay",
                 onClick = { 
                     if (isFormValid) {
                         scope.launch {
@@ -204,11 +198,11 @@ fun RegisterScreen(
                 Text(
                     text = "Đã có tài khoản?",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 TextButton(onClick = onBackToLoginClick, enabled = !isLoading) {
                     Text(
-                        text = "Đăng nhập ngay",
+                        text = "Đăng nhập",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
@@ -216,7 +210,7 @@ fun RegisterScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
 
         if (isLoading) {
@@ -226,30 +220,40 @@ fun RegisterScreen(
 }
 
 @Composable
-fun RoleCard(
+fun ModernRoleCard(
     text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier
-            .height(56.dp)
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = modifier.height(100.dp),
         shape = MaterialTheme.shapes.medium,
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        border = if (isSelected) null else ButtonDefaults.outlinedButtonBorder(enabled = true),
-        shadowElevation = if (isSelected) 4.dp else 0.dp
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
+            Icon(
+                imageVector = icon, 
+                contentDescription = null, 
+                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -262,3 +266,4 @@ fun RegisterScreenPreview() {
         RegisterScreen()
     }
 }
+

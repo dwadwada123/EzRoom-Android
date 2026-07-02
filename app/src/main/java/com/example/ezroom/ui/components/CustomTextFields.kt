@@ -13,7 +13,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.ui.theme.OrangePrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +31,6 @@ fun CustomTextField(
     readOnly: Boolean = false,
     enabled: Boolean = true
 ) {
-    // Input fields group
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -47,15 +45,19 @@ fun CustomTextField(
         readOnly = readOnly,
         enabled = enabled,
         modifier = modifier,
-        shape = MaterialTheme.shapes.small,
+        shape = MaterialTheme.shapes.small, // 12.dp bo góc
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = OrangePrimary,
-            focusedLabelColor = OrangePrimary,
-            cursorColor = OrangePrimary,
-            disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-            disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            errorContainerColor = MaterialTheme.colorScheme.errorContainer,
+            errorBorderColor = MaterialTheme.colorScheme.error
         )
     )
 }
@@ -71,7 +73,6 @@ fun SmallTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     enabled: Boolean = true
 ) {
-    // Input fields group: Compact version
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -84,9 +85,11 @@ fun SmallTextField(
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = OrangePrimary,
-            focusedLabelColor = OrangePrimary,
-            cursorColor = OrangePrimary
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            errorBorderColor = MaterialTheme.colorScheme.error
         )
     )
 }
@@ -101,10 +104,8 @@ fun PasswordTextField(
     isError: Boolean = false,
     enabled: Boolean = true
 ) {
-    // State definitions
     var isPasswordVisible by remember { mutableStateOf(false) }
 
-    // Input fields group
     CustomTextField(
         value = value,
         onValueChange = onValueChange,
@@ -125,3 +126,4 @@ fun PasswordTextField(
         enabled = enabled
     )
 }
+

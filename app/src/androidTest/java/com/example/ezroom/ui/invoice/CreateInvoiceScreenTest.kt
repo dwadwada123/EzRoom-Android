@@ -2,6 +2,7 @@ package com.example.ezroom.ui.invoice
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import com.example.ezroom.ui.host.invoice.CreateInvoiceScreen
 import com.example.ezroom.ui.theme.EzRoomTheme
 import org.junit.Rule
 import org.junit.Test

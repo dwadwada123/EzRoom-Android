@@ -1,189 +1,265 @@
 package com.example.ezroom.ui.renter.appointment
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ezroom.data.model.Appointment
-import com.example.ezroom.data.model.AppointmentStatus
-import com.example.ezroom.data.model.MockData
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ezroom.data.repository.AppointmentRepositoryImpl
+import com.example.ezroom.domain.model.Appointment
+import com.example.ezroom.domain.model.AppointmentStatus
+import com.example.ezroom.domain.usecase.GetAppointmentsUseCase
+import com.example.ezroom.domain.usecase.UpdateAppointmentStatusUseCase
 import com.example.ezroom.ui.components.EmptyState
 import com.example.ezroom.ui.components.LoadingWidget
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * EzRoom 2026 "Pro Max" Appointment List
+ * Features: Staggered entrance, Pill-shaped tabs, and Bento card design.
+ */
 @Composable
 fun RenterAppointmentListScreen(
-    // Event callbacks
     onNavigateBack: () -> Unit,
     onEditAppointment: (Appointment) -> Unit = {},
-    onCancelAppointment: (Appointment) -> Unit = {}
-) {
-    // State definitions
-    val scope = rememberCoroutineScope()
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var isLoading by remember { mutableStateOf(false) }
-    var isError by remember { mutableStateOf(false) }
-    
-    val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
-    val statusFilters = listOf(AppointmentStatus.PENDING, AppointmentStatus.APPROVED, AppointmentStatus.CANCELED)
-
-    val appointmentsState = remember { 
-        mutableStateListOf<Appointment>().apply { addAll(MockData.appointments) } 
-    }
-
-    val filteredList = remember(selectedTabIndex, appointmentsState.size) {
-        appointmentsState.filter { it.status == statusFilters[selectedTabIndex] }
-    }
-
-    fun refreshData() {
-        scope.launch {
-            isLoading = true
-            isError = false
-            delay(1000) // Simulate data fetching
-            isLoading = false
+    onCancelAppointment: (Appointment) -> Unit = {},
+    viewModel: AppointmentViewModel = viewModel(
+        factory = viewModelFactory {
+            val repository = AppointmentRepositoryImpl()
+            AppointmentViewModel(
+                GetAppointmentsUseCase(repository),
+                UpdateAppointmentStatusUseCase(repository)
+            )
         }
-    }
+    )
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
 
-    LaunchedEffect(Unit) {
-        refreshData()
-    }
-
-    // Main layout container
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Tab bar section
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = SurfaceLight,
-                contentColor = OrangePrimary,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]), 
-                        color = OrangePrimary
-                    )
-                }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pill-shaped Tab Selection
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth(),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                shadowElevation = 2.dp
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { 
-                            Text(
-                                text = title, 
-                                fontSize = 12.sp, 
-                                maxLines = 1,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                            ) 
+                Row(
+                    modifier = Modifier.padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        val isSelected = uiState.selectedTabIndex == index
+                        val backgroundColor by animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            label = "TabBg"
+                        )
+                        val contentColor by animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = "TabContent"
+                        )
+
+                        Surface(
+                            onClick = { viewModel.onTabSelected(index) },
+                            modifier = Modifier.weight(1f),
+                            shape = CircleShape,
+                            color = backgroundColor,
+                            contentColor = contentColor
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
                         }
-                    )
+                    }
                 }
             }
 
-            if (isError) {
-                EmptyState(
-                    title = "Đã có lỗi xảy ra",
-                    description = "Vui lòng thử lại sau giây lát.",
-                    actionText = "Thử lại",
-                    onAction = { refreshData() }
-                )
-            } else if (!isLoading && filteredList.isEmpty()) {
-                EmptyState(
-                    title = "Chưa có lịch hẹn",
-                    description = "Bạn chưa có lịch hẹn nào ở trạng thái này.",
-                    actionText = "Khám phá phòng ngay",
-                    onAction = onNavigateBack
-                )
+            if (!uiState.isLoading && uiState.appointments.isEmpty() && uiState.error == null) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    EmptyState(
+                        title = "Trống",
+                        description = "Bạn chưa có lịch hẹn nào ở mục này.",
+                        actionText = "Khám phá phòng ngay",
+                        onAction = onNavigateBack
+                    )
+                }
+            } else if (uiState.error != null) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    EmptyState(
+                        title = "Lỗi",
+                        description = uiState.error ?: "",
+                        actionText = "Thử lại",
+                        onAction = { viewModel.loadAppointments() }
+                    )
+                }
             } else {
-                // Content scroll area
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 24.dp, end = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(filteredList, key = { it.id }) { item ->
-                        RenterAppointmentCard(
-                            appointment = item,
-                            onEditClick = { onEditAppointment(item) },
-                            onCancelClick = { 
-                                appointmentsState.remove(item)
-                                onCancelAppointment(item) 
-                            }
-                        )
+                    itemsIndexed(
+                        items = uiState.appointments, 
+                        key = { _, it -> it.id },
+                        contentType = { _, _ -> "AppointmentCard" }
+                    ) { index, item ->
+                        AnimatedVisibility(
+                            visible = !uiState.isLoading,
+                            enter = slideInVertically(initialOffsetY = { 50 * (index + 1) }) + fadeIn()
+                        ) {
+                            RenterAppointmentBentoCard(
+                                appointment = item,
+                                onEditClick = { onEditAppointment(item) },
+                                onCancelClick = { 
+                                    viewModel.cancelAppointment(item.id)
+                                    onCancelAppointment(item) 
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        if (isLoading) {
+        if (uiState.isLoading) {
             LoadingWidget()
         }
     }
 }
 
 @Composable
-fun RenterAppointmentCard(
+fun RenterAppointmentBentoCard(
     appointment: Appointment,
     onEditClick: () -> Unit = {},
     onCancelClick: () -> Unit = {}
 ) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = MaterialTheme.shapes.medium, // 28.dp
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        shadowElevation = 3.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = appointment.roomName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Thời gian: ${appointment.time} - ${appointment.date}", 
-                fontSize = 13.sp, 
-                color = OnBackgroundLight.copy(alpha = 0.6f)
-            )
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Event, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = appointment.roomName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Lịch xem phòng",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Time & Date Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), MaterialTheme.shapes.small)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = appointment.date, style = MaterialTheme.typography.labelLarge)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = appointment.time, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
             if (appointment.note.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Lời nhắn: ${appointment.note}", 
-                    fontSize = 13.sp, 
-                    color = OnBackgroundLight.copy(alpha = 0.6f)
+                    text = "Lời nhắn: \"${appointment.note}\"",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )
             }
 
             if (appointment.status == AppointmentStatus.PENDING) {
-                Spacer(modifier = Modifier.height(12.dp))
-                // Action buttons row
+                Spacer(modifier = Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
                         onClick = onCancelClick,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                        border = BorderStroke(1.dp, Color.Red),
-                        shape = RoundedCornerShape(8.dp)
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
                     ) {
-                        Text(text = "Hủy lịch", fontSize = 12.sp)
+                        Text(text = "Hủy lịch", style = MaterialTheme.typography.labelLarge)
                     }
 
                     Button(
                         onClick = onEditClick,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                        shape = RoundedCornerShape(8.dp)
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text(text = "Sửa lịch", fontSize = 12.sp, color = Color.White)
+                        Text(text = "Thay đổi", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -198,3 +274,4 @@ fun RenterAppointmentListScreenPreview() {
         RenterAppointmentListScreen(onNavigateBack = {})
     }
 }
+
