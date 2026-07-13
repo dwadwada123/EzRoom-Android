@@ -9,11 +9,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,11 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.ContractRepositoryImpl
-import com.example.ezroom.domain.model.Contract
-import com.example.ezroom.domain.model.DepositStatus
-import com.example.ezroom.domain.model.TransactionType
+import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetContractsUseCase
 import com.example.ezroom.domain.usecase.SignContractUseCase
+import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.host.contract.ContractViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
@@ -34,10 +34,12 @@ import java.text.DecimalFormat
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContractScreen(
-    // Event callbacks
     contract: Contract,
-    onNavigateBack: () -> Unit,
-    onSignContract: (transactionType: TransactionType) -> Unit,
+    onNavigateBack: () -> Unit = {},
+    onSignSuccess: () -> Unit = {},
+    onPayClick: () -> Unit = {},
+    onRefundClick: () -> Unit = {},
+    onDisputeClick: () -> Unit = {},
     viewModel: ContractViewModel = viewModel(
         factory = viewModelFactory {
             val repository = ContractRepositoryImpl()
@@ -50,56 +52,117 @@ fun ContractScreen(
         }
     )
 ) {
-    // State definitions
     var isAgreed by remember { mutableStateOf(false) }
-    val formatter = remember { DecimalFormat("#,### VND") }
+    val formatter = remember { DecimalFormat("#,### đ") }
 
-    // Main layout container
     Scaffold(
-        containerColor = BackgroundLight,
+        containerColor = Neutral50,
         topBar = {
-            // Top app bar
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "KÝ HỢP ĐỒNG ĐIỆN TỬ",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = OrangePrimary
-                    )
-                },
+            CenterAlignedTopAppBar(
+                title = { Text("Chi tiết hợp đồng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = OrangePrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceLight)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
+        },
+        bottomBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 16.dp,
+                color = Color.White
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    when (contract.status) {
+                        ContractStatus.WAITING_SIGN -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable { isAgreed = !isAgreed }.padding(bottom = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = isAgreed, onCheckedChange = { isAgreed = it })
+                                Text("Tôi đã đọc và đồng ý với các điều khoản", style = MaterialTheme.typography.bodySmall)
+                            }
+                            PrimaryButton(
+                                text = "KÝ HỢP ĐỒNG",
+                                onClick = { 
+                                    viewModel.signContract(contract.id)
+                                    onSignSuccess()
+                                },
+                                enabled = isAgreed,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        ContractStatus.WAITING_DEPOSIT -> {
+                            PrimaryButton(
+                                text = "THANH TOÁN TIỀN CỌC (${formatter.format(contract.depositAmount)})",
+                                onClick = onPayClick,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        ContractStatus.CANCELLED -> {
+                            if (contract.depositStatus == DepositStatus.FROZEN) {
+                                PrimaryButton(
+                                    text = "YÊU CẦU HOÀN TIỀN",
+                                    onClick = onRefundClick,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                        ContractStatus.ACTIVE -> {
+                            OutlinedButton(
+                                onClick = onDisputeClick,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRose),
+                                border = BorderStroke(1.dp, ErrorRose.copy(alpha = 0.3f))
+                            ) {
+                                Text("TỐ CÁO / TRANH CHẤP")
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            }
         }
     ) { paddingValues ->
-        // Content scroll area
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            if (contract.depositStatus == DepositStatus.FROZEN) {
+                Surface(
+                    color = SuccessEmerald.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, SuccessEmerald.copy(alpha = 0.1f))
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Shield, null, tint = SuccessEmerald, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Tiền cọc của bạn đang được đóng băng an toàn tại EzRoom.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SuccessEmerald,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
             OutlinedCard(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = SurfaceLight),
-                border = BorderStroke(1.dp, OnBackgroundLight.copy(alpha = 0.1f))
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Neutral300)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Header: Legal title
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -107,141 +170,54 @@ fun ContractScreen(
                         Text(
                             text = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = OnBackgroundLight,
+                            fontSize = 12.sp,
                             textAlign = TextAlign.Center
                         )
                         Text(
                             text = "Độc lập - Tự do - Hạnh phúc",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp,
-                            color = OnBackgroundLight,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        HorizontalDivider(
-                            modifier = Modifier.width(120.dp),
-                            color = OnBackgroundLight.copy(alpha = 0.3f),
-                            thickness = 1.dp
-                        )
+                        HorizontalDivider(modifier = Modifier.width(100.dp), thickness = 1.dp)
                     }
-
-                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = "HỢP ĐỒNG THUÊ PHÒNG TRỌ",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         fontSize = 16.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
-                        color = OrangePrimary
+                        color = PrimaryMain
                     )
 
-                    HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.08f))
+                    HorizontalDivider(color = Neutral100)
 
-                    // Party information section
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = BackgroundLight.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Surface(color = OrangePrimary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
-                                    Text("BÊN A", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = OrangePrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Hệ thống EzRoom (Đại diện chủ nhà)", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = OnBackgroundLight)
-                            }
-                        }
-
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = BackgroundLight.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Surface(color = TealAccent.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
-                                    Text("BÊN B", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = TealAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(text = contract.renterName, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = OnBackgroundLight)
-                                    Text(text = "SĐT: ${contract.renterPhone}", fontSize = 11.sp, color = OnBackgroundLight.copy(alpha = 0.6f))
-                                }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(color = OnBackgroundLight.copy(alpha = 0.08f))
-
-                    // Dynamic terms content
-                    ContractSectionItem(title = "ĐIỀU 1: THỜI HẠN THUÊ TRỌ") {
+                    ContractSectionItem(title = "ĐIỀU 1: THÔNG TIN PHÒNG") {
                         Text(
-                            text = "• Bên B thuê phòng: ${contract.roomName}\n• Thời hạn: Từ ngày ${contract.startDate} đến ngày ${contract.endDate}.\n• Bên B cam kết ở tối thiểu đủ thời hạn nêu trên. Mọi trường hợp đơn phương chấm dứt hợp đồng sớm sẽ chịu mất toàn bộ số tiền đặt cọc.",
-                            fontSize = 13.sp, color = OnBackgroundLight, lineHeight = 18.sp
+                            text = "• Phòng: ${contract.roomName}\n• Địa chỉ: ${contract.id}",
+                            fontSize = 13.sp, lineHeight = 20.sp
                         )
                     }
 
-                    ContractSectionItem(title = "ĐIỀU 2: CHI PHÍ & CHI TIẾT ĐẶT CỌ") {
-                        val statusText = if (contract.depositStatus == DepositStatus.PAID) "Đã thanh toán" else "Chưa thanh toán"
+                    ContractSectionItem(title = "ĐIỀU 2: THỜI HẠN & TIỀN CỌC") {
                         Text(
-                            text = "• Số tiền đặt cọc giữ chỗ: ${formatter.format(contract.depositAmount)}.\n• Trạng thái cọc: $statusText\n• Số tiền này được hoàn trả 100% khi kết thúc hợp đồng và hoàn thành đầy đủ nghĩa vụ thanh toán.",
-                            fontSize = 13.sp, color = OnBackgroundLight, lineHeight = 18.sp
+                            text = "• Từ ngày ${contract.startDate} đến ngày ${contract.endDate}.\n• Tiền cọc giữ chỗ: ${formatter.format(contract.depositAmount)}.\n• Khoản cọc được App giữ hộ và giải ngân cho Chủ nhà vào ngày bắt đầu thuê.",
+                            fontSize = 13.sp, lineHeight = 20.sp
                         )
                     }
 
-                    ContractSectionItem(title = "ĐIỀU 3: CHÍNH SÁCH ĐỀN BÙ VÀ HƯ HỎNG") {
+                    ContractSectionItem(title = "ĐIỀU 3: ĐIỀU KHOẢN HỦY BỎ") {
                         Text(
-                            text = "• Bên B có trách nhiệm bảo quản tài sản bàn giao (Giường, tủ, máy lạnh, kệ bếp).\n• Nếu phát hiện hư hỏng do lỗi chủ quan, Bên B có nghĩa vụ đền bù 100% giá trị thị trường.\n• Chi phí sửa chữa sẽ được khấu trừ trực tiếp vào tiền cọc nếu không thanh toán.",
-                            fontSize = 13.sp, color = OnBackgroundLight, lineHeight = 18.sp
+                            text = "• Nếu Người thuê hủy: Mất 100% tiền cọc.\n• Nếu Chủ thuê hủy: Hoàn 100% cọc và phạt thêm 100% giá trị cọc cho Người thuê.",
+                            fontSize = 13.sp, lineHeight = 20.sp
                         )
                     }
                 }
             }
-
-            // Agreement checkbox row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isAgreed = !isAgreed }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = isAgreed,
-                    onCheckedChange = { isAgreed = it },
-                    colors = CheckboxDefaults.colors(checkedColor = TealAccent)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Tôi đã xác nhận thông tin chính xác và đồng ý ký kết",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = OnBackgroundLight
-                )
-            }
-
-            // Action buttons row (Sign contract action)
-            Button(
-                onClick = { 
-                    viewModel.signContract(contract.id)
-                    onSignContract(TransactionType.DEPOSIT) 
-                },
-                enabled = isAgreed,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = TealAccent,
-                    contentColor = OnPrimaryLight,
-                    disabledContainerColor = OnBackgroundLight.copy(alpha = 0.12f),
-                    disabledContentColor = OnBackgroundLight.copy(alpha = 0.38f)
-                )
-            ) {
-                Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("XÁC NHẬN KÝ HỢP ĐỒNG ĐIỆN TỬ", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
@@ -251,25 +227,9 @@ fun ContractSectionItem(
     title: String,
     content: @Composable () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(14.dp)
-                    .background(OrangeSecondary, shape = RoundedCornerShape(2.dp))
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                color = OrangeSecondary
-            )
-        }
-        Box(modifier = Modifier.padding(start = 9.dp)) {
-            content()
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = PrimaryMain)
+        content()
     }
 }
 
@@ -285,14 +245,10 @@ fun ContractScreenPreview() {
         startDate = "01/10/2024",
         endDate = "01/10/2025",
         depositAmount = 2000000L,
-        depositStatus = DepositStatus.PAID
+        depositStatus = DepositStatus.UNPAID,
+        dateCreated = "20/09/2024"
     )
     EzRoomTheme {
-        ContractScreen(
-            contract = dummyContract,
-            onNavigateBack = {},
-            onSignContract = { _ -> }
-        )
+        ContractScreen(contract = dummyContract)
     }
 }
-

@@ -45,6 +45,31 @@ object MockData {
             ),
             latitude = 16.0475,
             longitude = 108.2435
+        ),
+        Property(
+            id = "prop_4",
+            name = "Căn hộ dịch vụ Quận 7",
+            type = PropertyType.COMPLEX,
+            address = "Quận 7, TP.HCM",
+            detailedAddress = "Số 10, Đường số 2, Tân Phong, Quận 7, TP.HCM",
+            description = "Khu vực sầm uất, gần Vivo City, bảo vệ 24/24.",
+            commonAmenities = listOf(
+                Amenity("Phòng Gym"),
+                Amenity("Sân thượng"),
+                Amenity("Giặt sấy chung")
+            ),
+            latitude = 10.7291,
+            longitude = 106.7022
+        ),
+        Property(
+            id = "prop_5",
+            name = "Chung cư mini Bình Thạnh",
+            type = PropertyType.SINGLE,
+            address = "Bình Thạnh, TP.HCM",
+            detailedAddress = "456 Xô Viết Nghệ Tĩnh, P. 25, Bình Thạnh, TP.HCM",
+            description = "Căn hộ studio riêng tư, đầy đủ nội thất cơ bản.",
+            latitude = 10.8016,
+            longitude = 106.7118
         )
     )
 
@@ -100,17 +125,17 @@ object MockData {
         Room(
             id = "room_103",
             propertyId = "prop_1",
-            title = "Phòng 103 - Đã cho thuê (Test)",
+            title = "Phòng 103 - Chờ duyệt",
             price = 3800000L,
             priceFormatted = "3.800.000 đ",
             address = "Hải Châu, Đà Nẵng",
             detailedAddress = "Tầng 2, 123 Lê Lợi",
-            description = "Phòng đã có khách thuê để test đánh giá.",
+            description = "Phòng mới sửa chữa xong.",
             structure = RoomStructure.SINGLE,
             floorArea = 25.0,
             images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
             amenities = listOf(Amenity("Điều hòa")),
-            status = RoomStatus.RENTED,
+            status = RoomStatus.PENDING,
             latitude = 16.0678,
             longitude = 108.2208
         ),
@@ -156,8 +181,122 @@ object MockData {
             longitude = 108.2435
         ),
         Room(
+            id = "room_302",
+            propertyId = "prop_3",
+            title = "Studio 302 - Đang ẩn",
+            price = 6500000L,
+            priceFormatted = "6.500.000 đ",
+            address = "Ngũ Hành Sơn, Đà Nẵng",
+            detailedAddress = "Tầng 3, 45 An Thượng 2",
+            description = "Căn hộ đang bảo trì máy lạnh.",
+            structure = RoomStructure.APARTMENT,
+            floorArea = 35.0,
+            images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
+            amenities = listOf(Amenity("Full nội thất")),
+            status = RoomStatus.ACTIVE,
+            isUserHidden = true,
+            latitude = 16.0475,
+            longitude = 108.2435
+        ),
+        // Belong to prop_4 (Complex - TP.HCM)
+        Room(
+            id = "room_401",
+            propertyId = "prop_4",
+            title = "Phòng 401 - Cơ bản",
+            price = 5500000L,
+            priceFormatted = "5.500.000 đ",
+            address = "Quận 7, TP.HCM",
+            detailedAddress = "Tầng 4, Số 10 Đường số 2",
+            description = "Phòng rộng, thoáng, ánh sáng tự nhiên.",
+            structure = RoomStructure.SINGLE,
+            floorArea = 30.0,
+            images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
+            amenities = listOf(Amenity("Máy giặt"), Amenity("Tủ lạnh")),
+            status = RoomStatus.ACTIVE,
+            latitude = 10.7291,
+            longitude = 106.7022
+        ),
+        Room(
+            id = "room_402",
+            propertyId = "prop_4",
+            title = "Phòng 402 - Cao cấp (Gác lửng)",
+            price = 7500000L,
+            priceFormatted = "7.500.000 đ",
+            address = "Quận 7, TP.HCM",
+            detailedAddress = "Tầng 4, Số 10 Đường số 2",
+            description = "Phòng có gác lửng rộng rãi, nội thất gỗ cao cấp.",
+            structure = RoomStructure.APARTMENT,
+            floorArea = 45.0,
+            detailedAreas = listOf(
+                DetailedArea("da_402_1", "Tầng trệt", 30.0),
+                DetailedArea("da_402_2", "Gác lửng", 15.0)
+            ),
+            images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
+            amenities = listOf(Amenity("Sàn gỗ"), Amenity("Bếp hồng ngoại"), Amenity("Bàn làm việc")),
+            status = RoomStatus.ACTIVE,
+            latitude = 10.7291,
+            longitude = 106.7022
+        ),
+        Room(
+            id = "room_403",
+            propertyId = "prop_4",
+            title = "Phòng 403 - Đã cho thuê",
+            price = 6000000L,
+            priceFormatted = "6.000.000 đ",
+            address = "Quận 7, TP.HCM",
+            detailedAddress = "Tầng 4, Số 10 Đường số 2",
+            description = "Phòng tương tự 401 nhưng view nhìn ra công viên.",
+            structure = RoomStructure.SINGLE,
+            floorArea = 32.0,
+            images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
+            amenities = listOf(Amenity("Máy lạnh"), Amenity("Máy nước nóng")),
+            status = RoomStatus.RENTED,
+            latitude = 10.7291,
+            longitude = 106.7022
+        ),
+        Room(
+            id = "room_404",
+            propertyId = "prop_4",
+            title = "Phòng 404 - Studio hiện đại",
+            price = 8500000L,
+            priceFormatted = "8.500.000 đ",
+            address = "Quận 7, TP.HCM",
+            detailedAddress = "Tầng 5, Số 10 Đường số 2",
+            description = "Phòng Studio phong cách minimalist, đầy đủ tiện nghi cho người đi làm.",
+            structure = RoomStructure.APARTMENT,
+            floorArea = 40.0,
+            images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
+            amenities = listOf(Amenity("Smart TV"), Amenity("Tủ lạnh Side-by-side"), Amenity("Khóa từ")),
+            status = RoomStatus.ACTIVE,
+            latitude = 10.7291,
+            longitude = 106.7022
+        ),
+        Room(
+            id = "room_removed_1",
+            propertyId = "prop_1",
+            title = "Phòng 104 - Vi phạm quy định",
+            price = 4000000L,
+            priceFormatted = "4.000.000 đ",
+            address = "Hải Châu, Đà Nẵng",
+            detailedAddress = "Tầng 2, 123 Lê Lợi",
+            description = "Phòng bị gỡ do hình ảnh không đúng thực tế.",
+            structure = RoomStructure.SINGLE,
+            floorArea = 25.0,
+            images = listOf(RoomImage(resId = android.R.drawable.ic_menu_gallery)),
+            amenities = listOf(Amenity("Điều hòa")),
+            status = RoomStatus.REMOVED,
+            latitude = 16.0678,
+            longitude = 108.2208,
+            removalInfo = RoomRemovalInfo(
+                reason = "Hình ảnh phòng không đúng thực tế, có dấu hiệu sao chép từ nguồn khác.",
+                removedDate = "10/07/2026",
+                autoDeleteDate = "17/07/2026"
+            )
+        ),
+        // Standalone Rooms
+        Room(
             id = "room_standalone_2",
-            propertyId = null, // Truly standalone
+            propertyId = null,
             title = "Phòng trọ lẻ giá rẻ - Ngũ Hành Sơn",
             price = 1500000L,
             priceFormatted = "1.500.000 đ",
@@ -175,7 +314,7 @@ object MockData {
         Room(
             id = "room_standalone_rented",
             propertyId = null,
-            title = "Nhà nguyên căn đã thuê (Test Lẻ)",
+            title = "Nhà nguyên căn đã thuê (Cẩm Lệ)",
             price = 12000000L,
             priceFormatted = "12.000.000 đ",
             address = "Cẩm Lệ, Đà Nẵng",
@@ -187,7 +326,8 @@ object MockData {
             amenities = listOf(Amenity("Sân vườn")),
             status = RoomStatus.RENTED,
             latitude = 16.0200,
-            longitude = 108.2100
+            longitude = 108.2100,
+            currentRenter = RenterInfo("u3", "Lê Minh C", "0912345678", null, "03/2024 - Hiện tại", true)
         )
     )
 
@@ -208,7 +348,7 @@ object MockData {
             id = "app_2",
             roomId = "room_301",
             roomName = "Studio 301 - Luxury Building",
-            renterName = "Nguyễn Văn A", // Common Renter Name for mock
+            renterName = "Nguyễn Văn A",
             renterPhone = "0901234567",
             hostName = "Trần Vũ Phong",
             date = "28/05/2026",
@@ -220,13 +360,25 @@ object MockData {
             id = "app_3",
             roomId = "room_standalone_1",
             roomName = "Nhà nguyên căn Thanh Khê",
-            renterName = "Nguyễn Văn A",
-            renterPhone = "0901234567",
+            renterName = "Trần Thị B",
+            renterPhone = "0907654321",
             hostName = "Phạm Thị Chủ",
             date = "30/05/2026",
             time = "10:00",
             note = "Chủ nhà hẹn lại lịch này.",
             status = AppointmentStatus.RESCHEDULED
+        ),
+        Appointment(
+            id = "app_4",
+            roomId = "room_401",
+            roomName = "Phòng 401 - Q7",
+            renterName = "Hoàng Văn D",
+            renterPhone = "0988888888",
+            hostName = "Nguyễn Văn A",
+            date = "01/06/2026",
+            time = "14:00",
+            note = "Khách đã hủy do tìm được chỗ khác.",
+            status = AppointmentStatus.CANCELED
         )
     )
 
@@ -244,6 +396,20 @@ object MockData {
             otherCosts = listOf(OtherCostItem("Phí vệ sinh hành lang", 50000L)),
             status = InvoiceStatus.UNPAID,
             dateCreated = "10/05/2026"
+        ),
+        Invoice(
+            id = "INV-002",
+            roomId = "room_standalone_rented",
+            roomName = "Nhà nguyên căn Cẩm Lệ",
+            period = "04/2026",
+            roomPrice = 12000000L,
+            oldElectricity = 500,
+            newElectricity = 700,
+            oldWater = 100,
+            newWater = 120,
+            status = InvoiceStatus.PAID,
+            dateCreated = "05/04/2026",
+            paymentMethod = "Chuyển khoản"
         )
     )
 
@@ -267,7 +433,40 @@ object MockData {
         )
     )
 
-    val contracts = mutableStateListOf<Contract>()
+    val contracts = mutableStateListOf(
+        Contract(
+            id = "CON-001",
+            roomId = "room_101",
+            roomName = "Phòng 101 - EzHome Hải Châu",
+            renterName = "Nguyễn Văn A",
+            renterPhone = "0901234567",
+            hostName = "Lê Văn Chủ",
+            startDate = "01/08/2026",
+            endDate = "01/08/2027",
+            depositAmount = 3500000L,
+            depositStatus = DepositStatus.FROZEN,
+            status = ContractStatus.ACTIVE,
+            dateCreated = "20/06/2026",
+            dateSigned = "21/06/2026",
+            isProtected = true,
+            disburseDate = "01/08/2026"
+        ),
+        Contract(
+            id = "CON-002",
+            roomId = "room_301",
+            roomName = "Studio 301 - Luxury Building",
+            renterName = "Nguyễn Văn A",
+            renterPhone = "0901234567",
+            hostName = "Trần Vũ Phong",
+            startDate = "15/08/2026",
+            endDate = "15/08/2027",
+            depositAmount = 6500000L,
+            depositStatus = DepositStatus.UNPAID,
+            status = ContractStatus.WAITING_DEPOSIT,
+            dateCreated = "10/07/2026",
+            dateSigned = "11/07/2026"
+        )
+    )
 
     var currentUser = User(
         id = "u1",
@@ -275,9 +474,9 @@ object MockData {
         email = "nguyenvana@gmail.com",
         phone = "0987654321",
         avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
-        role = "HOST", // Changed to HOST to test eKYC flow as Host
-        isEkycVerified = false, // Set to false to see eKYC screen
-        creditScore = 4.5f
+        role = "HOST",
+        isEkycVerified = false,
+        creditScore = 4.8f
     )
 
     val conversations = mutableStateListOf(
@@ -294,6 +493,13 @@ object MockData {
             lastMessage = "Phòng này còn trống không ạ?",
             timestamp = "Hôm qua",
             unreadCount = 2
+        ),
+        Conversation(
+            id = "conv_3",
+            otherPartyName = "Hoàng Văn D",
+            lastMessage = "Cảm ơn anh đã hỗ trợ.",
+            timestamp = "01/06",
+            unreadCount = 0
         )
     )
 
@@ -319,6 +525,25 @@ object MockData {
             time = "1 ngày trước",
             isRead = true,
             type = "invoice"
+        ),
+        NotificationItem(
+            id = "n3",
+            title = "Hợp đồng đã ký",
+            content = "Hợp đồng thuê nhà nguyên căn Cẩm Lệ đã được ký kết thành công.",
+            time = "3 ngày trước",
+            isRead = true,
+            type = "contract"
+        ),
+        NotificationItem(
+            id = "n4",
+            title = "Hợp đồng mới cần ký",
+            content = "Chủ trọ Trần Vũ Phong đã gửi hợp đồng cho Studio 301. Vui lòng kiểm tra và ký kết.",
+            time = "Vừa xong",
+            isRead = false,
+            type = "CONTRACT",
+            targetId = "CON-002"
         )
     )
+
+    val paymentAccounts = mutableStateListOf<PaymentAccount>()
 }

@@ -154,6 +154,7 @@ fun RenterInvoiceListScreen(
     }
 }
 
+// UI Component: Invoice Bento Card for Renter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RenterInvoiceBentoCard(
@@ -166,7 +167,7 @@ private fun RenterInvoiceBentoCard(
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-        shadowElevation = 3.dp,
+        shadowElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier.padding(20.dp).fillMaxWidth(),

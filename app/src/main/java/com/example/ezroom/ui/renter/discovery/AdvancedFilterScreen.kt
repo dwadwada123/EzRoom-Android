@@ -21,13 +21,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.SearchRepositoryImpl
-import com.example.ezroom.domain.model.FilterParams
+import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetSearchMetadataUseCase
 import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.*
 import com.example.ezroom.viewmodel.LocationViewModel
 import kotlin.math.roundToInt
 
+// UI Component: Advanced Filter for Room Search
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedFilterScreen(
@@ -40,17 +41,18 @@ fun AdvancedFilterScreen(
         },
     ),
 ) {
+    // State Management: UI State from ViewModel
     val uiState by viewModel.uiState.collectAsState()
     
-    // API Data from Local Backend (MongoDB)
+    // State Management: Location data
     val provinces by locationViewModel.provinces.collectAsState()
     val wards by locationViewModel.wards.collectAsState()
     val isLoadingLocation by locationViewModel.isLoading.collectAsState()
     val loadError by locationViewModel.error.collectAsState()
 
-    // Selection State (2-Level Cascade: Province -> Ward)
-    var selectedProvince by remember { mutableStateOf<com.example.ezroom.data.remote.Province?>(null) }
-    var selectedWard by remember { mutableStateOf<com.example.ezroom.data.remote.Ward?>(null) }
+    // State Management: Selection State
+    var selectedProvince by remember { mutableStateOf<Province?>(null) }
+    var selectedWard by remember { mutableStateOf<Ward?>(null) }
     
     var selectedRoomType by remember { mutableStateOf("") }
     var priceRange by remember { mutableStateOf(uiState.currentParams.priceRange) }

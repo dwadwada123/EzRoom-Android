@@ -265,13 +265,24 @@ private fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label
 
 @Composable
 private fun DetailLine(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = value, 
             style = MaterialTheme.typography.bodyMedium, 
             fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End
+            textAlign = TextAlign.End,
+            maxLines = 1
         )
     }
 }

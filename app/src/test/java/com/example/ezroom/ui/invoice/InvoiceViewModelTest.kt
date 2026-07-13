@@ -1,6 +1,5 @@
 package com.example.ezroom.ui.invoice
 
-import app.cash.turbine.test
 import com.example.ezroom.MainDispatcherRule
 import com.example.ezroom.core.Try
 import com.example.ezroom.domain.model.Invoice
@@ -12,12 +11,15 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class InvoiceViewModelTest {
 
     @get:Rule
@@ -32,12 +34,11 @@ class InvoiceViewModelTest {
         every { getInvoicesUseCase(forRenter = true) } returns flowOf(Try.Success(mockInvoices))
 
         val viewModel = InvoiceViewModel(getInvoicesUseCase, repository)
+        
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertEquals(mockInvoices, state.invoices)
-            assertFalse(state.isLoading)
-        }
+        assertEquals(mockInvoices, viewModel.uiState.value.invoices)
+        assertFalse(viewModel.uiState.value.isLoading)
     }
 
     @Test
@@ -46,7 +47,12 @@ class InvoiceViewModelTest {
         coEvery { repository.updateInvoiceStatus("i1", InvoiceStatus.PAID) } returns Unit
 
         val viewModel = InvoiceViewModel(getInvoicesUseCase, repository)
+        
+        advanceUntilIdle()
+        
         viewModel.markAsPaid("i1")
+        
+        advanceUntilIdle()
 
         coVerify { repository.updateInvoiceStatus("i1", InvoiceStatus.PAID) }
     }

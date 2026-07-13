@@ -148,7 +148,7 @@ fun NotificationScreen(
                                     onClick = { 
                                         viewModel.onNotificationRead(notification.id)
                                         if (notification.type == "CONTRACT") {
-                                            onNavigateToSignContract(notification.id)
+                                            onNavigateToSignContract(notification.targetId ?: notification.id)
                                         }
                                     },
                                 )

@@ -50,6 +50,7 @@ import com.google.maps.android.compose.*
  * EzRoom Room Detail Screen
  * Features: Bento Grid layout, Glassmorphism, and Staggered entry animations.
  */
+// UI Component: Room Detail for Renter
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RenterRoomDetailScreen(
@@ -61,11 +62,15 @@ fun RenterRoomDetailScreen(
     onNavigateToReport: (roomId: String) -> Unit = {},
     onNavigateToWriteReview: (roomId: String) -> Unit = {},
 ) {
+    // UI Logic: Context and Snackbar
     val context = LocalContext.current
     val showSnackbar = LocalSnackbarProvider.current
-    var isFavorite by remember { mutableStateOf(value = false) }
     
-    // Initial room selection logic
+    // State Management: Interaction states
+    var isFavorite by remember { mutableStateOf(value = false) }
+    var showUnfavoriteDialog by remember { mutableStateOf(false) }
+    
+    // State Management: Current room and property context
     var currentRoom by remember(room) { 
         val initialRoom = room ?: mockRoomData()
         val defaultRoom = if (initialRoom.status == RoomStatus.RENTED && initialRoom.propertyId != null) {
@@ -80,11 +85,12 @@ fun RenterRoomDetailScreen(
         MockData.properties.find { it.id == currentRoom.propertyId } 
     }
     
-    // Animation States
+    // UI Animation: Entrance visibility
     val visibleState = remember { MutableTransitionState(false) }.apply { targetState = true }
 
     Scaffold(
         bottomBar = {
+            // UI Component: Action Bar
             AnimatedVisibility(
                 visibleState = visibleState,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -227,9 +233,11 @@ fun RenterRoomDetailScreen(
                                     onDismissRequest = { expanded = false },
                                     modifier = Modifier.fillMaxWidth(0.85f).background(Color.White)
                                 ) {
-                                    // Logic: Filter out HIDDEN rooms, show RENTED as disabled
-                                    property.rooms
-                                        .filter { !it.isUserHidden && it.status != RoomStatus.PENDING }
+                                    // Logic: Find all rooms belonging to this property from global rooms list
+                                    val roomsInProperty = MockData.rooms.filter { it.propertyId == property.id }
+                                    
+                                    roomsInProperty
+                                        .filter { !it.isUserHidden && it.status != RoomStatus.PENDING && it.status != RoomStatus.REMOVED }
                                         .forEach { roomInProp ->
                                             val isRented = roomInProp.status == RoomStatus.RENTED
                                             DropdownMenuItem(
@@ -498,10 +506,12 @@ fun RenterRoomDetailScreen(
                 item {
                     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                         Text(
-                            text = "Tiện ích nổi bật",
-                            style = MaterialTheme.typography.titleLarge
+                            text = "Tiện ích tòa nhà",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryMain
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         
                         Row(
                             modifier = Modifier
@@ -509,8 +519,34 @@ fun RenterRoomDetailScreen(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            val commonAmenities = property?.commonAmenities ?: emptyList()
+                            if (commonAmenities.isEmpty()) {
+                                Text("Theo tiêu chuẩn EzRoom", style = MaterialTheme.typography.bodySmall, color = Neutral500)
+                            } else {
+                                commonAmenities.forEach { amenity ->
+                                    BentoAmenityBadge(amenity.name, isCommon = true)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text(
+                            text = "Tiện ích trong phòng",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryMain
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             currentRoom.amenities.forEach { amenity ->
-                                BentoAmenityBadge(amenity.name)
+                                BentoAmenityBadge(amenity.name, isCommon = false)
                             }
                         }
                     }
@@ -679,10 +715,12 @@ fun RenterRoomDetailScreen(
 
                     Surface(
                         onClick = { 
-                            isFavorite = !isFavorite 
-                            showSnackbar(
-                                if (isFavorite) "Đã thêm vào yêu thích" else "Đã xóa khỏi yêu thích"
-                            )
+                            if (isFavorite) {
+                                showUnfavoriteDialog = true
+                            } else {
+                                isFavorite = true
+                                showSnackbar("Đã thêm vào yêu thích")
+                            }
                         },
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.3f),
@@ -696,6 +734,32 @@ fun RenterRoomDetailScreen(
                     }
                 }
             }
+        }
+        
+        if (showUnfavoriteDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnfavoriteDialog = false },
+                title = { Text("Bỏ yêu thích?", fontWeight = FontWeight.Bold) },
+                text = { Text("Bạn có chắc chắn muốn bỏ phòng này khỏi danh sách yêu thích?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            isFavorite = false
+                            showSnackbar("Đã xóa khỏi yêu thích")
+                            showUnfavoriteDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
+                    ) {
+                        Text("Bỏ thích")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showUnfavoriteDialog = false }) {
+                        Text("Hủy")
+                    }
+                },
+                containerColor = Color.White
+            )
         }
     }
 }
@@ -730,29 +794,41 @@ fun BentoStatCard(icon: androidx.compose.ui.graphics.vector.ImageVector, label: 
 }
 
 @Composable
-fun BentoAmenityBadge(name: String) {
+fun BentoAmenityBadge(name: String, isCommon: Boolean = false) {
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-        tonalElevation = 1.dp
+        color = if (isCommon) PrimaryMain.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.2.dp, 
+            if (isCommon) PrimaryMain.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+        ),
+        tonalElevation = if (isCommon) 0.dp else 1.dp
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = when(name) {
-                    "WiFi" -> Icons.Default.Wifi
+                    "WiFi", "WiFi chung" -> Icons.Default.Wifi
                     "Điều hòa" -> Icons.Default.AcUnit
+                    "Bảo vệ 24/7" -> Icons.Default.Security
+                    "Camera an ninh" -> Icons.Default.Videocam
+                    "Thang máy" -> Icons.Default.Elevator
+                    "Nhà xe chung" -> Icons.Default.DirectionsCar
                     else -> Icons.Default.CheckCircle
                 },
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                tint = if (isCommon) PrimaryMain else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(text = name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                if (isCommon) {
+                    Text(text = "Chung", style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp), color = PrimaryMain.copy(alpha = 0.7f))
+                }
+                Text(text = name, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold)
+            }
         }
     }
 }
@@ -866,17 +942,10 @@ fun ReviewCard(
 // ... keep dialog
 
     if (showReportDialog) {
-        AlertDialog(
-            onDismissRequest = { showReportDialog = false },
-            title = { Text("Khiếu nại đánh giá", fontWeight = FontWeight.Bold) },
-            text = { Text("Bạn muốn báo cáo đánh giá này vi phạm quy tắc cộng đồng hoặc không đúng sự thật?") },
-            confirmButton = {
-                Button(onClick = { showReportDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)) {
-                    Text("Báo cáo")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showReportDialog = false }) { Text("Hủy") }
+        com.example.ezroom.ui.components.ReviewReportDialog(
+            onDismiss = { showReportDialog = false },
+            onConfirm = { _, _ ->
+                showReportDialog = false
             }
         )
     }

@@ -300,6 +300,7 @@ fun CreateContractScreen(
                                 isLoading = true
                                 delay(1000)
                                 isLoading = false
+                                val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
                                 val contract = Contract(
                                     id = UUID.randomUUID().toString(),
                                     roomId = selectedRoomId,
@@ -309,7 +310,8 @@ fun CreateContractScreen(
                                     startDate = startDate,
                                     endDate = endDate,
                                     depositAmount = depositAmount.toLongOrNull() ?: 0L,
-                                    depositStatus = if (selectedStatus == "Đã đóng") DepositStatus.PAID else DepositStatus.UNPAID
+                                    depositStatus = if (selectedStatus == "Đã đóng") DepositStatus.FROZEN else DepositStatus.UNPAID,
+                                    dateCreated = sdf.format(java.util.Date())
                                 )
                                 viewModel.createContract(contract)
                                 onProceedToTerms(contract)

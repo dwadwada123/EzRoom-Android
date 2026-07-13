@@ -56,6 +56,9 @@ fun RenterAppointmentListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
+    
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var appointmentToCancel by remember { mutableStateOf<Appointment?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -148,14 +151,43 @@ fun RenterAppointmentListScreen(
                                 appointment = item,
                                 onEditClick = { onEditAppointment(item) },
                                 onCancelClick = { 
-                                    viewModel.cancelAppointment(item.id)
-                                    onCancelAppointment(item) 
+                                    appointmentToCancel = item
+                                    showCancelDialog = true
                                 }
                             )
                         }
                     }
                 }
             }
+        }
+        
+        if (showCancelDialog && appointmentToCancel != null) {
+            AlertDialog(
+                onDismissRequest = { showCancelDialog = false },
+                title = { Text("Xác nhận hủy lịch", fontWeight = FontWeight.Bold) },
+                text = { Text("Bạn có chắc chắn muốn hủy lịch hẹn xem phòng '${appointmentToCancel?.roomName}' không?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            appointmentToCancel?.let {
+                                viewModel.cancelAppointment(it.id)
+                                onCancelAppointment(it)
+                            }
+                            showCancelDialog = false
+                            appointmentToCancel = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
+                    ) {
+                        Text("Xác nhận hủy")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCancelDialog = false }) {
+                        Text("Giữ lại")
+                    }
+                },
+                containerColor = Color.White
+            )
         }
 
         if (uiState.isLoading) {
@@ -164,6 +196,7 @@ fun RenterAppointmentListScreen(
     }
 }
 
+// UI Component: Appointment Card for Renter
 @Composable
 fun RenterAppointmentBentoCard(
     appointment: Appointment,
@@ -172,10 +205,10 @@ fun RenterAppointmentBentoCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, // 28.dp
+        shape = MaterialTheme.shapes.medium, 
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-        shadowElevation = 3.dp
+        shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

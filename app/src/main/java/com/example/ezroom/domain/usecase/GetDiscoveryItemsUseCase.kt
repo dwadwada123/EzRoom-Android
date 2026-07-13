@@ -26,8 +26,9 @@ class GetDiscoveryItemsUseCase(
                         property = property,
                         rooms = rooms.filter { 
                             it.propertyId == property.id && 
-                            !it.isUserHidden && // New flag
-                            it.status != RoomStatus.PENDING
+                            !it.isUserHidden && 
+                            it.status != RoomStatus.PENDING &&
+                            it.status != RoomStatus.REMOVED
                         }
                     )
                 }.filter { it.rooms.isNotEmpty() || it.property.type == PropertyType.SINGLE }

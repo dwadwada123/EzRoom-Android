@@ -24,8 +24,6 @@ captures/
 .cxx/
 local.properties
 lint/
-# Google Services (Exclude by default for security)
-# google-services.json
 
 # Signing files
 *.jks
@@ -53,11 +51,13 @@ Thumbs.db
 *.log
 /captures
 
-# AI/Agent Context (Internal context & skills)
+# --- Internal Documentation & Tooling (Exclude from Git) ---
 .artifacts/
 .skills/
 .cursor/
 .clinerules
 .cline/
+*.artifact.md
 ANDROID_APP_DETAIL_STATE.md
-# android_app_spec.md is NOT ignored as it is for syncing with Web Admin
+android_app_spec.md
+EzRoom_Technical_Spec_v1.0.md

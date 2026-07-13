@@ -8,12 +8,15 @@ import com.example.ezroom.domain.usecase.GetDiscoveryItemsUseCase
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RenterHomeViewModelTest {
 
     @get:Rule
@@ -27,19 +30,20 @@ class RenterHomeViewModelTest {
         every { getDiscoveryItemsUseCase() } returns flowOf(Try.Success(mockItems))
 
         val viewModel = RenterHomeViewModel(getDiscoveryItemsUseCase)
+        
+        // Advance time to skip delays in init
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            // Skip initial loading state or handle it
-            val state = awaitItem()
-            assertEquals(mockItems, state.discoveryItems)
-            assertFalse(state.isLoading)
-        }
+        assertEquals(mockItems, viewModel.uiState.value.discoveryItems)
+        assertFalse(viewModel.uiState.value.isLoading)
     }
 
     @Test
     fun `onQueryChange updates query in uiState`() = runTest {
         every { getDiscoveryItemsUseCase() } returns flowOf(Try.Success(emptyList()))
         val viewModel = RenterHomeViewModel(getDiscoveryItemsUseCase)
+        
+        advanceUntilIdle()
 
         viewModel.onQueryChange("new query")
         

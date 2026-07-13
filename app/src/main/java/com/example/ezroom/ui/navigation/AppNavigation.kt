@@ -36,10 +36,11 @@ import com.example.ezroom.ui.notification.NotificationScreen
 import com.example.ezroom.ui.chat.ChatRoomScreen
 import com.example.ezroom.ui.host.room.RoomFormScreen
 import com.example.ezroom.ui.host.profile.EkycScreen
-import com.example.ezroom.ui.host.profile.AddDepositAccountScreen
+import com.example.ezroom.ui.host.profile.AddPaymentAccountScreen
+import com.example.ezroom.ui.host.profile.PaymentAccountManagementScreen
 import com.example.ezroom.ui.components.ChangePasswordScreen
 import com.example.ezroom.ui.host.contract.CreateContractScreen
-import com.example.ezroom.ui.host.contract.ContractScreen as HostContractScreen
+import com.example.ezroom.ui.host.contract.HostContractScreen
 import com.example.ezroom.ui.renter.contract.ContractScreen as RenterContractScreen
 import com.example.ezroom.domain.model.Contract
 import com.example.ezroom.domain.model.DepositStatus
@@ -50,9 +51,10 @@ import com.example.ezroom.ui.host.room.PropertyFormScreen
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
-// CompositionLocal for Global Snackbar access
+// State Management: Global Snackbar Provider
 val LocalSnackbarProvider = staticCompositionLocalOf<(String) -> Unit> { { } }
 
+// UI Constants: Route Definitions
 object Screen {
     const val SPLASH = "splash"
     const val LOGIN = "login"
@@ -72,11 +74,14 @@ object Screen {
     const val WRITE_REVIEW = "write_review/{roomId}"
     const val ROOM_FORM = "room_form/{isEditMode}?propertyId={propertyId}&cloneFromId={cloneFromId}"
     const val EKYC = "ekyc"
-    const val DEPOSIT_ACCOUNT = "deposit_account"
+    const val PAYMENT_ACCOUNTS = "payment_accounts"
+    const val ADD_PAYMENT_ACCOUNT = "add_payment_account"
     const val CHANGE_PASSWORD = "change_password"
     const val CREATE_CONTRACT = "create_contract"
-    const val RENTER_CONTRACT = "renter_contract/{contractJson}"
-    const val HOST_CONTRACT = "host_contract/{contractJson}"
+    const val RENTER_CONTRACT = "renter_contract/{contractId}"
+    const val PAYMENT_QR = "payment_qr/{contractId}"
+    const val REFUND_FORM = "refund_form/{contractId}"
+    const val HOST_CONTRACT = "host_contract/{contractId}"
     const val CREATE_INVOICE = "create_invoice"
     const val HOST_INVOICE_DETAIL = "host_invoice_detail/{invoiceId}"
     const val ADVANCED_FILTER = "advanced_filter"
@@ -84,12 +89,14 @@ object Screen {
     const val RENTER_REPUTATION = "renter_reputation"
 }
 
+// UI Component: Navigation Root
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // UI Logic: Snackbar Trigger
     val showSnackbar: (String) -> Unit = { message ->
         scope.launch {
             snackbarHostState.showSnackbar(message)
@@ -98,7 +105,7 @@ fun AppNavigation() {
 
     CompositionLocalProvider(LocalSnackbarProvider provides showSnackbar) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Main Navigation Host
+            // Navigation: App Flow
             NavHost(
                 navController = navController,
                 startDestination = Screen.SPLASH,
@@ -110,6 +117,7 @@ fun AppNavigation() {
                     fadeOut(animationSpec = tween(400)) + slideOutHorizontally(targetOffsetX = { 300 }, animationSpec = tween(400)) 
                 },
             ) {
+                // Splash Flow
                 composable(Screen.SPLASH) {
                     SplashScreen {
                         navController.navigate(Screen.LOGIN) {
@@ -118,6 +126,7 @@ fun AppNavigation() {
                     }
                 }
 
+                // Auth Flow: Login
                 composable(Screen.LOGIN) {
                     LoginScreen(
                         onLoginClick = { email, _ ->
@@ -131,6 +140,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Auth Flow: Forgot Password
                 composable(Screen.FORGOT_PASSWORD) {
                     ForgotPasswordScreen(
                         onBackClick = { navController.popBackStack() },
@@ -142,6 +152,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Auth Flow: Register
                 composable(Screen.REGISTER) {
                     RegisterScreen(
                         onRegisterClick = { _, _, _, _, role ->
@@ -154,6 +165,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Main Dashboard
                 composable(Screen.RENTER_MAIN) {
                     RenterMainScreen(
                         onRoomClick = { roomId -> navController.navigate("renter_room_detail/$roomId") },
@@ -171,6 +183,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Profile
                 composable(Screen.RENTER_PROFILE) {
                     RenterProfileScreen(
                         onBackClick = { navController.popBackStack() },
@@ -184,31 +197,22 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Reputation
                 composable(Screen.RENTER_REPUTATION) {
                     RenterReputationScreen(onBack = { navController.popBackStack() })
                 }
 
+                // Shared Flow: Notifications
                 composable(Screen.NOTIFICATION) {
                     NotificationScreen(
                         onNavigateBack = { navController.popBackStack() },
-                        onNavigateToSignContract = { _ ->
-                            val dummyContract = Contract(
-                                id = "notif_contract",
-                                roomId = "room_1",
-                                roomName = "Phòng trọ cao cấp ban công thoáng mát",
-                                renterName = "Nguyễn Văn A",
-                                renterPhone = "0901234567",
-                                startDate = "01/10/2026",
-                                endDate = "01/10/2027",
-                                depositAmount = 3500000L,
-                                depositStatus = DepositStatus.PAID
-                            )
-                            val contractJson = android.net.Uri.encode(Gson().toJson(dummyContract))
-                            navController.navigate("renter_contract/$contractJson")
+                        onNavigateToSignContract = { contractId ->
+                            navController.navigate("renter_contract/$contractId")
                         }
                     )
                 }
 
+                // Host Flow: Main Dashboard
                 composable(Screen.HOST_MAIN) {
                     HostMainScreen(
                         onRoomClick = { roomId -> navController.navigate("host_room_detail/$roomId") },
@@ -223,10 +227,12 @@ fun AppNavigation() {
                         onNotificationClick = { navController.navigate(Screen.NOTIFICATION) },
                         onCloneRoomClick = { roomId -> navController.navigate("room_form/false?cloneFromId=$roomId") },
                         onAddRoomToProperty = { propertyId -> navController.navigate("room_form/false?propertyId=$propertyId") },
-                        onAddPropertyClick = { navController.navigate(Screen.PROPERTY_FORM) },
+                        onAddPropertyClick = {
+                    navController.navigate("property_form")
+                },
                         onAddStandaloneRoomClick = { navController.navigate("room_form/false") },
                         onRenterReputationClick = { _ -> navController.navigate(Screen.RENTER_REPUTATION) },
-                        onEditPropertyClick = { propertyId -> navController.navigate("property_form?propertyId=$propertyId") },
+                    onEditPropertyClick = { propertyId -> navController.navigate("property_form?propertyId=$propertyId") },
                         onCreateContractClick = { navController.navigate(Screen.CREATE_CONTRACT) },
                         onChatClick = { userName ->
                             val encodedName = android.net.Uri.encode(userName)
@@ -235,6 +241,20 @@ fun AppNavigation() {
                     )
                 }
 
+                composable(Screen.PAYMENT_ACCOUNTS) {
+                    PaymentAccountManagementScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToAdd = { navController.navigate(Screen.ADD_PAYMENT_ACCOUNT) }
+                    )
+                }
+
+                composable(Screen.ADD_PAYMENT_ACCOUNT) {
+                    AddPaymentAccountScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                // Host Flow: Property Creation
                 composable(
                     route = Screen.PROPERTY_FORM,
                     arguments = listOf(navArgument("propertyId") { type = NavType.StringType; nullable = true; defaultValue = null })
@@ -252,33 +272,37 @@ fun AppNavigation() {
                     )
                 }
 
+                // Host Flow: Room Creation
                 composable(
-                    route = Screen.ROOM_FORM,
-                    arguments = listOf(
-                        navArgument("isEditMode") { type = NavType.BoolType },
-                        navArgument("propertyId") { type = NavType.StringType; nullable = true; defaultValue = null },
-                        navArgument("cloneFromId") { type = NavType.StringType; nullable = true; defaultValue = null }
-                    )
-                ) { backStackEntry ->
-                    val isEditMode = backStackEntry.arguments?.getBoolean("isEditMode") ?: false
-                    val propertyId = backStackEntry.arguments?.getString("propertyId")
-                    val cloneFromId = backStackEntry.arguments?.getString("cloneFromId")
-                    
-                    RoomFormScreen(
-                        isEditMode = isEditMode,
-                        propertyId = propertyId,
-                        cloneFromRoomId = cloneFromId,
-                        onNavigateBack = {
-                            showSnackbar(if (isEditMode) "Cập nhật phòng thành công" else "Lưu thông tin phòng thành công")
-                            navController.popBackStack() 
-                        }
-                    )
-                }
+                route = Screen.ROOM_FORM,
+                arguments = listOf(
+                    navArgument("isEditMode") { type = NavType.BoolType },
+                    navArgument("propertyId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("cloneFromId") { type = NavType.StringType; nullable = true; defaultValue = null }
+                )
+            ) { backStackEntry ->
+                val isEditMode = backStackEntry.arguments?.getBoolean("isEditMode") ?: false
+                val propertyId = backStackEntry.arguments?.getString("propertyId")
+                val cloneFromId = backStackEntry.arguments?.getString("cloneFromId")
+                
+                RoomFormScreen(
+                    isEditMode = isEditMode,
+                    propertyId = propertyId,
+                    cloneFromRoomId = cloneFromId,
+                    onSaveSuccess = {
+                        navController.popBackStack()
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
 
+                // Host Flow: Profile
                 composable(Screen.HOST_PROFILE) {
                     HostProfileScreen(
                         onNavigateToEkyc = { navController.navigate(Screen.EKYC) },
-                        onNavigateToDepositAccount = { navController.navigate(Screen.DEPOSIT_ACCOUNT) },
+                        onNavigateToDepositAccount = { navController.navigate(Screen.PAYMENT_ACCOUNTS) },
                         onNavigateToChangePassword = { navController.navigate(Screen.CHANGE_PASSWORD) },
                         onBack = { navController.popBackStack() },
                         onLogout = {
@@ -289,6 +313,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Shared Flow: Settings
                 composable(Screen.CHANGE_PASSWORD) {
                     ChangePasswordScreen(
                         onBackClick = { navController.popBackStack() },
@@ -299,14 +324,12 @@ fun AppNavigation() {
                     )
                 }
 
-                composable(Screen.DEPOSIT_ACCOUNT) {
-                    AddDepositAccountScreen(onNavigateBack = { navController.popBackStack() })
-                }
-
+                // Host Flow: Settings
                 composable(Screen.EKYC) {
                     EkycScreen(onNavigateBack = { navController.popBackStack() })
                 }
 
+                // Host Flow: Contracts
                 composable(Screen.CREATE_CONTRACT) {
                     CreateContractScreen(
                         onBackClick = { navController.popBackStack() },
@@ -317,37 +340,84 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Contracts
                 composable(
                     route = Screen.RENTER_CONTRACT,
-                    arguments = listOf(navArgument("contractJson") { type = NavType.StringType })
+                    arguments = listOf(navArgument("contractId") { type = NavType.StringType })
                 ) { backStackEntry ->
-                    val contractJson = backStackEntry.arguments?.getString("contractJson")
-                    val contract = Gson().fromJson(contractJson, Contract::class.java)
-                    RenterContractScreen(
-                        contract = contract,
-                        onNavigateBack = { navController.popBackStack() },
-                        onSignContract = { _ -> navController.popBackStack() }
-                    )
+                    val contractId = backStackEntry.arguments?.getString("contractId")
+                    val contract = MockData.contracts.find { it.id == contractId }
+                    if (contract != null) {
+                        RenterContractScreen(
+                            contract = contract,
+                            onNavigateBack = { navController.popBackStack() },
+                            onSignSuccess = { showSnackbar("Ký hợp đồng thành công! Vui lòng thanh toán cọc.") },
+                            onPayClick = { navController.navigate("payment_qr/$contractId") },
+                            onRefundClick = { navController.navigate("refund_form/$contractId") },
+                            onDisputeClick = { showSnackbar("Đã gửi yêu cầu tố cáo. Admin sẽ liên hệ bạn.") }
+                        )
+                    }
                 }
 
+                // Fintech: Payment QR
+                composable(
+                    route = Screen.PAYMENT_QR,
+                    arguments = listOf(navArgument("contractId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val contractId = backStackEntry.arguments?.getString("contractId")
+                    val contract = MockData.contracts.find { it.id == contractId }
+                    if (contract != null) {
+                        com.example.ezroom.ui.renter.contract.PaymentQRScreen(
+                            contract = contract,
+                            onPaymentConfirmed = {
+                                showSnackbar("Yêu cầu đã được gửi. Đang xác thực giao dịch...")
+                                navController.popBackStack()
+                            },
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                }
+
+                // Fintech: Refund Form
+                composable(
+                    route = Screen.REFUND_FORM,
+                    arguments = listOf(navArgument("contractId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val contractId = backStackEntry.arguments?.getString("contractId")
+                    if (contractId != null) {
+                        com.example.ezroom.ui.renter.contract.RefundFormScreen(
+                            contractId = contractId,
+                            onRefundRequested = {
+                                showSnackbar("Đã gửi yêu cầu hoàn tiền. Admin sẽ duyệt trong 24h.")
+                                navController.popBackStack()
+                            },
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                }
+
+                // Host Flow: Contracts
                 composable(
                     route = Screen.HOST_CONTRACT,
-                    arguments = listOf(navArgument("contractJson") { type = NavType.StringType })
+                    arguments = listOf(navArgument("contractId") { type = NavType.StringType })
                 ) { backStackEntry ->
-                    val contractJson = backStackEntry.arguments?.getString("contractJson")
-                    val contract = Gson().fromJson(contractJson, Contract::class.java)
-                    HostContractScreen(
-                        contract = contract,
-                        onNavigateBack = { navController.popBackStack() },
-                        onSignContract = { _ ->
-                            showSnackbar("Đã gửi hợp đồng cho người thuê")
-                            navController.navigate(Screen.HOST_MAIN) {
-                                popUpTo(Screen.HOST_MAIN) { inclusive = true }
+                    val contractId = backStackEntry.arguments?.getString("contractId")
+                    val contract = MockData.contracts.find { it.id == contractId }
+                    if (contract != null) {
+                        HostContractScreen(
+                            contract = contract,
+                            onNavigateBack = { navController.popBackStack() },
+                            onSignContract = { _ ->
+                                showSnackbar("Đã gửi hợp đồng cho người thuê")
+                                navController.navigate(Screen.HOST_MAIN) {
+                                    popUpTo(Screen.HOST_MAIN) { inclusive = true }
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
 
+                // Renter Flow: Room Details
                 composable(
                     route = Screen.RENTER_ROOM_DETAIL,
                     arguments = listOf(navArgument("roomId") { type = NavType.StringType })
@@ -367,6 +437,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Host Flow: Room Details
                 composable(
                     route = Screen.HOST_ROOM_DETAIL,
                     arguments = listOf(navArgument("roomId") { type = NavType.StringType })
@@ -381,6 +452,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Reports
                 composable(
                     route = Screen.SUBMIT_REPORT,
                     arguments = listOf(navArgument("roomId") { type = NavType.StringType })
@@ -394,6 +466,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Reviews
                 composable(
                     route = Screen.WRITE_REVIEW,
                     arguments = listOf(navArgument("roomId") { type = NavType.StringType })
@@ -407,6 +480,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Booking
                 composable(
                     route = Screen.BOOKING_FORM,
                     arguments = listOf(
@@ -430,6 +504,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Invoices
                 composable(
                     route = Screen.INVOICE_DETAIL,
                     arguments = listOf(navArgument("invoiceId") { type = NavType.StringType })
@@ -443,6 +518,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Host Flow: Invoices
                 composable(
                     route = Screen.HOST_INVOICE_DETAIL,
                     arguments = listOf(navArgument("invoiceId") { type = NavType.StringType })
@@ -455,6 +531,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Host Flow: Invoices
                 composable(Screen.CREATE_INVOICE) {
                     CreateInvoiceScreen(
                         onNavigateBack = { navController.popBackStack() },
@@ -465,6 +542,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Shared Flow: Chat
                 composable(
                     route = Screen.CHAT_ROOM,
                     arguments = listOf(navArgument("userName") { type = NavType.StringType })
@@ -476,6 +554,7 @@ fun AppNavigation() {
                     )
                 }
 
+                // Renter Flow: Search
                 composable(Screen.ADVANCED_FILTER) {
                     AdvancedFilterScreen(
                         onFilterApply = { navController.popBackStack() },
@@ -484,7 +563,7 @@ fun AppNavigation() {
                 }
             }
 
-            // Global Snackbar Host at the Top
+            // UI Component: Snackbar Overlay
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier

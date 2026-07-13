@@ -63,6 +63,7 @@ data class Room(
     val currentRenter: RenterInfo? = null,
     val pastRenters: List<RenterInfo> = emptyList(),
     val isUserHidden: Boolean = false,
+    val removalInfo: RoomRemovalInfo? = null,
 )
 
 data class RenterInfo(

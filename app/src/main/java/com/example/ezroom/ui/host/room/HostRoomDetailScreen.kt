@@ -352,22 +352,22 @@ fun HostRoomDetailScreen(
         if (showDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
-                title = { Text("Xác nhận xóa", fontWeight = FontWeight.Bold) },
-                text = { Text("Bạn có chắc chắn muốn xóa phòng này? Thao tác này không thể hoàn tác.") },
+                title = { Text("Xác nhận xóa phòng", fontWeight = FontWeight.Bold) },
+                text = { Text("Bạn có chắc chắn muốn xóa phòng '${displayRoom.title}'? Mọi dữ liệu về lịch sử thuê và bài đăng sẽ bị mất hoàn toàn.") },
                 confirmButton = {
                     Button(
                         onClick = {
                             showDeleteConfirm = false
                             onDeleteClick(displayRoom.id)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
                     ) {
-                        Text("Xóa")
+                        Text("Xác nhận xóa")
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text("Hủy")
+                        Text("Giữ lại phòng")
                     }
                 },
                 containerColor = Color.White

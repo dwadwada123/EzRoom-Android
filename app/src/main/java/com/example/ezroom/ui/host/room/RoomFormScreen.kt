@@ -1,10 +1,15 @@
 package com.example.ezroom.ui.host.room
 
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -14,11 +19,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.LocationDropdown
@@ -26,11 +34,11 @@ import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.components.SmallTextField
 import com.example.ezroom.ui.theme.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.data.model.MockData
-import com.example.ezroom.data.remote.Province
-import com.example.ezroom.data.remote.Ward
+import com.example.ezroom.ui.navigation.LocalSnackbarProvider
 import com.example.ezroom.viewmodel.LocationViewModel
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -56,10 +64,12 @@ data class AmenityItem(
 data class RoomImageUI(
     val id: String = UUID.randomUUID().toString(),
     val uri: Uri? = null,
-    val label: String = "Ảnh mới"
+    val url: String? = null,
+    val resId: Int? = null,
+    val category: String = "Khác"
 )
 
-val ImageLabels = listOf("Ảnh phòng khách", "Ảnh phòng ngủ", "Ảnh WC", "Ảnh mặt tiền")
+val ImageCategories = listOf("Phòng ngủ", "Phòng khách", "Phòng bếp", "Nhà vệ sinh", "Ban công", "Mặt tiền", "Khác")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,11 +78,15 @@ fun RoomFormScreen(
     propertyId: String? = null,
     cloneFromRoomId: String? = null,
     onNavigateBack: () -> Unit = {},
+    onSaveSuccess: () -> Unit = {},
     locationViewModel: LocationViewModel = viewModel()
 ) {
     // State definitions
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+    val showSnackbar = LocalSnackbarProvider.current
+
+    var showDiscardDialog by remember { mutableStateOf(false) }
 
     // Location States
     val provinces by locationViewModel.provinces.collectAsState()
@@ -110,6 +124,15 @@ fun RoomFormScreen(
     }
     val uploadedImages = remember { mutableStateListOf<RoomImageUI>() }
 
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+        onResult = { uris ->
+            uris.forEach { uri ->
+                uploadedImages.add(RoomImageUI(uri = uri))
+            }
+        }
+    )
+
     // Pre-fill logic for Edit or Clone
     LaunchedEffect(cloneFromRoomId, isEditMode) {
         val targetId = cloneFromRoomId ?: if (isEditMode) "some_id" else null // Simplified
@@ -135,6 +158,12 @@ fun RoomFormScreen(
                     amenities[index] = item.copy(isChecked = true, compensationAmount = match.compensationAmount.toString())
                 }
             }
+
+            // Fill images
+            uploadedImages.clear()
+            uploadedImages.addAll(room.images.map { 
+                RoomImageUI(url = it.url, resId = it.resId, category = it.category ?: "Khác") 
+            })
         }
     }
 
@@ -159,7 +188,7 @@ fun RoomFormScreen(
                         ) 
                     },
                     navigationIcon = { 
-                        IconButton(onClick = onNavigateBack, enabled = !isLoading) { 
+                        IconButton(onClick = { showDiscardDialog = true }, enabled = !isLoading) { 
                             Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng") 
                         } 
                     }
@@ -294,6 +323,68 @@ fun RoomFormScreen(
 
                 HorizontalDivider(color = Neutral300.copy(alpha = 0.3f))
 
+                // Image Upload Section
+                FormSectionTitle(title = "Hình ảnh phòng")
+                
+                if (uploadedImages.isEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clickable { if (!isLoading) photoPickerLauncher.launch("image/*") },
+                        shape = RoundedCornerShape(12.dp),
+                        color = Neutral50,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.AddPhotoAlternate, null, tint = Neutral500, modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Bấm để tải lên hình ảnh", style = MaterialTheme.typography.bodyMedium, color = Neutral500)
+                        }
+                    }
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 8.dp)
+                    ) {
+                        items(uploadedImages, key = { it.id }) { imgUI ->
+                            ImageUploadItem(
+                                item = imgUI,
+                                onCategoryChange = { newCat ->
+                                    val index = uploadedImages.indexOfFirst { it.id == imgUI.id }
+                                    if (index != -1) {
+                                        uploadedImages[index] = imgUI.copy(category = newCat)
+                                    }
+                                },
+                                onDelete = {
+                                    uploadedImages.removeIf { it.id == imgUI.id }
+                                },
+                                enabled = !isLoading
+                            )
+                        }
+                        item {
+                            Surface(
+                                modifier = Modifier
+                                    .size(width = 100.dp, height = 140.dp)
+                                    .clickable { if (!isLoading) photoPickerLauncher.launch("image/*") },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Neutral50,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Add, null, tint = Neutral500)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = Neutral300.copy(alpha = 0.3f))
+
                 FormSectionTitle(title = "Diện tích & Tiện ích")
                 
                 CustomTextField(
@@ -369,38 +460,10 @@ fun RoomFormScreen(
                         if (isFormValid) {
                             scope.launch {
                                 isLoading = true
-                                
-                                // Engineering: Package all collected data into Room object
-                                val fullAddress = belongsToProperty?.address ?: listOfNotNull(
-                                    selectedWard?.name,
-                                    selectedProvince?.name
-                                ).joinToString(", ")
-
-                                val newRoom = Room(
-                                    id = if (isEditMode) "existing_id" else UUID.randomUUID().toString(),
-                                    propertyId = propertyId,
-                                    title = title,
-                                    address = fullAddress,
-                                    detailedAddress = detailedAddress,
-                                    description = description,
-                                    price = price.toLongOrNull() ?: 0L,
-                                    priceFormatted = "${price}đ",
-                                    electricityPrice = electricityPrice.toLongOrNull() ?: 3500L,
-                                    waterPrice = waterPrice.toLongOrNull() ?: 15000L,
-                                    structure = selectedStructure,
-                                    floorArea = totalArea.toDoubleOrNull() ?: 0.0,
-                                    detailedAreas = detailedAreas.toList(),
-                                    images = emptyList(), // Images handled by separate logic
-                                    amenities = amenities
-                                        .filter { it.isChecked }
-                                        .map { Amenity(it.name, it.compensationAmount.toLongOrNull() ?: 0L) },
-                                    latitude = markerState.position.latitude,
-                                    longitude = markerState.position.longitude
-                                )
-
-                                delay(1500) // Simulate network/DB delay
+                                delay(1500)
                                 isLoading = false
-                                onNavigateBack()
+                                showSnackbar(if (isEditMode) "Cập nhật phòng thành công" else "Lưu thông tin phòng thành công")
+                                onSaveSuccess()
                             }
                         }
                     }, 
@@ -408,6 +471,43 @@ fun RoomFormScreen(
                     enabled = isFormValid && !isLoading
                 )
             }
+        }
+
+        if (showDiscardDialog) {
+            val dialogTitle = when {
+                isEditMode -> "Hủy chỉnh sửa?"
+                cloneFromRoomId != null -> "Hủy sao chép?"
+                else -> "Hủy đăng phòng?"
+            }
+            val confirmText = when {
+                isEditMode -> "Bỏ chỉnh sửa"
+                cloneFromRoomId != null -> "Bỏ sao chép"
+                else -> "Hủy đăng"
+            }
+            val dismissText = if (isEditMode) "Tiếp tục sửa" else "Tiếp tục đăng"
+
+            AlertDialog(
+                onDismissRequest = { showDiscardDialog = false },
+                title = { Text(dialogTitle, fontWeight = FontWeight.Bold) },
+                text = { Text("Mọi thông tin bạn vừa nhập sẽ bị mất. Bạn có chắc chắn muốn thoát?") },
+                confirmButton = {
+                    Button(
+                        onClick = { 
+                            showDiscardDialog = false
+                            onNavigateBack() 
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
+                    ) {
+                        Text(confirmText)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDiscardDialog = false }) {
+                        Text(dismissText)
+                    }
+                },
+                containerColor = Color.White
+            )
         }
 
         if (isLoading) LoadingWidget()
@@ -428,6 +528,90 @@ fun PropertyInfoBanner(property: Property) {
             Column {
                 Text(text = "Đang thêm vào: ${property.name}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 Text(text = property.address, style = MaterialTheme.typography.bodySmall, color = Neutral500)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImageUploadItem(
+    item: RoomImageUI,
+    onCategoryChange: (String) -> Unit,
+    onDelete: () -> Unit,
+    enabled: Boolean
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.width(140.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Neutral100)
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(item.uri ?: item.url ?: item.resId),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(24.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape),
+                enabled = enabled
+            ) {
+                Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(14.dp))
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Category Dropdown
+        Box {
+            Surface(
+                onClick = { if (enabled) expanded = true },
+                shape = RoundedCornerShape(8.dp),
+                color = Color.White,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = item.category, 
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp), tint = Neutral500)
+                }
+            }
+            
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(Color.White)
+            ) {
+                ImageCategories.forEach { category ->
+                    DropdownMenuItem(
+                        text = { Text(category, style = MaterialTheme.typography.bodySmall) },
+                        onClick = {
+                            onCategoryChange(category)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -499,4 +683,3 @@ fun RoomFormScreenPreview() {
         RoomFormScreen()
     }
 }
-

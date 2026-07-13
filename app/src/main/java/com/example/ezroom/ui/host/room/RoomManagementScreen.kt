@@ -1,12 +1,20 @@
 package com.example.ezroom.ui.host.room
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,14 +33,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
+import com.example.ezroom.data.repository.RoomRepositoryImpl
 import com.example.ezroom.domain.model.*
-import com.example.ezroom.data.model.MockData
+import com.example.ezroom.domain.usecase.*
+import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.host.components.RenterReviewDialog
 import com.example.ezroom.ui.navigation.LocalSnackbarProvider
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// UI Component: Room Management Dashboard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoomManagementScreen(
@@ -41,16 +56,35 @@ fun RoomManagementScreen(
     onAddPropertyClick: () -> Unit = {},
     onAddStandaloneRoomClick: () -> Unit = {},
     onEditPropertyClick: (Property) -> Unit = {},
+    viewModel: RoomManagementViewModel = viewModel(
+        factory = viewModelFactory {
+            val repo = RoomRepositoryImpl()
+            RoomManagementViewModel(
+                GetRoomsUseCase(repo),
+                GetPropertiesUseCase(repo),
+                TogglePropertyVisibilityUseCase(repo),
+                DeletePropertyUseCase(repo),
+                ToggleRoomVisibilityUseCase(repo),
+                DeleteRoomUseCase(repo),
+                SubmitAppealUseCase(repo)
+            )
+        }
+    )
 ) {
-    val properties = MockData.properties
-    val allRooms = MockData.rooms
+    // State Management: UI State from ViewModel
+    val uiState by viewModel.uiState.collectAsState()
     
-    var selectedTab by remember { mutableIntStateOf(0) }
     var showAddOptions by remember { mutableStateOf(false) }
     
-    // Deletion state
+    // State Management: Deletion state
     var propertyToDelete by remember { mutableStateOf<Property?>(null) }
+    var roomToDelete by remember { mutableStateOf<Room?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    // State Management: Removal & Appeal
+    var roomForReason by remember { mutableStateOf<Room?>(null) }
+    var showRemovalReason by remember { mutableStateOf(false) }
+    var showAppealForm by remember { mutableStateOf(false) }
 
     val showSnackbar = LocalSnackbarProvider.current
     
@@ -59,39 +93,44 @@ fun RoomManagementScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Tabs - Aligned directly at the top of the screen content
+            // UI Component: Tabs
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
                 shadowElevation = 2.dp,
             ) {
                 TabRow(
-                    selectedTabIndex = selectedTab,
+                    selectedTabIndex = uiState.selectedTabIndex,
                     containerColor = Color.White,
                     contentColor = PrimaryMain,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTabIndex]),
                             color = PrimaryMain,
                         )
                     },
-                    divider = {} // Remove default divider for cleaner look
+                    divider = {} 
                 ) {
                     Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
+                        selected = uiState.selectedTabIndex == 0,
+                        onClick = { viewModel.onTabSelected(0) },
                         text = { Text("Quản lý dãy", fontWeight = FontWeight.Bold) },
                     )
                     Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
+                        selected = uiState.selectedTabIndex == 1,
+                        onClick = { viewModel.onTabSelected(1) },
                         text = { Text("Phòng lẻ", fontWeight = FontWeight.Bold) },
                     )
                 }
             }
 
-            if (selectedTab == 0) {
-                val complexProperties = properties.filter { it.type == PropertyType.COMPLEX }
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryMain)
+                }
+            } else if (uiState.selectedTabIndex == 0) {
+                // UI Component: Complex Properties List
+                val complexProperties = uiState.properties.filter { it.type == PropertyType.COMPLEX }
                 if (complexProperties.isEmpty()) {
                     EmptyState("Bạn chưa có dãy nào", icon = Icons.Default.Apartment)
                 } else {
@@ -100,26 +139,52 @@ fun RoomManagementScreen(
                         contentPadding = PaddingValues(top = 12.dp, start = 20.dp, end = 20.dp, bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        items(complexProperties, key = { it.id }) { property ->
-                            val propertyRooms = allRooms.filter { it.propertyId == property.id }
-                            PropertyManagementCard(
-                                property = property,
-                                rooms = propertyRooms,
-                                onRoomClick = onRoomClick,
-                                onCloneRoom = onCloneRoomClick,
-                                onAddRoom = { onAddRoomClick(property) },
-                                onEditProperty = onEditPropertyClick,
-                                onDeleteProperty = { 
-                                    propertyToDelete = it
-                                    showDeleteConfirmation = true
-                                },
-                            )
+                        itemsIndexed(complexProperties, key = { _, it -> it.id }) { index, property ->
+                            var isVisible by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) { isVisible = true }
+                            
+                            AnimatedVisibility(
+                                visible = isVisible,
+                                enter = slideInVertically(
+                                    initialOffsetY = { 100 },
+                                    animationSpec = tween(durationMillis = 400, delayMillis = index * 100)
+                                ) + fadeIn(animationSpec = tween(durationMillis = 400, delayMillis = index * 100))
+                            ) {
+                                val propertyRooms = uiState.rooms.filter { it.propertyId == property.id }
+                                PropertyManagementCard(
+                                    property = property,
+                                    rooms = propertyRooms,
+                                    onRoomClick = { id -> 
+                                        val room = propertyRooms.find { it.id == id }
+                                        if (room?.status == RoomStatus.REMOVED) {
+                                            roomForReason = room
+                                            showRemovalReason = true
+                                        } else {
+                                            onRoomClick(id)
+                                        }
+                                    },
+                                    onCloneRoom = onCloneRoomClick,
+                                    onAddRoom = { onAddRoomClick(property) },
+                                    onEditProperty = onEditPropertyClick,
+                                    onDeleteProperty = { 
+                                        propertyToDelete = it
+                                        showDeleteConfirmation = true
+                                    },
+                                    onToggleVisibility = { viewModel.onTogglePropertyVisibility(property.id) },
+                                    onDeleteRoom = { id -> 
+                                        roomToDelete = propertyRooms.find { it.id == id }
+                                        showDeleteConfirmation = true
+                                    },
+                                    onToggleRoomVisibility = { viewModel.onToggleRoomVisibility(it) }
+                                )
+                            }
                         }
                     }
                 }
             } else {
-                val standaloneRooms = allRooms.filter { room ->
-                    val prop = properties.find { it.id == room.propertyId }
+                // UI Component: Standalone Rooms List
+                val standaloneRooms = uiState.rooms.filter { room ->
+                    val prop = uiState.properties.find { it.id == room.propertyId }
                     prop?.type == PropertyType.SINGLE || room.propertyId == null
                 }
                 
@@ -131,99 +196,89 @@ fun RoomManagementScreen(
                         contentPadding = PaddingValues(top = 12.dp, start = 20.dp, end = 20.dp, bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(standaloneRooms, key = { it.id }) { room ->
-                            StandaloneRoomCard(
-                                room = room,
-                                onClick = { onRoomClick(room.id) },
-                                onClone = { onCloneRoomClick(room) }
-                            )
+                        itemsIndexed(standaloneRooms, key = { _, it -> it.id }) { index, room ->
+                            var isVisible by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) { isVisible = true }
+
+                            AnimatedVisibility(
+                                visible = isVisible,
+                                enter = slideInVertically(
+                                    initialOffsetY = { 100 },
+                                    animationSpec = tween(durationMillis = 400, delayMillis = index * 100)
+                                ) + fadeIn(animationSpec = tween(durationMillis = 400, delayMillis = index * 100))
+                            ) {
+                                StandaloneRoomCard(
+                                    room = room,
+                                    onClick = { 
+                                        if (room.status == RoomStatus.REMOVED) {
+                                            roomForReason = room
+                                            showRemovalReason = true
+                                        } else {
+                                            onRoomClick(room.id)
+                                        }
+                                    },
+                                    onClone = { onCloneRoomClick(room) },
+                                    onToggleVisibility = { viewModel.onToggleRoomVisibility(room.id) },
+                                    onDelete = {
+                                        roomToDelete = room
+                                        showDeleteConfirmation = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Add Button (FAB)
-        FloatingActionButton(
-            onClick = { showAddOptions = true },
-            containerColor = PrimaryMain,
-            contentColor = Color.White,
-            shape = CircleShape,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 100.dp, end = 20.dp)
-                .zIndex(5f)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Thêm")
-        }
-
-        // Add Dialog
-        if (showAddOptions) {
-            AlertDialog(
-                onDismissRequest = { showAddOptions = false },
-                title = { Text("Bạn muốn đăng tin gì?", fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        AddOptionItem(
-                            title = "Tạo dãy / Tòa nhà",
-                            desc = "Quản lý nhiều phòng tại một địa chỉ",
-                            icon = Icons.Default.Apartment,
-                            color = PrimaryMain,
-                            onClick = {
-                                showAddOptions = false
-                                onAddPropertyClick()
-                            },
-                        )
-                        AddOptionItem(
-                            title = "Đăng phòng lẻ",
-                            desc = "Nhà nguyên căn hoặc phòng cho thuê lẻ",
-                            icon = Icons.Default.Home,
-                            color = AccentTeal,
-                            onClick = {
-                                showAddOptions = false
-                                onAddStandaloneRoomClick()
-                            },
-                        )
-                    }
-                },
-                confirmButton = {},
-                dismissButton = {
-                    TextButton(onClick = { showAddOptions = false }) {
-                        Text("Đóng")
-                    }
-                },
-                containerColor = Color.White,
-                shape = MaterialTheme.shapes.medium,
+        // UI Component: Dialogs for Removal Reason and Appeal
+        if (showRemovalReason && roomForReason != null) {
+            RemovalReasonDialog(
+                room = roomForReason!!,
+                onDismiss = { showRemovalReason = false },
+                onAppeal = { 
+                    showRemovalReason = false
+                    showAppealForm = true
+                }
             )
         }
 
-        // Review Dialog
-        if (showRenterReview) {
-            RenterReviewDialog(
-                renterName = renterNameToReview,
-                onDismiss = { showRenterReview = false },
-                onSubmit = { _, _, _ -> showRenterReview = false },
+        if (showAppealForm && roomForReason != null) {
+            AppealFormDialog(
+                room = roomForReason!!,
+                onDismiss = { showAppealForm = false },
+                onSubmit = { text, images ->
+                    viewModel.onSubmitAppeal(roomForReason!!.id, text, images)
+                    showAppealForm = false
+                    showSnackbar("Đã gửi kháng cáo thành công")
+                }
             )
         }
 
-        // Property Delete Confirmation
-        if (showDeleteConfirmation && propertyToDelete != null) {
+        // UI Component: Deletion Dialog
+        if (showDeleteConfirmation && (propertyToDelete != null || roomToDelete != null)) {
+            val title = if (propertyToDelete != null) "Xác nhận xóa dãy trọ" else "Xác nhận xóa phòng"
+            val text = if (propertyToDelete != null) 
+                "Bạn có chắc chắn muốn xóa dãy '${propertyToDelete?.name}'? Toàn bộ các phòng bên trong cũng sẽ bị xóa."
+                else "Bạn có chắc chắn muốn xóa phòng '${roomToDelete?.title}' không?"
+
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmation = false },
-                title = { Text("Xác nhận xóa dãy trọ", fontWeight = FontWeight.Bold) },
-                text = { Text("Bạn có chắc chắn muốn xóa dãy '${propertyToDelete?.name}'? Toàn bộ các phòng bên trong cũng sẽ bị xóa.") },
+                title = { Text(title, fontWeight = FontWeight.Bold) },
+                text = { Text(text) },
                 confirmButton = {
                     Button(
                         onClick = {
-                            val propertyId = propertyToDelete?.id
-                            val index = MockData.properties.indexOfFirst { it.id == propertyId }
-                            if (index != -1) {
-                                MockData.properties.removeAt(index)
-                                MockData.rooms.removeAll { it.propertyId == propertyId }
+                            if (propertyToDelete != null) {
+                                viewModel.onDeleteProperty(propertyToDelete!!.id)
                                 showSnackbar("Đã xóa dãy trọ thành công")
+                                propertyToDelete = null
+                            } else if (roomToDelete != null) {
+                                viewModel.onDeleteRoom(roomToDelete!!.id)
+                                showSnackbar("Đã xóa phòng thành công")
+                                roomToDelete = null
                             }
                             showDeleteConfirmation = false
-                            propertyToDelete = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ErrorRose),
                     ) {
@@ -241,6 +296,7 @@ fun RoomManagementScreen(
     }
 }
 
+// UI Component: Add Option Item
 @Composable
 fun AddOptionItem(
     title: String,
@@ -274,6 +330,7 @@ fun AddOptionItem(
     }
 }
 
+// UI Component: Property Management Card
 @Composable
 fun PropertyManagementCard(
     property: Property,
@@ -283,6 +340,9 @@ fun PropertyManagementCard(
     onAddRoom: () -> Unit,
     onEditProperty: (Property) -> Unit,
     onDeleteProperty: (Property) -> Unit,
+    onToggleVisibility: () -> Unit,
+    onDeleteRoom: (String) -> Unit,
+    onToggleRoomVisibility: (String) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(value = false) }
 
@@ -331,17 +391,11 @@ fun PropertyManagementCard(
                 Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
-                            onClick = { 
-                                val index = MockData.properties.indexOfFirst { it.id == property.id }
-                                if (index != -1) {
-                                    val current = MockData.properties[index]
-                                    MockData.properties[index] = current.copy(isHidden = !current.isHidden)
-                                }
-                            }, 
+                            onClick = onToggleVisibility, 
                             modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
-                                imageVector = if (property.isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff, 
+                                imageVector = if (property.isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility, 
                                 contentDescription = "Ẩn/Hiện dãy", 
                                 tint = Neutral500, 
                                 modifier = Modifier.size(16.dp),
@@ -372,6 +426,8 @@ fun PropertyManagementCard(
                             room = room,
                             onClick = { onRoomClick(room.id) },
                             onClone = { onCloneRoom(room) },
+                            onDelete = { onDeleteRoom(room.id) },
+                            onToggleVisibility = { onToggleRoomVisibility(room.id) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -392,15 +448,21 @@ fun PropertyManagementCard(
     }
 }
 
+// UI Component: Standalone Room Card
 @Composable
 fun StandaloneRoomCard(
     room: Room,
     onClick: () -> Unit,
-    onClone: () -> Unit
+    onClone: () -> Unit,
+    onToggleVisibility: () -> Unit,
+    onDelete: () -> Unit
 ) {
+    val isDimmed = room.isUserHidden || room.status == RoomStatus.PENDING || room.status == RoomStatus.REMOVED
+    val canClone = room.status != RoomStatus.REMOVED
+
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().alpha(if (room.isUserHidden) 0.6f else 1.0f),
+        modifier = Modifier.fillMaxWidth().alpha(if (isDimmed) 0.6f else 1.0f),
         shape = MaterialTheme.shapes.medium,
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300),
@@ -439,45 +501,51 @@ fun StandaloneRoomCard(
                 }
             }
             
-            // Action Buttons
+            // State Management: Action Buttons
             Row(modifier = Modifier.padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClone, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ContentCopy, "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
+                if (canClone) {
+                    IconButton(onClick = onClone, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.ContentCopy, "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
+                    }
                 }
 
-                if (room.status != RoomStatus.PENDING) {
+                if (room.status != RoomStatus.PENDING && room.status != RoomStatus.REMOVED) {
                     IconButton(
-                        onClick = { 
-                            val index = MockData.rooms.indexOfFirst { it.id == room.id }
-                            if (index != -1) {
-                                val current = MockData.rooms[index]
-                                MockData.rooms[index] = current.copy(isUserHidden = !current.isUserHidden)
-                            }
-                        }, 
+                        onClick = onToggleVisibility, 
                         modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
-                            imageVector = if (room.isUserHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff, 
+                            imageVector = if (room.isUserHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility, 
                             contentDescription = null, 
                             modifier = Modifier.size(18.dp), 
                             tint = Neutral500,
                         )
                     }
                 }
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, "Xóa phòng", modifier = Modifier.size(18.dp), tint = ErrorRose)
+                }
             }
         }
     }
 }
 
+// UI Component: Room Row Item
 @Composable
 fun RoomRowItem(
     room: Room, 
     onClick: () -> Unit, 
     onClone: () -> Unit,
+    onDelete: () -> Unit,
+    onToggleVisibility: () -> Unit
 ) {
+    val isDimmed = room.isUserHidden || room.status == RoomStatus.PENDING || room.status == RoomStatus.REMOVED
+    val canClone = room.status != RoomStatus.REMOVED
+
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().alpha(if (room.isUserHidden) 0.6f else 1.0f),
+        modifier = Modifier.fillMaxWidth().alpha(if (isDimmed) 0.6f else 1.0f),
         shape = MaterialTheme.shapes.small,
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100),
@@ -505,34 +573,35 @@ fun RoomRowItem(
                 }
             }
             Row(modifier = Modifier.padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClone, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.ContentCopy, "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
+                if (canClone) {
+                    IconButton(onClick = onClone, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.ContentCopy, "Sao chép", modifier = Modifier.size(18.dp), tint = PrimaryMain)
+                    }
                 }
 
-                if (room.status != RoomStatus.PENDING) {
+                if (room.status != RoomStatus.PENDING && room.status != RoomStatus.REMOVED) {
                     IconButton(
-                        onClick = { 
-                            val index = MockData.rooms.indexOfFirst { it.id == room.id }
-                            if (index != -1) {
-                                val current = MockData.rooms[index]
-                                MockData.rooms[index] = current.copy(isUserHidden = !current.isUserHidden)
-                            }
-                        }, 
+                        onClick = onToggleVisibility, 
                         modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
-                            imageVector = if (room.isUserHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff, 
-                            contentDescription = null, 
+                            imageVector = if (room.isUserHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility, 
+                            contentDescription = "Ẩn/Hiện phòng", 
                             modifier = Modifier.size(18.dp), 
                             tint = Neutral500,
                         )
                     }
+                }
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, "Xóa phòng", modifier = Modifier.size(18.dp), tint = ErrorRose)
                 }
             }
         }
     }
 }
 
+// UI Component: Status Badge
 @Composable
 fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
     val (color, text) = when {
@@ -540,6 +609,7 @@ fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
         status == RoomStatus.ACTIVE -> SuccessEmerald to "Đang hiển thị"
         status == RoomStatus.RENTED -> Neutral500 to "Đã cho thuê"
         status == RoomStatus.PENDING -> AccentAmber to "Chờ duyệt"
+        status == RoomStatus.REMOVED -> ErrorRose to "Bị gỡ"
         else -> Neutral500 to "Không xác định"
     }
     Surface(color = color.copy(alpha = 0.1f), shape = CircleShape) {
@@ -553,6 +623,171 @@ fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
     }
 }
 
+// UI Component: Dialog showing removal reason
+@Composable
+fun RemovalReasonDialog(
+    room: Room,
+    onDismiss: () -> Unit,
+    onAppeal: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Bài đăng bị gỡ", fontWeight = FontWeight.Bold, color = ErrorRose) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "Phòng: ${room.title}", style = MaterialTheme.typography.titleSmall)
+                
+                Surface(
+                    color = ErrorRose.copy(alpha = 0.05f),
+                    shape = MaterialTheme.shapes.medium,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRose.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(text = "Lý do vi phạm:", style = MaterialTheme.typography.labelMedium, color = Neutral500)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = room.removalInfo?.reason ?: "Vi phạm quy chuẩn cộng đồng.", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                
+                Text(
+                    text = "Ngày bị gỡ: ${room.removalInfo?.removedDate}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Neutral500
+                )
+                
+                Text(
+                    text = "Bài đăng sẽ bị xóa vĩnh viễn vào ngày ${room.removalInfo?.autoDeleteDate} nếu không có kháng cáo được chấp nhận.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ErrorRose,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAppeal,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain)
+            ) {
+                Text("Kháng cáo")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đóng")
+            }
+        },
+        containerColor = Color.White
+    )
+}
+
+// UI Component: Form for submitting an appeal
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppealFormDialog(
+    room: Room,
+    onDismiss: () -> Unit,
+    onSubmit: (String, List<String>) -> Unit
+) {
+    var appealText by remember { mutableStateOf("") }
+    val proofImages = remember { mutableStateListOf<android.net.Uri>() }
+    
+    val pickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+        onResult = { uris -> proofImages.addAll(uris) }
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Gửi kháng cáo", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(text = "Hãy giải trình lý do bạn cho rằng bài đăng '${room.title}' bị gỡ chưa chính xác.", style = MaterialTheme.typography.bodySmall)
+                
+                CustomTextField(
+                    value = appealText,
+                    onValueChange = { appealText = it },
+                    label = "Nội dung giải trình",
+                    modifier = Modifier.height(120.dp),
+                    singleLine = false
+                )
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Hình ảnh minh chứng (${proofImages.size})", style = MaterialTheme.typography.labelMedium)
+                    
+                    if (proofImages.isEmpty()) {
+                        Surface(
+                            onClick = { pickerLauncher.launch("image/*") },
+                            shape = MaterialTheme.shapes.small,
+                            color = Neutral50,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300),
+                            modifier = Modifier.fillMaxWidth().height(80.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AddPhotoAlternate, null, tint = Neutral500)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Tải ảnh lên", color = Neutral500)
+                                }
+                            }
+                        }
+                    } else {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(proofImages) { uri ->
+                                Box(modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.small)) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(uri),
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    IconButton(
+                                        onClick = { proofImages.remove(uri) },
+                                        modifier = Modifier.align(Alignment.TopEnd).size(20.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                    ) {
+                                        Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                                    }
+                                }
+                            }
+                            item {
+                                Surface(
+                                    onClick = { pickerLauncher.launch("image/*") },
+                                    modifier = Modifier.size(80.dp),
+                                    shape = MaterialTheme.shapes.small,
+                                    color = Neutral50,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Add, null, tint = Neutral500)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(appealText, proofImages.map { it.toString() }) },
+                enabled = appealText.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = SuccessEmerald)
+            ) {
+                Text("Gửi đơn")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Hủy")
+            }
+        },
+        containerColor = Color.White
+    )
+}
+
+// UI Component: Empty State
 @Composable
 private fun EmptyState(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

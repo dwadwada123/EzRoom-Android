@@ -11,16 +11,21 @@ import androidx.compose.ui.Modifier
 import com.example.ezroom.ui.navigation.AppNavigation
 import com.example.ezroom.ui.theme.EzRoomTheme
 
+// UI Component: Main Activity Entry Point
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // UI Configuration: Edge-to-Edge
         enableEdgeToEdge()
+        
         setContent {
             EzRoomTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
+                    // Navigation: App Flow
                     AppNavigation()
                 }
             }

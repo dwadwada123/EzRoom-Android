@@ -6,7 +6,8 @@ data class NotificationItem(
     val content: String,
     val time: String,
     val isRead: Boolean,
-    val type: String
+    val type: String,
+    val targetId: String? = null
 )
 
 data class HostStats(

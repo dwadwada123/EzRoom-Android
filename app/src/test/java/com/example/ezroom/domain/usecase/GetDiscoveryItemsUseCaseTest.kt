@@ -1,5 +1,6 @@
 package com.example.ezroom.domain.usecase
 
+import com.example.ezroom.core.Try
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.repository.RoomRepository
 import kotlinx.coroutines.flow.Flow
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GetDiscoveryItemsUseCaseTest {
@@ -16,37 +18,46 @@ class GetDiscoveryItemsUseCaseTest {
             listOf(
                 createRoom("r1", "p1", RoomStatus.ACTIVE),
                 createRoom("r2", "p1", RoomStatus.RENTED),
-                createRoom("r3", null, RoomStatus.ACTIVE) // Standalone
+                createRoom("r3", "p1", RoomStatus.REMOVED), // Should be filtered out
+                createRoom("r4", null, RoomStatus.ACTIVE)
             )
         )
 
         override fun getProperties(): Flow<List<Property>> = flowOf(
             listOf(
                 createProperty("p1", PropertyType.COMPLEX),
-                createProperty("p2", PropertyType.SINGLE) // Standalone property
+                createProperty("p2", PropertyType.SINGLE)
             )
         )
+
+        override suspend fun togglePropertyVisibility(propertyId: String) {}
+        override suspend fun deleteProperty(propertyId: String) {}
+        override suspend fun toggleRoomVisibility(roomId: String) {}
+        override suspend fun deleteRoom(roomId: String) {}
+        override suspend fun saveProperty(property: Property) {}
+        override suspend fun getPropertyById(propertyId: String): Property? = null
+        override suspend fun submitAppeal(roomId: String, appealText: String, images: List<String>) {}
     }
 
     private val useCase = GetDiscoveryItemsUseCase(mockRepository)
 
     @Test
-    fun `usecase groups rooms by property correctly`() = runBlocking {
-        val result = useCase().first()
+    fun `usecase groups rooms by property and filters removed rooms correctly`() = runBlocking {
+        val resultTry = useCase().first()
+        assertTrue(resultTry is Try.Success)
+        
+        val result = (resultTry as Try.Success).value
 
-        // p1 has 1 active room (r1). r2 is rented so ignored in grouping usually or depends on logic.
-        // In my UseCase: rooms = rooms.filter { it.propertyId == property.id && it.status == RoomStatus.ACTIVE }
-        // So p1 should have [r1].
-        // p2 is SINGLE type, it should be included even if rooms are empty in the filter (if we follow the logic)
+        // p1 (Complex) should have r1 and r2. r3 (Removed) must be excluded.
         
         assertEquals(2, result.size)
         
         val p1Item = result.find { it.property.id == "p1" }
-        assertEquals(1, p1Item?.rooms?.size)
-        assertEquals("r1", p1Item?.rooms?.first()?.id)
+        assertEquals(2, p1Item?.rooms?.size) 
+        assertTrue(p1Item?.rooms?.none { it.status == RoomStatus.REMOVED } == true)
         
         val p2Item = result.find { it.property.id == "p2" }
-        assertEquals(0, p2Item?.rooms?.size) // Rooms for p2 were not in the mock list
+        assertEquals(0, p2Item?.rooms?.size)
     }
 
     private fun createRoom(id: String, propertyId: String?, status: RoomStatus): Room {

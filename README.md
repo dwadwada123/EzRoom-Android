@@ -9,61 +9,53 @@ EzRoom là giải pháp di động toàn diện cho việc quản lý thuê và 
 ## Các tính năng chính
 
 ### Dành cho người thuê (Renter)
-- Khám phá phòng trọ: Tìm kiếm và lọc nâng cao theo vị trí (Tỉnh/Thành, Quận/Huyện), khoảng giá và các tiện ích đi kèm.
-- Danh sách yêu thích: Lưu trữ và quản lý các phòng trọ ưng ý với tính năng bỏ yêu thích nhanh.
-- Đặt lịch hẹn: Chủ động đặt lịch xem phòng với chủ nhà thông qua biểu mẫu chi tiết.
-- Quản lý hóa đơn: Theo dõi danh sách hóa đơn hàng tháng, kiểm tra chi tiết các khoản phí dịch vụ và trạng thái thanh toán.
-- Báo cáo và Đánh giá: Gửi báo cáo vi phạm bài đăng hoặc viết đánh giá chất lượng phòng sau khi thuê.
-- Trò chuyện trực tiếp: Giao tiếp trực tiếp với chủ nhà thông qua hệ thống nhắn tin nội bộ.
+- **Khám phá phòng trọ**: Tìm kiếm và lọc nâng cao theo vị trí (Tỉnh/Thành, Quận/Huyện), khoảng giá và các tiện ích đi kèm.
+- **Danh sách yêu thích**: Lưu trữ và quản lý các phòng trọ ưng ý với tính năng bỏ yêu thích nhanh và xác nhận an toàn.
+- **Hợp đồng & Tiền cọc (Fintech)**: Ký hợp đồng điện tử và thanh toán tiền cọc qua QR Code. Tiền cọc được đóng băng an toàn trên hệ thống cho đến ngày nhận phòng.
+- **Quản lý hóa đơn**: Theo dõi danh sách hóa đơn hàng tháng, kiểm tra chi tiết các khoản phí dịch vụ và trạng thái thanh toán.
+- **Báo cáo và Đánh giá**: Gửi báo cáo vi phạm bài đăng hoặc viết đánh giá chất lượng phòng sau khi thuê.
+- **Trò chuyện trực tiếp**: Giao tiếp trực tiếp với chủ nhà thông qua hệ thống nhắn tin nội bộ.
 
 ### Dành cho chủ nhà (Host)
-- Bảng điều khiển (Dashboard): Thống kê doanh thu thực tế, tỉ lệ lấp đầy phòng và các nhiệm vụ cần xử lý ngay trong ngày.
-- Quản lý bất động sản: Hỗ trợ quản lý theo mô hình Dãy trọ/Tòa nhà (nhiều phòng) hoặc các căn nhà cho thuê lẻ độc lập.
-- Xử lý lịch hẹn: Phê duyệt, hủy hoặc đề xuất hẹn lại thời gian xem phòng với khách thuê.
-- Hợp đồng điện tử: Soạn thảo, gửi và ký kết hợp đồng thuê phòng trực tuyến ngay trên ứng dụng.
-- Lập hóa đơn tự động: Hệ thống tự động tính toán tiền điện, nước dựa trên chỉ số cũ/mới và đơn giá đã cài đặt, sau đó gửi trực tiếp cho người thuê.
-- Hệ thống uy tín: Đánh giá khách thuê và kiểm tra điểm tin cậy của người thuê trước khi giao kết hợp đồng.
+- **Bảng điều khiển (Dashboard)**: Thống kê doanh thu thực tế, tỉ lệ lấp đầy phòng và các nhiệm vụ cần xử lý ngay trong ngày.
+- **Quản lý bất động sản**: Hỗ trợ quản lý theo mô hình Dãy trọ/Tòa nhà (nhiều phòng) hoặc các căn nhà cho thuê lẻ độc lập. Hỗ trợ ẩn/hiện phòng linh hoạt.
+- **Quản lý tài khoản nhận tiền**: Tích hợp danh sách hơn 50 ngân hàng Việt Nam (VietQR API) để quản lý tài khoản nhận cọc và giải ngân.
+- **Xử lý lịch hẹn**: Phê duyệt, hủy hoặc đề xuất hẹn lại thời gian xem phòng với khách thuê.
+- **Hợp đồng điện tử**: Soạn thảo, gửi và ký kết hợp đồng thuê phòng trực tuyến. Theo dõi trạng thái đóng băng và giải ngân tiền cọc.
+- **Kháng cáo bài đăng**: Xem lý do bài đăng bị gỡ và thực hiện gửi đơn kháng cáo kèm hình ảnh minh chứng.
+- **Lập hóa đơn tự động**: Hệ thống tự động tính toán tiền điện, nước dựa trên chỉ số cũ/mới và đơn giá đã cài đặt.
 
 ## Công nghệ sử dụng
 
-- Ngôn ngữ: Kotlin
-- Giao diện: Jetpack Compose (100% Declarative UI)
-- Kiến trúc: Clean Architecture (Phân tách rõ rệt 3 tầng: Domain, Data, UI)
-- Mô hình thiết kế: MVVM (Model-View-ViewModel)
-- Xử lý bất đồng bộ: Kotlin Coroutines và Flow
-- Điều hướng: Jetpack Compose Navigation với hiệu ứng chuyển cảnh chuyên nghiệp
-- Xử lý hình ảnh: Coil (hỗ trợ loading và caching hiệu quả)
-- Mạng: Retrofit (đang trong quá trình tích hợp REST API)
-
-## Cấu trúc thư mục chi tiết
-
-- com.example.ezroom.core: Chứa các định nghĩa lỗi tập trung (AppError), các lớp bọc kết quả (Try/Result) và các tiện ích dùng chung toàn ứng dụng.
-- com.example.ezroom.domain: Tầng trung tâm chứa logic nghiệp vụ thuần túy, bao gồm các Model dữ liệu, Interface của Repository và các Use Case xử lý logic.
-- com.example.ezroom.data: Triển khai các Repository, nguồn dữ liệu từ Remote (API) hoặc Local (Database) và các lớp ánh xạ dữ liệu (Mapper).
-- com.example.ezroom.ui: Tầng hiển thị bao gồm các Composable screen, hệ thống Design System (Color, Shape, Type) và logic điều hướng.
-- com.example.ezroom.viewmodel: Quản lý trạng thái giao diện và kết nối tầng UI với tầng Domain.
+- **Ngôn ngữ**: Kotlin
+- **Giao diện**: Jetpack Compose (100% Declarative UI)
+- **Kiến trúc**: Clean Architecture (Domain, Data, UI) kết hợp MVVM.
+- **Xử lý bất đồng bộ**: Kotlin Coroutines và Flow.
+- **Điều hướng**: Compose Navigation với hiệu ứng chuyển cảnh chuyên nghiệp.
+- **Mạng**: Retrofit & OkHttp (Tích hợp VietQR API).
+- **Xử lý hình ảnh**: Coil (loading, caching và ContentScale.Crop cho UX tốt nhất).
 
 ## Quy tắc nghiệp vụ đặc thù
 
-- Hoa hồng nền tảng: Hệ thống tự động trích 5% hoa hồng dựa trên Tiền thuê phòng cố định. Lưu ý: Không tính hoa hồng trên các khoản chi phí khác như điện, nước, tiền cọc hoặc tiền đền bù.
-- Bảo mật dữ liệu: Các thao tác nhạy cảm như xóa phòng, xóa dãy trọ hoặc ký hợp đồng đều yêu cầu người dùng xác nhận thông qua hộp thoại cảnh báo nhiều bước.
-- Phản hồi tức thì: Mọi thao tác thành công đều được thông báo qua Popup (Snackbar) ở phía trên cùng của màn hình để đảm bảo người dùng luôn nắm bắt được trạng thái ứng dụng.
+- **Hệ thống Escrow (Tiền gửi an toàn)**: Tiền cọc của người thuê được App "đóng băng" bảo vệ. Tiền chỉ giải ngân cho Chủ nhà vào ngày bắt đầu hợp đồng để đảm bảo quyền lợi hai bên.
+- **Cơ chế tranh chấp**: Khi bài đăng bị gỡ do vi phạm, Host có 7 ngày để kháng cáo trước khi bài đăng bị xóa vĩnh viễn.
+- **Hoa hồng nền tảng**: Hệ thống tự động trích 5% hoa hồng dựa trên Tiền thuê phòng cố định (không tính trên điện, nước, cọc).
+- **Trải nghiệm người dùng**: Sử dụng Staggered Entrance Animations cho các danh sách và xác nhận Dialog cho các hành động xóa/hủy quan trọng.
 
-## Hướng dẫn cài đặt và phát triển
+## Cấu trúc thư mục
 
-### Yêu cầu hệ thống
-- Android Studio Ladybug (phiên bản 2024.2.1) hoặc mới hơn.
-- Java Development Kit (JDK) phiên bản 17.
-- Android SDK tối thiểu: API Level 26 (Android 8.0).
-- Android SDK mục tiêu: API Level 34 (Android 14).
+- `core`: Định nghĩa lỗi (AppError), kết quả (Try) và tiện ích dùng chung.
+- `domain`: Tầng trung tâm chứa Logic nghiệp vụ, Models và Repository Interfaces.
+- `data`: Triển khai Repository, Remote API (Retrofit) và MockData.
+- `ui`: Màn hình Composable, Design System (Color, Shape, Type) và Navigation.
+- `viewmodel`: Quản lý trạng thái UI và kết nối tầng Domain với UI.
 
-### Các bước cài đặt chi tiết
-1. Tải mã nguồn: Sử dụng lệnh git clone hoặc tải tệp .zip của dự án về máy cục bộ.
-2. Mở dự án: Khởi động Android Studio và chọn "Open", sau đó tìm đến thư mục gốc của dự án EzRoom-Android.
-3. Đồng bộ Gradle: Sau khi dự án được mở, hệ thống sẽ tự động yêu cầu đồng bộ. Nhấn "Sync Project with Gradle Files" và đợi quá trình tải các thư viện cần thiết hoàn tất.
-4. Cấu hình thiết bị: Đảm bảo bạn đã cài đặt một thiết bị ảo (Emulator) hoặc kết nối thiết bị thật đã bật chế độ Developer Mode.
-5. Chạy ứng dụng: Chọn module 'app' trên thanh công cụ và nhấn nút 'Run' (hình tam giác màu xanh).
+## Hướng dẫn cài đặt
 
-### Lưu ý khi phát triển
-- Ứng dụng sử dụng Edge-to-Edge hiển thị toàn màn hình, hãy lưu ý sử dụng statusBarsPadding hoặc navigationBarsPadding khi thêm các thành phần giao diện mới.
-- Mọi thay đổi về dữ liệu cần được định nghĩa trước trong tầng Domain trước khi triển khai ở tầng Data.
+1. Tải mã nguồn từ GitHub.
+2. Mở dự án bằng **Android Studio Ladybug (2024.2.1)** trở lên.
+3. Đồng bộ Gradle và đợi tải các thư viện.
+4. Chạy trên thiết bị có API Level tối thiểu 26.
+
+---
+*EzRoom - Thuê phòng nhanh, quản lý dễ.*

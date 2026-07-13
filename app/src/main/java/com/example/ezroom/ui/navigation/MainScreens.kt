@@ -38,6 +38,7 @@ import com.example.ezroom.ui.renter.discovery.RenterHomeScreen
 import com.example.ezroom.ui.renter.invoice.RenterInvoiceListScreen
 import com.example.ezroom.ui.theme.EzRoomTheme
 
+// Data Model: Navigation Item
 sealed class BottomNavItem(val title: String, val icon: ImageVector) {
     // Renter Items
     object Discovery : BottomNavItem("Khám phá", Icons.Default.Search)
@@ -54,6 +55,7 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
     object HostInvoices : BottomNavItem("Hóa đơn", Icons.Default.Payments)
 }
 
+// UI Component: Main Renter Dashboard
 @Composable
 fun RenterMainScreen(
     onRoomClick: (String) -> Unit = {},
@@ -76,6 +78,7 @@ fun RenterMainScreen(
 
     Scaffold(
         topBar = {
+            // UI Component: Top Bar
             ModernMainTopBar(
                 title = items[selectedItem].title,
                 onNotificationClick = onNotificationClick,
@@ -93,24 +96,29 @@ fun RenterMainScreen(
                     label = "MainContentTransition",
                 ) { targetItem ->
                     when (targetItem) {
+                        // Renter Action: Browse Rooms
                         BottomNavItem.Discovery -> RenterHomeScreen(
                             onRoomClick = { room -> onRoomClick(room.id) },
                             onNavigateToFilter = onNavigateToFilter,
                         )
+                        // Renter Action: View Favorites
                         BottomNavItem.RenterSaved -> com.example.ezroom.ui.renter.favorite.SavedRoomsScreen(
                             onRoomClick = onRoomClick,
                             onNavigateToExplore = { selectedItem = 0 },
                             onShowSnackbar = onShowSnackbar,
                         )
+                        // Renter Action: View Appointments
                         BottomNavItem.RenterAppointments -> com.example.ezroom.ui.renter.appointment.RenterAppointmentListScreen(
                             onNavigateBack = { selectedItem = 0 },
                             onEditAppointment = { appointment -> 
                                 onEditAppointment(appointment.roomId, appointment.id)
                             }
                         )
+                        // Renter Action: Messages
                         BottomNavItem.RenterMessages -> ChatListScreen(
                             onConversationClick = { _, userName -> onChatClick(userName) }
                         )
+                        // Renter Action: Invoices
                         BottomNavItem.RenterInvoices -> RenterInvoiceListScreen(
                             onNavigateBack = { selectedItem = 0 },
                             onInvoiceClick = onInvoiceClick
@@ -120,7 +128,7 @@ fun RenterMainScreen(
                 }
             }
 
-            // Floating Dock Navigation
+            // UI Component: Floating Navigation Dock
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -137,6 +145,7 @@ fun RenterMainScreen(
     }
 }
 
+// UI Component: Main Host Dashboard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostMainScreen(
@@ -164,6 +173,7 @@ fun HostMainScreen(
 
     Scaffold(
         topBar = {
+            // UI Component: Top Bar
             ModernMainTopBar(
                 title = items[selectedItem].title,
                 onNotificationClick = onNotificationClick,
@@ -181,9 +191,11 @@ fun HostMainScreen(
                     label = "HostContentTransition"
                 ) { targetItem ->
                     when (targetItem) {
+                        // Host Action: Stats Overview
                         BottomNavItem.Management -> HostDashboardScreen(
                             onCreateContract = onCreateContractClick
                         )
+                        // Host Action: Room Management
                         BottomNavItem.HostRooms -> RoomManagementScreen(
                             onRoomClick = onRoomClick,
                             onCloneRoomClick = { room -> onCloneRoomClick(room.id) },
@@ -192,14 +204,17 @@ fun HostMainScreen(
                             onAddStandaloneRoomClick = onAddStandaloneRoomClick,
                             onEditPropertyClick = { property -> onEditPropertyClick(property.id) }
                         )
+                        // Host Action: Appointments
                         BottomNavItem.HostAppointments -> HostAppointmentListScreen(
                             onNavigateBack = { selectedItem = 0 },
                             onCreateContract = onCreateContractClick,
                             onRenterClick = onRenterReputationClick
                         )
+                        // Host Action: Messages
                         BottomNavItem.HostMessages -> ChatListScreen(
                             onConversationClick = { _, userName -> onChatClick(userName) }
                         )
+                        // Host Action: Invoices
                         BottomNavItem.HostInvoices -> com.example.ezroom.ui.host.invoice.HostInvoiceListScreen(
                             onNavigateToCreate = { onInvoiceClick("create") },
                             onInvoiceClick = { invoiceId -> onInvoiceClick(invoiceId) }
@@ -209,7 +224,7 @@ fun HostMainScreen(
                 }
             }
 
-            // Floating Dock Navigation for Host
+            // UI Component: Floating Navigation Dock
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -226,6 +241,7 @@ fun HostMainScreen(
     }
 }
 
+// UI Component: Modern Glassmorphic Top Bar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModernMainTopBar(
@@ -248,6 +264,7 @@ fun ModernMainTopBar(
                 ) 
             },
             navigationIcon = {
+                // UI Component: Notifications
                 IconButton(onClick = onNotificationClick) {
                     BadgedBox(badge = { Badge { Text("3") } }) {
                         Icon(Icons.Default.Notifications, contentDescription = null)
@@ -255,6 +272,7 @@ fun ModernMainTopBar(
                 }
             },
             actions = {
+                // UI Component: Profile
                 IconButton(onClick = onProfileClick) {
                     Surface(
                         modifier = Modifier.size(36.dp),
@@ -280,6 +298,7 @@ fun ModernMainTopBar(
     }
 }
 
+// UI Component: Floating Navigation Dock Implementation
 @Composable
 fun FloatingDockNavigationBar(
     items: List<BottomNavItem>,
@@ -288,7 +307,7 @@ fun FloatingDockNavigationBar(
 ) {
     val density = LocalDensity.current
     
-    // Weight factors
+    // UI Logic: Layout weights
     val selectedWeight = 2.5f
     val unselectedWeight = 1f
     val totalWeight = selectedWeight + ((items.size - 1) * unselectedWeight)
@@ -314,7 +333,7 @@ fun FloatingDockNavigationBar(
             val constraints = this
             val maxWidthPx = with(density) { constraints.maxWidth.toPx() }
             
-            // Calculate position and width
+            // UI Logic: Animation position calculation
             val targetWidthPx = (selectedWeight / totalWeight) * maxWidthPx
             val targetOffsetPx = (selectedIndex * unselectedWeight / totalWeight) * maxWidthPx
 
@@ -329,7 +348,7 @@ fun FloatingDockNavigationBar(
                 label = "IndicatorOffset",
             )
 
-            // Sliding Indicator
+            // UI Component: Animated Indicator
             Box(
                 modifier = Modifier
                     .offset(x = with(density) { animatedOffset.toDp() })
@@ -338,7 +357,7 @@ fun FloatingDockNavigationBar(
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
             )
 
-            // Icons and Labels Row
+            // UI Component: Navigation Icons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -347,21 +366,21 @@ fun FloatingDockNavigationBar(
                     val isSelected = selectedIndex == index
                     
                     val scale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.1f else 1.0f,
+                        targetValue = if (isSelected) { 1.1f } else { 1.0f },
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
                         label = "IconScale"
                     )
 
                     val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary 
-                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        targetValue = if (isSelected) { MaterialTheme.colorScheme.onPrimary } 
+                                       else { MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) },
                         animationSpec = tween(300),
                         label = "ContentColor"
                     )
 
                     Box(
                         modifier = Modifier
-                            .weight(if (isSelected) selectedWeight else unselectedWeight)
+                            .weight(if (isSelected) { selectedWeight } else { unselectedWeight })
                             .clip(CircleShape)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -407,4 +426,3 @@ fun FloatingDockNavigationBar(
         }
     }
 }
-
