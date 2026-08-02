@@ -82,7 +82,7 @@ fun RoomCard(
                 Surface(
                     modifier = Modifier
                         .padding(12.dp)
-                        .align(Alignment.TopStart),
+                        .align(Alignment.BottomEnd),
                     shape = CircleShape,
                     color = Color.White.copy(alpha = 0.95f),
                     shadowElevation = 4.dp,
@@ -99,7 +99,7 @@ fun RoomCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = rating.toString(),
+                            text = String.format("%.1f", rating),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F172A),

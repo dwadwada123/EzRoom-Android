@@ -74,6 +74,17 @@ fun RoomManagementScreen(
     // State Management: UI State from ViewModel
     val uiState by viewModel.uiState.collectAsState()
     
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadData()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    
     var showAddOptions by remember { mutableStateOf(false) }
     
     // State Management: Deletion state
@@ -250,7 +261,7 @@ fun RoomManagementScreen(
                 onSubmit = { text, images ->
                     viewModel.onSubmitAppeal(roomForReason!!.id, text, images)
                     showAppealForm = false
-                    showSnackbar("Đã gửi kháng cáo thành công")
+                    showSnackbar("Đã gửi kháng cáo thành công. Vui lòng chờ Admin xem xét.")
                 }
             )
         }
@@ -290,8 +301,68 @@ fun RoomManagementScreen(
                         Text("Hủy")
                     }
                 },
-                containerColor = Color.White,
+                containerColor = Color.White
             )
+        }
+
+        // UI Component: Floating Action Button (FAB) for Adding Room / Property
+        FloatingActionButton(
+            onClick = { showAddOptions = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 90.dp),
+            containerColor = PrimaryMain,
+            contentColor = Color.White,
+            shape = CircleShape
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Thêm mới", modifier = Modifier.size(28.dp))
+        }
+
+        // UI Component: Add Options BottomSheet
+        if (showAddOptions) {
+            ModalBottomSheet(
+                onDismissRequest = { showAddOptions = false },
+                containerColor = Color.White,
+                shape = MaterialTheme.shapes.large
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Tùy chọn thêm mới",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Neutral900
+                    )
+
+                    AddOptionItem(
+                        title = "Thêm dãy trọ / Tòa nhà",
+                        desc = "Quản lý tòa nhà, dãy phòng có chung địa chỉ & tiện ích",
+                        icon = Icons.Default.Apartment,
+                        color = PrimaryMain,
+                        onClick = {
+                            showAddOptions = false
+                            onAddPropertyClick()
+                        }
+                    )
+
+                    AddOptionItem(
+                        title = "Thêm phòng trọ lẻ",
+                        desc = "Đăng phòng độc lập không thuộc tòa nhà hay dãy trọ",
+                        icon = Icons.Default.MeetingRoom,
+                        color = Color(0xFF0284C7),
+                        onClick = {
+                            showAddOptions = false
+                            onAddStandaloneRoomClick()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
         }
     }
 }
@@ -488,7 +559,7 @@ fun StandaloneRoomCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusBadge(status = room.status, isUserHidden = room.isUserHidden)
+                    StatusBadge(status = room.status, isUserHidden = room.isUserHidden, removalInfo = room.removalInfo)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = room.priceFormatted, 
@@ -523,8 +594,10 @@ fun StandaloneRoomCard(
                     }
                 }
                 
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, "Xóa phòng", modifier = Modifier.size(18.dp), tint = ErrorRose)
+                if (room.status != RoomStatus.RENTED) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, "Xóa phòng", modifier = Modifier.size(18.dp), tint = ErrorRose)
+                    }
                 }
             }
         }
@@ -560,7 +633,7 @@ fun RoomRowItem(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusBadge(status = room.status, isUserHidden = room.isUserHidden)
+                    StatusBadge(status = room.status, isUserHidden = room.isUserHidden, removalInfo = room.removalInfo)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = room.priceFormatted, 
@@ -593,8 +666,10 @@ fun RoomRowItem(
                     }
                 }
                 
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, "Xóa phòng", modifier = Modifier.size(18.dp), tint = ErrorRose)
+                if (room.status != RoomStatus.RENTED) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, "Xóa phòng", modifier = Modifier.size(18.dp), tint = ErrorRose)
+                    }
                 }
             }
         }
@@ -603,8 +678,14 @@ fun RoomRowItem(
 
 // UI Component: Status Badge
 @Composable
-fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
+fun StatusBadge(
+    status: RoomStatus, 
+    isUserHidden: Boolean = false,
+    removalInfo: com.example.ezroom.domain.model.RoomRemovalInfo? = null
+) {
+    val isAppealPending = removalInfo?.appealStatus == "PENDING" && !removalInfo.appealText.isNullOrBlank()
     val (color, text) = when {
+        isAppealPending -> Color(0xFFD97706) to "Đang chờ kháng cáo"
         isUserHidden -> Neutral500 to "Đã ẩn bài"
         status == RoomStatus.ACTIVE -> SuccessEmerald to "Đang hiển thị"
         status == RoomStatus.RENTED -> Neutral500 to "Đã cho thuê"
@@ -612,7 +693,7 @@ fun StatusBadge(status: RoomStatus, isUserHidden: Boolean = false) {
         status == RoomStatus.REMOVED -> ErrorRose to "Bị gỡ"
         else -> Neutral500 to "Không xác định"
     }
-    Surface(color = color.copy(alpha = 0.1f), shape = CircleShape) {
+    Surface(color = color.copy(alpha = 0.12f), shape = CircleShape) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -630,6 +711,8 @@ fun RemovalReasonDialog(
     onDismiss: () -> Unit,
     onAppeal: () -> Unit
 ) {
+    val isAppealPending = room.removalInfo?.appealStatus == "PENDING" || (!room.removalInfo?.appealText.isNullOrBlank() && room.removalInfo?.appealStatus != "REJECTED")
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Bài đăng bị gỡ", fontWeight = FontWeight.Bold, color = ErrorRose) },
@@ -649,6 +732,28 @@ fun RemovalReasonDialog(
                     }
                 }
                 
+                if (isAppealPending) {
+                    Surface(
+                        color = Color(0xFFFEF3C7),
+                        shape = MaterialTheme.shapes.medium,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Schedule, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Kháng cáo của bạn đang chờ Admin xem xét.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF92400E),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
                 Text(
                     text = "Ngày bị gỡ: ${room.removalInfo?.removedDate}",
                     style = MaterialTheme.typography.bodySmall,
@@ -666,9 +771,10 @@ fun RemovalReasonDialog(
         confirmButton = {
             Button(
                 onClick = onAppeal,
+                enabled = !isAppealPending,
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain)
             ) {
-                Text("Kháng cáo")
+                Text(if (isAppealPending) "Đang chờ duyệt" else "Kháng cáo")
             }
         },
         dismissButton = {

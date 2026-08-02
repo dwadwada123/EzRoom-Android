@@ -29,6 +29,7 @@ fun CustomTextField(
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     enabled: Boolean = true,
+    isError: Boolean = false,
 ) {
     OutlinedTextField(
         value = value,
@@ -42,6 +43,7 @@ fun CustomTextField(
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,
         enabled = enabled,
+        isError = isError,
         shape = MaterialTheme.shapes.small,
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
@@ -85,6 +87,7 @@ fun PasswordTextField(
     label: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isError: Boolean = false,
 ) {
     var isPasswordVisible by remember { mutableStateOf(value = false) }
 
@@ -95,6 +98,7 @@ fun PasswordTextField(
         label = { Text(label) },
         enabled = enabled,
         singleLine = true,
+        isError = isError,
         shape = CircleShape,
         visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {

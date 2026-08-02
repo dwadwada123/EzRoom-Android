@@ -21,10 +21,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.ContractRepositoryImpl
+import com.example.ezroom.data.repository.RoomRepositoryImpl
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.graphics.Color
+import com.example.ezroom.ui.theme.PrimaryMain
 import com.example.ezroom.domain.model.Contract
+import com.example.ezroom.domain.model.ContractStatus
 import com.example.ezroom.domain.model.DepositStatus
 import com.example.ezroom.domain.usecase.GetContractsUseCase
 import com.example.ezroom.domain.usecase.SignContractUseCase
+import com.example.ezroom.domain.usecase.GetRoomsUseCase
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.components.CustomTextField
@@ -39,16 +45,20 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateContractScreen(
-    // Event callbacks
+    initialRoomId: String? = null,
+    initialRenterPhone: String? = null,
+    initialRenterName: String? = null,
     onBackClick: () -> Unit = {},
     onProceedToTerms: (Contract) -> Unit = {},
     viewModel: ContractViewModel = viewModel(
         factory = viewModelFactory {
             val repository = ContractRepositoryImpl()
+            val roomRepo = RoomRepositoryImpl()
             ContractViewModel(
                 GetContractsUseCase(repository),
                 SignContractUseCase(repository),
                 repository,
+                GetRoomsUseCase(roomRepo),
                 isHost = true
             )
         }
@@ -59,12 +69,9 @@ fun CreateContractScreen(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
 
-    val rooms = listOf(
-        "room_101" to "Phòng 101 - Lầu 1",
-        "room_102" to "Phòng 102 - Lầu 1",
-        "room_201" to "Phòng 201 - Lầu 2",
-        "room_202" to "Phòng 202 - Lầu 2"
-    )
+    val uiState by viewModel.uiState.collectAsState()
+    val rooms = uiState.rooms
+
     val depositStatuses = listOf("Chưa đóng", "Đã đóng")
 
     var expandedRoomDropdown by remember { mutableStateOf(false) }
@@ -81,6 +88,25 @@ fun CreateContractScreen(
     var expandedStatusDropdown by remember { mutableStateOf(false) }
     var selectedStatus by remember { mutableStateOf(depositStatuses[0]) }
     var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(rooms, initialRoomId, initialRenterPhone, initialRenterName) {
+        if (!initialRoomId.isNullOrBlank()) {
+            val matchingRoom = rooms.find { 
+                it.id == initialRoomId || 
+                it.title.equals(initialRoomId, ignoreCase = true) 
+            }
+            if (matchingRoom != null) {
+                selectedRoomId = matchingRoom.id
+                selectedRoomName = matchingRoom.title
+            }
+        }
+        if (!initialRenterPhone.isNullOrBlank() && renterPhone.isEmpty()) {
+            renterPhone = initialRenterPhone
+        }
+        if (!initialRenterName.isNullOrBlank() && renterName.isEmpty()) {
+            renterName = initialRenterName
+        }
+    }
 
     // Date picker trigger
     val calendar = Calendar.getInstance()
@@ -101,6 +127,33 @@ fun CreateContractScreen(
             renterPhone.isNotBlank() &&
             startDate.isNotBlank() &&
             depositAmount.isNotBlank()
+
+    val authApi = remember { com.example.ezroom.data.remote.NetworkClient.createService<com.example.ezroom.data.remote.AuthApi>() }
+    var showUnregisteredDialog by remember { mutableStateOf(false) }
+
+    fun proceedWithContractCreation(foundRenterId: String) {
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        val parsedDeposit = depositAmount.toLongOrNull() ?: 0L
+        val initialDepositStatus = if (parsedDeposit == 0L || selectedStatus == "Đã đóng") DepositStatus.FROZEN else DepositStatus.UNPAID
+
+        val currentHostName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+        val contract = Contract(
+            id = UUID.randomUUID().toString(),
+            roomId = selectedRoomId,
+            roomName = selectedRoomName,
+            renterName = renterName,
+            renterPhone = renterPhone,
+            hostName = currentHostName,
+            startDate = startDate,
+            endDate = endDate,
+            depositAmount = parsedDeposit,
+            depositStatus = initialDepositStatus,
+            status = ContractStatus.WAITING_SIGN,
+            dateCreated = sdf.format(java.util.Date())
+        )
+        viewModel.createContract(contract)
+        onProceedToTerms(contract)
+    }
 
     // Main layout container
     Box(modifier = Modifier.fillMaxSize()) {
@@ -153,10 +206,10 @@ fun CreateContractScreen(
                     ) {
                         rooms.forEach { room ->
                             DropdownMenuItem(
-                                text = { Text(room.second) },
+                                text = { Text(room.title) },
                                 onClick = {
-                                    selectedRoomId = room.first
-                                    selectedRoomName = room.second
+                                    selectedRoomId = room.id
+                                    selectedRoomName = room.title
                                     expandedRoomDropdown = false
                                 }
                             )
@@ -298,23 +351,18 @@ fun CreateContractScreen(
                         if (isFormValid) {
                             scope.launch {
                                 isLoading = true
-                                delay(1000)
-                                isLoading = false
-                                val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-                                val contract = Contract(
-                                    id = UUID.randomUUID().toString(),
-                                    roomId = selectedRoomId,
-                                    roomName = selectedRoomName,
-                                    renterName = renterName,
-                                    renterPhone = renterPhone,
-                                    startDate = startDate,
-                                    endDate = endDate,
-                                    depositAmount = depositAmount.toLongOrNull() ?: 0L,
-                                    depositStatus = if (selectedStatus == "Đã đóng") DepositStatus.FROZEN else DepositStatus.UNPAID,
-                                    dateCreated = sdf.format(java.util.Date())
-                                )
-                                viewModel.createContract(contract)
-                                onProceedToTerms(contract)
+                                try {
+                                    val res = authApi.checkPhone(renterPhone.trim())
+                                    isLoading = false
+                                    if (res.success && res.exists && res.user != null) {
+                                        proceedWithContractCreation(res.user.id)
+                                    } else {
+                                        showUnregisteredDialog = true
+                                    }
+                                } catch (e: Exception) {
+                                    isLoading = false
+                                    showUnregisteredDialog = true
+                                }
                             }
                         }
                     },
@@ -322,6 +370,35 @@ fun CreateContractScreen(
                     enabled = isFormValid && !isLoading
                 )
             }
+        }
+
+        if (showUnregisteredDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnregisteredDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = PrimaryMain)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Chưa tìm thấy tài khoản", fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = {
+                    Text(
+                        text = "Số điện thoại $renterPhone chưa có tài khoản trên ứng dụng EzRoom.\n\n" +
+                                "Để gửi hợp đồng online và yêu cầu người thuê ký xác nhận, vui lòng nhắc khách thuê tải ứng dụng EzRoom và đăng ký bằng SĐT này trước.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showUnregisteredDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain)
+                    ) {
+                        Text("ĐÃ HIỂU", fontWeight = FontWeight.Bold)
+                    }
+                },
+                containerColor = Color.White
+            )
         }
 
         if (isLoading) {

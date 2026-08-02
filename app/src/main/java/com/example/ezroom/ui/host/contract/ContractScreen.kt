@@ -21,10 +21,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.example.ezroom.data.repository.ContractRepositoryImpl
+import com.example.ezroom.data.repository.RoomRepositoryImpl
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetContractsUseCase
 import com.example.ezroom.domain.usecase.SignContractUseCase
+import com.example.ezroom.domain.usecase.GetRoomsUseCase
 import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
@@ -40,10 +43,12 @@ fun HostContractScreen(
     viewModel: ContractViewModel = viewModel(
         factory = viewModelFactory {
             val repository = ContractRepositoryImpl()
+            val roomRepo = RoomRepositoryImpl()
             ContractViewModel(
                 GetContractsUseCase(repository),
                 SignContractUseCase(repository),
                 repository,
+                GetRoomsUseCase(roomRepo),
                 isHost = true
             )
         }
@@ -65,13 +70,123 @@ fun HostContractScreen(
             )
         },
         bottomBar = {
+            val scope = rememberCoroutineScope()
+            var isSending by remember { mutableStateOf(false) }
+            var showTerminateDialog by remember { mutableStateOf(false) }
+            var terminateReason by remember { mutableStateOf("") }
+            var isTerminating by remember { mutableStateOf(false) }
+
+            if (showTerminateDialog) {
+                AlertDialog(
+                    onDismissRequest = { if (!isTerminating) showTerminateDialog = false },
+                    title = { Text("Xác nhận chấm dứt hợp đồng sớm", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Lưu ý: Việc Chủ nhà tự ý chấm dứt hợp đồng sớm sẽ tự động hoàn trả tiền cọc cho Người thuê theo quy định bảo hộ EzRoom Escrow.",
+                                fontSize = 13.sp, color = ErrorRose
+                            )
+                            OutlinedTextField(
+                                value = terminateReason,
+                                onValueChange = { terminateReason = it },
+                                label = { Text("Lý do chấm dứt hợp đồng") },
+                                placeholder = { Text("Nhập lý do...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = false
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    isTerminating = true
+                                    val repo = ContractRepositoryImpl()
+                                    repo.terminateContract(contract.id, terminateReason.ifBlank { "Chủ nhà chấm dứt hợp đồng sớm" }, "HOST")
+                                    isTerminating = false
+                                    showTerminateDialog = false
+                                    onNavigateBack()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ErrorRose),
+                            enabled = !isTerminating
+                        ) {
+                            Text("XÁC NHẬN CHẤM DỨT", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showTerminateDialog = false }) {
+                            Text("HỦY")
+                        }
+                    }
+                )
+            }
+
             // UI Component: Contextual Host Actions
             Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 16.dp, color = Color.White) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     when (contract.status) {
+                        ContractStatus.DRAFT -> {
+                            PrimaryButton(
+                                text = if (isSending) "ĐANG GỬI HỢP ĐỒNG..." else "GỬI HỢP ĐỒNG CHO NGƯỜI THUÊ",
+                                onClick = {
+                                    scope.launch {
+                                        isSending = true
+                                        try {
+                                            val isZeroDeposit = contract.depositAmount == 0L
+                                            val currentHostName = contract.hostName ?: com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+                                            val finalContract = contract.copy(
+                                                hostName = currentHostName,
+                                                status = ContractStatus.WAITING_SIGN,
+                                                depositStatus = if (isZeroDeposit) DepositStatus.FROZEN else contract.depositStatus
+                                            )
+                                            ContractRepositoryImpl().createContract(finalContract)
+                                        } catch (e: Exception) {
+                                            // Handle fallback
+                                        }
+                                        isSending = false
+                                        onSignContract(TransactionType.DEPOSIT)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isSending
+                            )
+                        }
+                        ContractStatus.WAITING_SIGN -> {
+                            Surface(
+                                color = AccentAmber.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "⏳ Hợp đồng đã gửi - Đang chờ người thuê ký xác nhận",
+                                    color = AccentAmber,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                        }
+                        ContractStatus.WAITING_DEPOSIT -> {
+                            Surface(
+                                color = PrimaryMain.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "💳 Người thuê đã ký - Đang chờ thanh toán tiền cọc",
+                                    color = PrimaryMain,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
+                        }
                         ContractStatus.ACTIVE -> {
                             OutlinedButton(
-                                onClick = { /* Logic for termination warning */ },
+                                onClick = { showTerminateDialog = true },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRose),
                                 border = BorderStroke(1.dp, ErrorRose.copy(alpha = 0.3f))
@@ -79,15 +194,23 @@ fun HostContractScreen(
                                 Text("CHẤM DỨT HỢP ĐỒNG SỚM", fontWeight = FontWeight.Bold)
                             }
                         }
-                        else -> {
-                            Text(
-                                text = "Mã hợp đồng: ${contract.id.uppercase()}",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Neutral500
-                            )
+                        ContractStatus.TERMINATED, ContractStatus.CANCELLED -> {
+                            Surface(
+                                color = ErrorRose.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "🚫 Hợp đồng này đã chấm dứt",
+                                    color = ErrorRose,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(14.dp)
+                                )
+                            }
                         }
+                        else -> {}
                     }
                 }
             }
@@ -105,11 +228,11 @@ fun HostContractScreen(
             FintechStatusBanner(contract)
 
             // UI Component: Legal Document
-            OutlinedCard(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Neutral300)
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, Neutral100)
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
@@ -131,7 +254,8 @@ fun HostContractScreen(
 
                     HorizontalDivider(color = Neutral100)
 
-                    ContractDetailRow(label = "Phòng thuê", value = contract.roomName)
+                    ContractDetailRow(label = "Phòng thuê", value = contract.roomName.takeIf { !it.isNullOrBlank() } ?: "Phòng trọ")
+                    ContractDetailRow(label = "Địa chỉ", value = contract.address?.takeIf { it.isNotBlank() } ?: "Địa chỉ phòng trọ")
                     ContractDetailRow(label = "Thời hạn", value = "${contract.startDate} - ${contract.endDate}")
                     ContractDetailRow(label = "Tiền cọc", value = formatter.format(contract.depositAmount))
                 }
@@ -140,13 +264,32 @@ fun HostContractScreen(
     }
 }
 
+private fun isDateArrivedOrPast(dateStr: String?): Boolean {
+    if (dateStr.isNullOrBlank()) return true
+    return try {
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        val date = sdf.parse(dateStr)
+        val today = sdf.parse(sdf.format(java.util.Date()))
+        date != null && today != null && !date.after(today)
+    } catch (e: Exception) {
+        true
+    }
+}
+
 @Composable
 private fun FintechStatusBanner(contract: Contract) {
-    val (color, icon, text) = when (contract.depositStatus) {
-        DepositStatus.FROZEN -> Triple(PrimaryMain, Icons.Default.Lock, "Tiền cọc đang được App đóng băng. Giải ngân vào: ${contract.disburseDate}")
-        DepositStatus.DISBURSED -> Triple(SuccessEmerald, Icons.Default.CheckCircle, "Tiền cọc đã giải ngân vào tài khoản của bạn.")
-        DepositStatus.UNPAID -> Triple(AccentAmber, Icons.Default.HourglassEmpty, "Chờ người thuê thanh toán tiền cọc.")
-        else -> Triple(Neutral500, Icons.Default.Info, "Trạng thái hợp đồng: ${contract.status}")
+    val isArrived = isDateArrivedOrPast(contract.disburseDate)
+    val (color, icon, text) = when {
+        contract.depositStatus == DepositStatus.FROZEN && isArrived -> 
+            Triple(SuccessEmerald, Icons.Default.CheckCircle, "Tiền cọc đã đủ điều kiện giải ngân và được chuyển vào tài khoản của bạn.")
+        contract.depositStatus == DepositStatus.FROZEN && !isArrived -> 
+            Triple(PrimaryMain, Icons.Default.Lock, "Tiền cọc đang được App đóng băng. Giải ngân vào: ${contract.disburseDate}")
+        contract.depositStatus == DepositStatus.DISBURSED -> 
+            Triple(SuccessEmerald, Icons.Default.CheckCircle, "Tiền cọc đã giải ngân vào tài khoản của bạn.")
+        contract.depositStatus == DepositStatus.UNPAID -> 
+            Triple(AccentAmber, Icons.Default.HourglassEmpty, "Chờ người thuê thanh toán tiền cọc.")
+        else -> 
+            Triple(Neutral500, Icons.Default.Info, "Trạng thái hợp đồng: ${contract.status}")
     }
 
     Surface(

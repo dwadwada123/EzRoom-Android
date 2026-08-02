@@ -58,14 +58,18 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 // UI Component: Main Renter Dashboard
 @Composable
 fun RenterMainScreen(
+    initialTab: Int = 0,
+    filterParams: com.example.ezroom.domain.model.FilterParams = com.example.ezroom.domain.model.FilterParams(),
     onRoomClick: (String) -> Unit = {},
     onInvoiceClick: (String) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    onChatClick: (String) -> Unit = {},
+    onChatClick: (String, String, String) -> Unit = { _, _, _ -> },
     onEditAppointment: (String, String) -> Unit = { _, _ -> },
     onNavigateToFilter: () -> Unit = {},
+    onClearFilter: () -> Unit = {},
     onShowSnackbar: (String) -> Unit = {},
+    unreadNotificationCount: Int = 0,
 ) {
     val items = listOf(
         BottomNavItem.Discovery,
@@ -74,13 +78,14 @@ fun RenterMainScreen(
         BottomNavItem.RenterMessages,
         BottomNavItem.RenterInvoices
     )
-    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
+    var selectedItem by rememberSaveable { mutableIntStateOf(initialTab) }
 
     Scaffold(
         topBar = {
             // UI Component: Top Bar
             ModernMainTopBar(
                 title = items[selectedItem].title,
+                unreadNotificationCount = unreadNotificationCount,
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
@@ -98,8 +103,10 @@ fun RenterMainScreen(
                     when (targetItem) {
                         // Renter Action: Browse Rooms
                         BottomNavItem.Discovery -> RenterHomeScreen(
+                            filterParams = filterParams,
                             onRoomClick = { room -> onRoomClick(room.id) },
                             onNavigateToFilter = onNavigateToFilter,
+                            onClearFilter = onClearFilter,
                         )
                         // Renter Action: View Favorites
                         BottomNavItem.RenterSaved -> com.example.ezroom.ui.renter.favorite.SavedRoomsScreen(
@@ -116,7 +123,7 @@ fun RenterMainScreen(
                         )
                         // Renter Action: Messages
                         BottomNavItem.RenterMessages -> ChatListScreen(
-                            onConversationClick = { _, userName -> onChatClick(userName) }
+                            onConversationClick = { conversationId, userName, phoneNumber -> onChatClick(conversationId, userName, phoneNumber) }
                         )
                         // Renter Action: Invoices
                         BottomNavItem.RenterInvoices -> RenterInvoiceListScreen(
@@ -149,18 +156,20 @@ fun RenterMainScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostMainScreen(
+    initialTab: Int = 0,
     onRoomClick: (String) -> Unit = {},
     onInvoiceClick: (String) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    onCloneRoomClick: (String) -> Unit = {},
-    onCreateContractClick: () -> Unit = {},
-    onChatClick: (String) -> Unit = {},
+    onCloneRoomClick: (Room) -> Unit = {},
+    onCreateContractClick: (String?, String?, String?) -> Unit = { _, _, _ -> },
+    onChatClick: (String, String, String) -> Unit = { _, _, _ -> },
     onAddRoomToProperty: (String) -> Unit = {},
     onAddPropertyClick: () -> Unit = {},
     onAddStandaloneRoomClick: () -> Unit = {},
     onRenterReputationClick: (String) -> Unit = {},
-    onEditPropertyClick: (String) -> Unit = {}
+    onEditPropertyClick: (String) -> Unit = {},
+    unreadNotificationCount: Int = 0
 ) {
     val items = listOf(
         BottomNavItem.Management,
@@ -169,13 +178,14 @@ fun HostMainScreen(
         BottomNavItem.HostMessages,
         BottomNavItem.HostInvoices
     )
-    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
+    var selectedItem by rememberSaveable { mutableIntStateOf(initialTab) }
 
     Scaffold(
         topBar = {
             // UI Component: Top Bar
             ModernMainTopBar(
                 title = items[selectedItem].title,
+                unreadNotificationCount = unreadNotificationCount,
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
@@ -193,12 +203,12 @@ fun HostMainScreen(
                     when (targetItem) {
                         // Host Action: Stats Overview
                         BottomNavItem.Management -> HostDashboardScreen(
-                            onCreateContract = onCreateContractClick
+                            onCreateContract = { onCreateContractClick(null, null, null) }
                         )
                         // Host Action: Room Management
                         BottomNavItem.HostRooms -> RoomManagementScreen(
                             onRoomClick = onRoomClick,
-                            onCloneRoomClick = { room -> onCloneRoomClick(room.id) },
+                            onCloneRoomClick = { room -> onCloneRoomClick(room) },
                             onAddRoomClick = { property -> onAddRoomToProperty(property.id) },
                             onAddPropertyClick = onAddPropertyClick,
                             onAddStandaloneRoomClick = onAddStandaloneRoomClick,
@@ -207,12 +217,12 @@ fun HostMainScreen(
                         // Host Action: Appointments
                         BottomNavItem.HostAppointments -> HostAppointmentListScreen(
                             onNavigateBack = { selectedItem = 0 },
-                            onCreateContract = onCreateContractClick,
+                            onCreateContract = { appointment -> onCreateContractClick(appointment.roomId, appointment.renterPhone, appointment.renterName) },
                             onRenterClick = onRenterReputationClick
                         )
                         // Host Action: Messages
                         BottomNavItem.HostMessages -> ChatListScreen(
-                            onConversationClick = { _, userName -> onChatClick(userName) }
+                            onConversationClick = { conversationId, userName, phoneNumber -> onChatClick(conversationId, userName, phoneNumber) }
                         )
                         // Host Action: Invoices
                         BottomNavItem.HostInvoices -> com.example.ezroom.ui.host.invoice.HostInvoiceListScreen(
@@ -246,6 +256,7 @@ fun HostMainScreen(
 @Composable
 fun ModernMainTopBar(
     title: String,
+    unreadNotificationCount: Int = 0,
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit,
 ) {
@@ -266,7 +277,17 @@ fun ModernMainTopBar(
             navigationIcon = {
                 // UI Component: Notifications
                 IconButton(onClick = onNotificationClick) {
-                    BadgedBox(badge = { Badge { Text("3") } }) {
+                    if (unreadNotificationCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge {
+                                    Text(if (unreadNotificationCount > 99) "99+" else unreadNotificationCount.toString())
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = null)
+                        }
+                    } else {
                         Icon(Icons.Default.Notifications, contentDescription = null)
                     }
                 }

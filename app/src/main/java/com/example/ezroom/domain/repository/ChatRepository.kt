@@ -7,5 +7,6 @@ import kotlinx.coroutines.flow.Flow
 interface ChatRepository {
     fun getConversations(): Flow<List<Conversation>>
     fun getMessages(conversationId: String): Flow<List<Message>>
-    suspend fun sendMessage(conversationId: String, text: String)
+    suspend fun sendMessage(conversationId: String, text: String, imageUrl: String? = null, lat: Double? = null, lng: Double? = null)
+    suspend fun uploadImage(fileBytes: ByteArray, fileName: String, mimeType: String): String?
 }

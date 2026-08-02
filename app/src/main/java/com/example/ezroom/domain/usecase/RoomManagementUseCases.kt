@@ -9,16 +9,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
-// Business Logic: Fetch All Rooms
+// Business Logic: Fetch All Rooms for Host
 class GetRoomsUseCase(private val repository: RoomRepository) {
-    operator fun invoke(): Flow<Try<List<Room>>> = repository.getRooms()
+    operator fun invoke(): Flow<Try<List<Room>>> = repository.getHostRooms()
         .map<List<Room>, Try<List<Room>>> { Try.Success(it) }
         .catch { emit(Try.Failure(AppError.Unknown(it))) }
 }
 
-// Business Logic: Fetch All Properties
+// Business Logic: Fetch All Properties for Host
 class GetPropertiesUseCase(private val repository: RoomRepository) {
-    operator fun invoke(): Flow<Try<List<Property>>> = repository.getProperties()
+    operator fun invoke(): Flow<Try<List<Property>>> = repository.getHostProperties()
         .map<List<Property>, Try<List<Property>>> { Try.Success(it) }
         .catch { emit(Try.Failure(AppError.Unknown(it))) }
 }
@@ -57,4 +57,14 @@ class GetPropertyByIdUseCase(private val repository: RoomRepository) {
 class SubmitAppealUseCase(private val repository: RoomRepository) {
     suspend operator fun invoke(roomId: String, appealText: String, images: List<String>) = 
         repository.submitAppeal(roomId, appealText, images)
+}
+
+// Business Logic: Save Room
+class SaveRoomUseCase(private val repository: RoomRepository) {
+    suspend operator fun invoke(room: Room) = repository.saveRoom(room)
+}
+
+// Business Logic: Get Room By ID
+class GetRoomByIdUseCase(private val repository: RoomRepository) {
+    suspend operator fun invoke(roomId: String): Room? = repository.getRoomById(roomId)
 }

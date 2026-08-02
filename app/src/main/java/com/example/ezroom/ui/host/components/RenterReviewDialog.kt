@@ -14,24 +14,60 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.theme.AccentAmber
+import com.example.ezroom.ui.theme.ErrorRose
 import com.example.ezroom.ui.theme.Neutral300
-import com.example.ezroom.ui.theme.PrimaryMain
 
 @Composable
 fun RenterReviewDialog(
     renterName: String,
+    isEditMode: Boolean = false,
+    initialRating: Int = 5,
+    initialComment: String = "",
+    initialTags: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onSubmit: (Int, List<String>, String) -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
-    var rating by remember { mutableIntStateOf(5) }
-    var comment by remember { mutableStateOf("") }
+    var rating by remember { mutableIntStateOf(initialRating) }
+    var comment by remember { mutableStateOf(initialComment) }
     
     val tags = listOf("Thanh toán đúng hạn", "Giữ gìn vệ sinh", "Tuân thủ nội quy", "Lịch sự", "Ồn ào")
-    val selectedTags = remember { mutableStateListOf<String>() }
+    val selectedTags = remember { mutableStateListOf<String>().apply { addAll(initialTags) } }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Xác nhận xóa đánh giá", fontWeight = FontWeight.Bold) },
+            text = { Text("Bạn có chắc chắn muốn xóa đánh giá dành cho khách thuê $renterName?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete?.invoke()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
+                ) {
+                    Text("Xác nhận xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Hủy")
+                }
+            },
+            containerColor = Color.White
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Đánh giá khách thuê", fontWeight = FontWeight.Bold) },
+        title = { 
+            Text(
+                text = if (isEditMode) "Chỉnh sửa đánh giá khách thuê" else "Đánh giá khách thuê", 
+                fontWeight = FontWeight.Bold
+            ) 
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -78,7 +114,9 @@ fun RenterReviewDialog(
                     value = comment,
                     onValueChange = { comment = it },
                     label = { Text("Nhận xét chi tiết") },
-                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
                     isError = (rating <= 3) && (comment.length < 20),
                 )
                 if ((rating <= 3) && (comment.length < 20)) {
@@ -95,13 +133,25 @@ fun RenterReviewDialog(
                 onClick = { onSubmit(rating, selectedTags.toList(), comment) },
                 enabled = rating > 3 || comment.length >= 20,
             ) {
-                Text("Gửi đánh giá")
+                Text(if (isEditMode) "CẬP NHẬT" else "Gửi đánh giá")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Hủy")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isEditMode && onDelete != null) {
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRose),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRose.copy(alpha = 0.5f))
+                    ) {
+                        Text("XÓA ĐÁNH GIÁ")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Hủy")
+                }
             }
         },
+        containerColor = Color.White
     )
 }

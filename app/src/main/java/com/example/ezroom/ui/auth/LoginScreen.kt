@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginClick: (String, String) -> Unit = { _, _ -> },
+    onLoginClick: (String, String, Boolean) -> Unit = { _, _, _ -> },
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onGoogleLoginClick: () -> Unit = {},
@@ -108,6 +108,9 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
+            val showEmailError = email.isNotEmpty() && !isEmailValid
+            val showPasswordError = password.isNotEmpty() && password.length < 6
+
             CustomTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -117,7 +120,17 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !isLoading,
+                isError = showEmailError,
             )
+
+            if (showEmailError) {
+                Text(
+                    text = "Định dạng Email không hợp lệ (ví dụ: name@example.com)",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -127,7 +140,17 @@ fun LoginScreen(
                 label = "Mật khẩu",
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading,
+                isError = showPasswordError,
             )
+
+            if (showPasswordError) {
+                Text(
+                    text = "Mật khẩu phải chứa ít nhất 6 ký tự",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp)
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -166,7 +189,7 @@ fun LoginScreen(
                             isLoading = true
                             delay(1000)
                             isLoading = false
-                            onLoginClick(email, password)
+                            onLoginClick(email, password, rememberMe)
                         }
                     }
                 },
@@ -174,69 +197,7 @@ fun LoginScreen(
                 enabled = isFormValid && !isLoading
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedButton(
-                onClick = onGoogleLoginClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.medium,
-                enabled = !isLoading,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                border = ButtonDefaults.outlinedButtonBorder(enabled = !isLoading).copy(
-                    brush = Brush.linearGradient(listOf(Color(0xFF4285F4), Color(0xFF34A853), Color(0xFFFBBC05), Color(0xFFEA4335)))
-                )
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Login,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Đăng nhập với Google",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Demo accounts chips
-            Text(
-                text = "Hoặc dùng tài khoản thử nghiệm:",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.align(Alignment.Start)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = false,
-                    onClick = { email = "renter@ezroom.vn"; password = "123456" },
-                    label = { Text("Người thuê") },
-                    shape = MaterialTheme.shapes.extraSmall
-                )
-                FilterChip(
-                    selected = false,
-                    onClick = { email = "host@ezroom.vn"; password = "123456" },
-                    label = { Text("Chủ nhà") },
-                    shape = MaterialTheme.shapes.extraSmall
-                )
-            }
 
             Spacer(modifier = Modifier.height(40.dp))
 

@@ -37,7 +37,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.domain.model.*
-import com.example.ezroom.data.model.MockData
+import com.example.ezroom.domain.usecase.*
+import com.example.ezroom.data.repository.RoomRepositoryImpl
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.navigation.LocalSnackbarProvider
 import com.example.ezroom.viewmodel.LocationViewModel
 import com.google.android.gms.maps.model.CameraPosition
@@ -49,9 +51,13 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.example.ezroom.data.remote.NetworkClient
+import com.example.ezroom.data.remote.LocationApi
+import com.example.ezroom.data.remote.LocationSuggestion
+import com.example.ezroom.ui.components.AddressSuggestionField
+import kotlinx.coroutines.delay
 
 // Local UI wrapper for amenities
 data class AmenityItem(
@@ -71,7 +77,21 @@ data class RoomImageUI(
 
 val ImageCategories = listOf("Phòng ngủ", "Phòng khách", "Phòng bếp", "Nhà vệ sinh", "Ban công", "Mặt tiền", "Khác")
 
+// Helper: Format raw numeric strings into thousand-separated Vietnamese VND prices
+fun formatVndNumber(raw: String): String {
+    val digitsOnly = raw.filter { it.isDigit() }
+    if (digitsOnly.isEmpty()) return ""
+    return try {
+        val number = digitsOnly.toLong()
+        java.text.NumberFormat.getInstance(java.util.Locale.forLanguageTag("vi-VN")).format(number)
+    } catch (e: Exception) {
+        digitsOnly
+    }
+}
+
+
 @OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun RoomFormScreen(
     isEditMode: Boolean = false, 
@@ -79,12 +99,26 @@ fun RoomFormScreen(
     cloneFromRoomId: String? = null,
     onNavigateBack: () -> Unit = {},
     onSaveSuccess: () -> Unit = {},
-    locationViewModel: LocationViewModel = viewModel()
+    locationViewModel: LocationViewModel = viewModel(),
+    viewModel: RoomFormViewModel = viewModel(
+        factory = viewModelFactory {
+            val repository = RoomRepositoryImpl()
+            RoomFormViewModel(
+                GetPropertyByIdUseCase(repository),
+                GetRoomByIdUseCase(repository),
+                SaveRoomUseCase(repository),
+                repository
+            )
+        }
+    )
 ) {
     // State definitions
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val showSnackbar = LocalSnackbarProvider.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val uiState by viewModel.uiState.collectAsState()
 
     var showDiscardDialog by remember { mutableStateOf(false) }
 
@@ -96,13 +130,6 @@ fun RoomFormScreen(
     var selectedProvince by remember { mutableStateOf<Province?>(null) }
     var selectedWard by remember { mutableStateOf<Ward?>(null) }
 
-    var title by remember { mutableStateOf("") }
-    var detailedAddress by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var electricityPrice by remember { mutableStateOf("3500") }
-    var waterPrice by remember { mutableStateOf("15000") }
-    
     // Map State
     val danangCenter = remember { LatLng(16.0544, 108.2022) }
     val markerState = rememberMarkerState(position = danangCenter)
@@ -110,68 +137,82 @@ fun RoomFormScreen(
         position = CameraPosition.fromLatLngZoom(danangCenter, 15f)
     }
 
-    var selectedStructure by remember { mutableStateOf(RoomStructure.SINGLE) }
-    var isStructureDropdownExpanded by remember { mutableStateOf(false) }
-
-    var totalArea by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    
-    val detailedAreas = remember { mutableStateListOf<DetailedArea>() }
-    val amenities = remember {
-        mutableStateListOf(
-            AmenityItem("Wifi"), AmenityItem("Điều hòa"), AmenityItem("Giường"), AmenityItem("Tủ quần áo")
-        )
+    // Update map when editing an existing room
+    LaunchedEffect(uiState.latitude, uiState.longitude) {
+        if (uiState.latitude != null && uiState.longitude != null) {
+            val pos = LatLng(uiState.latitude!!, uiState.longitude!!)
+            markerState.position = pos
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(pos, 15f)
+        }
     }
-    val uploadedImages = remember { mutableStateListOf<RoomImageUI>() }
+
+    val locationApi = remember { NetworkClient.createService<LocationApi>() }
+    var suggestions by remember { mutableStateOf<List<LocationSuggestion>>(emptyList()) }
+
+    // Debounce address suggestions search
+    LaunchedEffect(uiState.detailedAddress, selectedProvince, selectedWard) {
+        val query = uiState.detailedAddress
+        if (query.length < 3) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+        delay(500) // Debounce delay
+        try {
+            val res = locationApi.suggest(
+                query = query,
+                province = selectedProvince?.name,
+                ward = selectedWard?.name
+            )
+            suggestions = res
+        } catch (e: Exception) {
+            suggestions = emptyList()
+        }
+    }
+
+    // Autopin map when Province/Ward changes
+    LaunchedEffect(selectedProvince, selectedWard) {
+        val provName = selectedProvince?.name ?: ""
+        val wardName = selectedWard?.name ?: ""
+        if (provName.isEmpty()) return@LaunchedEffect
+        
+        val query = if (wardName.isNotEmpty()) "$wardName, $provName" else provName
+        try {
+            val coords = locationApi.geocode(query)
+            val newLatLng = LatLng(coords.lat, coords.lon)
+            markerState.position = newLatLng
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(newLatLng, if (wardName.isNotEmpty()) 15f else 12f)
+        } catch (e: Exception) {
+            // Fallback: stay where we are
+        }
+    }
+
+    var isStructureDropdownExpanded by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents(),
         onResult = { uris ->
             uris.forEach { uri ->
-                uploadedImages.add(RoomImageUI(uri = uri))
+                viewModel.uploadedImages.add(RoomImageUI(uri = uri))
             }
         }
     )
 
-    // Pre-fill logic for Edit or Clone
-    LaunchedEffect(cloneFromRoomId, isEditMode) {
-        val targetId = cloneFromRoomId ?: if (isEditMode) "some_id" else null // Simplified
-        val sourceRoom = MockData.rooms.find { it.id == targetId }
-        
-        sourceRoom?.let { room ->
-            title = if (cloneFromRoomId != null) "${room.title} (Bản sao)" else room.title
-            price = room.price.toString()
-            electricityPrice = room.electricityPrice.toString()
-            waterPrice = room.waterPrice.toString()
-            description = room.description
-            totalArea = room.floorArea.toString()
-            selectedStructure = room.structure
-            
-            // Fill detailed areas
-            detailedAreas.clear()
-            detailedAreas.addAll(room.detailedAreas)
-            
-            // Fill amenities
-            amenities.forEachIndexed { index, item ->
-                val match = room.amenities.find { it.name == item.name }
-                if (match != null) {
-                    amenities[index] = item.copy(isChecked = true, compensationAmount = match.compensationAmount.toString())
-                }
-            }
+    // Load data from ViewModel
+    LaunchedEffect(cloneFromRoomId, isEditMode, propertyId) {
+        viewModel.loadData(propertyId, cloneFromRoomId, isEditMode)
+    }
 
-            // Fill images
-            uploadedImages.clear()
-            uploadedImages.addAll(room.images.map { 
-                RoomImageUI(url = it.url, resId = it.resId, category = it.category ?: "Khác") 
-            })
+    // Trigger save success navigation
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            showSnackbar(if (isEditMode) "Cập nhật phòng thành công" else "Lưu thông tin phòng thành công")
+            onSaveSuccess()
         }
     }
 
-    val belongsToProperty = remember { MockData.properties.find { it.id == propertyId } }
-
-    val isFormValid = title.isNotEmpty() && 
-                      (belongsToProperty != null || (selectedProvince != null && selectedWard != null)) &&
-                      detailedAddress.isNotEmpty() && price.isNotEmpty() && totalArea.isNotEmpty()
+    val isFormValid = uiState.title.isNotEmpty() && 
+                      (uiState.belongsToProperty != null || (selectedProvince != null && selectedWard != null)) &&
+                      uiState.detailedAddress.isNotEmpty() && uiState.price.isNotEmpty() && uiState.totalArea.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -188,7 +229,7 @@ fun RoomFormScreen(
                         ) 
                     },
                     navigationIcon = { 
-                        IconButton(onClick = { showDiscardDialog = true }, enabled = !isLoading) { 
+                        IconButton(onClick = { showDiscardDialog = true }, enabled = !uiState.isLoading) { 
                             Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng") 
                         } 
                     }
@@ -204,30 +245,41 @@ fun RoomFormScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (belongsToProperty != null) {
-                    PropertyInfoBanner(belongsToProperty)
+                if (uiState.belongsToProperty != null) {
+                    PropertyInfoBanner(uiState.belongsToProperty!!)
                 }
 
                 FormSectionTitle(title = "Thông tin cơ bản")
                 
                 CustomTextField(
-                    value = title, 
-                    onValueChange = { title = it }, 
+                    value = uiState.title, 
+                    onValueChange = { viewModel.onTitleChange(it) }, 
                     label = "Tên/Số phòng (VD: Phòng 101)", 
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
+                    enabled = !uiState.isLoading
                 )
 
-                // Structure Dropdown
-                Box(modifier = Modifier.fillMaxWidth()) {
+                // Structure Dropdown with full area tap detection
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !uiState.isLoading) { isStructureDropdownExpanded = true }
+                ) {
                     CustomTextField(
-                        value = selectedStructure.displayName, 
+                        value = uiState.selectedStructure.displayName, 
                         onValueChange = {}, 
                         readOnly = true,
                         label = "Loại phòng",
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStructureDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().clickable { isStructureDropdownExpanded = true },
-                        enabled = !isLoading
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading
+                    )
+                    // Transparent overlay Box to ensure tap anywhere on the input opens dropdown
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable(enabled = !uiState.isLoading) { isStructureDropdownExpanded = true }
                     )
                     DropdownMenu(
                         expanded = isStructureDropdownExpanded, 
@@ -237,7 +289,7 @@ fun RoomFormScreen(
                             DropdownMenuItem(
                                 text = { Text(structure.displayName) },
                                 onClick = { 
-                                    selectedStructure = structure
+                                    viewModel.onStructureChange(structure)
                                     isStructureDropdownExpanded = false 
                                 }
                             )
@@ -245,36 +297,51 @@ fun RoomFormScreen(
                     }
                 }
 
+                // Price Input with Auto-Formatting thousand separators (.)
+                val formattedPrice = remember(uiState.price) { formatVndNumber(uiState.price) }
                 CustomTextField(
-                    value = price, 
-                    onValueChange = { price = it }, 
+                    value = formattedPrice, 
+                    onValueChange = { newValue ->
+                        val digitsOnly = newValue.filter { it.isDigit() }
+                        viewModel.onPriceChange(digitsOnly)
+                    }, 
                     label = "Giá thuê / tháng (VND)", 
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
+                    enabled = !uiState.isLoading
                 )
 
                 FormSectionTitle(title = "Chi phí dịch vụ")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val formattedElec = remember(uiState.electricityPrice) { formatVndNumber(uiState.electricityPrice) }
                     CustomTextField(
-                        value = electricityPrice,
-                        onValueChange = { if (it.all { it.isDigit() }) electricityPrice = it },
+                        value = formattedElec,
+                        onValueChange = { newValue ->
+                            val digitsOnly = newValue.filter { it.isDigit() }
+                            viewModel.onElectricityPriceChange(digitsOnly)
+                        },
                         label = "Điện (đ/kWh)",
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        enabled = !isLoading
+                        enabled = !uiState.isLoading
                     )
+
+                    val formattedWater = remember(uiState.waterPrice) { formatVndNumber(uiState.waterPrice) }
                     CustomTextField(
-                        value = waterPrice,
-                        onValueChange = { if (it.all { it.isDigit() }) waterPrice = it },
+                        value = formattedWater,
+                        onValueChange = { newValue ->
+                            val digitsOnly = newValue.filter { it.isDigit() }
+                            viewModel.onWaterPriceChange(digitsOnly)
+                        },
                         label = "Nước (đ/m³)",
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        enabled = !isLoading
+                        enabled = !uiState.isLoading
                     )
                 }
 
-                if (belongsToProperty == null) {
+                // Location section for standalone rooms
+                if (uiState.belongsToProperty == null) {
                     FormSectionTitle(title = "Vị trí")
                     LocationDropdown(
                         label = "Tỉnh/Thành phố",
@@ -286,7 +353,7 @@ fun RoomFormScreen(
                             locationViewModel.selectProvince(it.code)
                         },
                         getItemName = { it.name },
-                        enabled = !isLoading,
+                        enabled = !uiState.isLoading,
                         isLoading = isLocationLoading && provinces.isEmpty()
                     )
 
@@ -296,29 +363,37 @@ fun RoomFormScreen(
                         selectedItemName = selectedWard?.name ?: "",
                         onItemSelected = { selectedWard = it },
                         getItemName = { it.name },
-                        enabled = !isLoading && selectedProvince != null
+                        enabled = !uiState.isLoading && selectedProvince != null
                     )
-                }
 
-                CustomTextField(
-                    value = detailedAddress,
-                    onValueChange = { detailedAddress = it },
-                    label = if (belongsToProperty != null) "Vị trí trong dãy (VD: Tầng 2)" else "Địa chỉ chi tiết (Số nhà, tên đường)",
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
+                    AddressSuggestionField(
+                        value = uiState.detailedAddress,
+                        onValueChange = { viewModel.onDetailedAddressChange(it) },
+                        label = "Địa chỉ chi tiết (Số nhà, tên đường)",
+                        suggestions = suggestions,
+                        onSuggestionSelected = { suggestion ->
+                            viewModel.onDetailedAddressChange(suggestion.displayName)
+                            val newLatLng = LatLng(suggestion.lat, suggestion.lon)
+                            markerState.position = newLatLng
+                            scope.launch {
+                                cameraPositionState.position = CameraPosition.fromLatLngZoom(newLatLng, 17f)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading
+                    )
 
-                if (belongsToProperty == null) {
                     MapSection(cameraPositionState, markerState)
                 }
+
                 
                 CustomTextField(
-                    value = description, 
-                    onValueChange = { description = it }, 
+                    value = uiState.description, 
+                    onValueChange = { viewModel.onDescriptionChange(it) }, 
                     label = "Mô tả riêng cho phòng này", 
                     modifier = Modifier.fillMaxWidth().height(100.dp), 
                     singleLine = false,
-                    enabled = !isLoading
+                    enabled = !uiState.isLoading
                 )
 
                 HorizontalDivider(color = Neutral300.copy(alpha = 0.3f))
@@ -326,12 +401,12 @@ fun RoomFormScreen(
                 // Image Upload Section
                 FormSectionTitle(title = "Hình ảnh phòng")
                 
-                if (uploadedImages.isEmpty()) {
+                if (viewModel.uploadedImages.isEmpty()) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(120.dp)
-                            .clickable { if (!isLoading) photoPickerLauncher.launch("image/*") },
+                            .clickable { if (!uiState.isLoading) photoPickerLauncher.launch("image/*") },
                         shape = RoundedCornerShape(12.dp),
                         color = Neutral50,
                         border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300)
@@ -351,26 +426,26 @@ fun RoomFormScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(bottom = 8.dp)
                     ) {
-                        items(uploadedImages, key = { it.id }) { imgUI ->
+                        items(viewModel.uploadedImages, key = { it.id }) { imgUI ->
                             ImageUploadItem(
                                 item = imgUI,
                                 onCategoryChange = { newCat ->
-                                    val index = uploadedImages.indexOfFirst { it.id == imgUI.id }
+                                    val index = viewModel.uploadedImages.indexOfFirst { it.id == imgUI.id }
                                     if (index != -1) {
-                                        uploadedImages[index] = imgUI.copy(category = newCat)
+                                        viewModel.uploadedImages[index] = imgUI.copy(category = newCat)
                                     }
                                 },
                                 onDelete = {
-                                    uploadedImages.removeIf { it.id == imgUI.id }
+                                    viewModel.uploadedImages.removeIf { it.id == imgUI.id }
                                 },
-                                enabled = !isLoading
+                                enabled = !uiState.isLoading
                             )
                         }
                         item {
                             Surface(
                                 modifier = Modifier
                                     .size(width = 100.dp, height = 140.dp)
-                                    .clickable { if (!isLoading) photoPickerLauncher.launch("image/*") },
+                                    .clickable { if (!uiState.isLoading) photoPickerLauncher.launch("image/*") },
                                 shape = RoundedCornerShape(12.dp),
                                 color = Neutral50,
                                 border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300)
@@ -387,17 +462,28 @@ fun RoomFormScreen(
 
                 FormSectionTitle(title = "Diện tích & Tiện ích")
                 
-                CustomTextField(
-                    value = totalArea, 
-                    onValueChange = { totalArea = it }, 
-                    label = "Tổng diện tích toàn bộ (m²)", 
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    CustomTextField(
+                        value = uiState.totalArea, 
+                        onValueChange = { viewModel.onTotalAreaChange(it) }, 
+                        label = "Tổng diện tích toàn bộ (m²)", 
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                        modifier = Modifier.weight(1f),
+                        enabled = !uiState.isLoading
+                    )
+
+                    CustomTextField(
+                        value = uiState.capacity,
+                        onValueChange = { viewModel.onCapacityChange(it.filter { char -> char.isDigit() }) },
+                        label = "Số người ở tối đa",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        enabled = !uiState.isLoading
+                    )
+                }
 
                 // Detailed Areas Section
-                detailedAreas.forEachIndexed { index, item ->
+                viewModel.detailedAreas.forEachIndexed { index, item ->
                     Row(
                         modifier = Modifier.fillMaxWidth(), 
                         verticalAlignment = Alignment.CenterVertically, 
@@ -405,23 +491,23 @@ fun RoomFormScreen(
                     ) {
                         CustomTextField(
                             value = item.roomName, 
-                            onValueChange = { detailedAreas[index] = item.copy(roomName = it) }, 
+                            onValueChange = { viewModel.detailedAreas[index] = item.copy(roomName = it) }, 
                             label = "Tên (VD: Gác lửng)", 
                             modifier = Modifier.weight(1.3f),
-                            enabled = !isLoading
+                            enabled = !uiState.isLoading
                         )
                         CustomTextField(
                             value = if (item.areaValue == 0.0) "" else item.areaValue.toString(), 
-                            onValueChange = { detailedAreas[index] = item.copy(areaValue = it.toDoubleOrNull() ?: 0.0) }, 
+                            onValueChange = { viewModel.detailedAreas[index] = item.copy(areaValue = it.toDoubleOrNull() ?: 0.0) }, 
                             label = "m²", 
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
                             modifier = Modifier.weight(0.7f),
-                            enabled = !isLoading
+                            enabled = !uiState.isLoading
                         )
                         IconButton(
-                            onClick = { if (!isLoading) detailedAreas.removeAt(index) }, 
+                            onClick = { if (!uiState.isLoading) viewModel.detailedAreas.removeAt(index) }, 
                             colors = IconButtonDefaults.iconButtonColors(contentColor = ErrorRose),
-                            enabled = !isLoading
+                            enabled = !uiState.isLoading
                         ) {
                             Icon(imageVector = Icons.Default.Delete, contentDescription = "Xóa")
                         }
@@ -429,11 +515,11 @@ fun RoomFormScreen(
                 }
 
                 OutlinedButton(
-                    onClick = { if (!isLoading) detailedAreas.add(DetailedArea(id = UUID.randomUUID().toString(), roomName = "", areaValue = 0.0)) }, 
+                    onClick = { if (!uiState.isLoading) viewModel.detailedAreas.add(DetailedArea(id = UUID.randomUUID().toString(), roomName = "", areaValue = 0.0)) }, 
                     modifier = Modifier.fillMaxWidth(), 
                     shape = MaterialTheme.shapes.small, 
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryMain),
-                    enabled = !isLoading
+                    enabled = !uiState.isLoading
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
@@ -442,12 +528,12 @@ fun RoomFormScreen(
 
                 // Amenities
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    amenities.forEachIndexed { index, amenity ->
+                    viewModel.amenities.forEachIndexed { index, amenity ->
                         AmenityRow(
                             amenity = amenity,
-                            onToggle = { amenities[index] = amenity.copy(isChecked = !amenity.isChecked) },
-                            onAmountChange = { newVal -> amenities[index] = amenity.copy(compensationAmount = newVal) },
-                            enabled = !isLoading
+                            onToggle = { viewModel.amenities[index] = amenity.copy(isChecked = !amenity.isChecked) },
+                            onAmountChange = { newVal -> viewModel.amenities[index] = amenity.copy(compensationAmount = newVal) },
+                            enabled = !uiState.isLoading
                         )
                     }
                 }
@@ -457,19 +543,38 @@ fun RoomFormScreen(
                 PrimaryButton(
                     text = if (isEditMode) "Cập nhật phòng" else "Lưu thông tin phòng", 
                     onClick = { 
-                        if (isFormValid) {
-                            scope.launch {
-                                isLoading = true
-                                delay(1500)
-                                isLoading = false
-                                showSnackbar(if (isEditMode) "Cập nhật phòng thành công" else "Lưu thông tin phòng thành công")
-                                onSaveSuccess()
-                            }
+                        val missingFields = mutableListOf<String>()
+                        if (uiState.title.isBlank()) missingFields.add("Tên/Số phòng")
+                        
+                        val priceVal = uiState.price.replace(".", "").toLongOrNull() ?: -1L
+                        if (uiState.price.isBlank() || priceVal < 0) missingFields.add("Giá thuê (phải lớn hơn 0)")
+                        
+                        val areaVal = uiState.totalArea.toDoubleOrNull() ?: -1.0
+                        if (uiState.totalArea.isBlank() || areaVal < 0) missingFields.add("Diện tích (phải lớn hơn 0)")
+                        
+                        if (uiState.belongsToProperty == null) {
+                            if (selectedProvince == null) missingFields.add("Tỉnh/Thành phố")
+                            if (selectedWard == null) missingFields.add("Phường/Xã")
+                            if (uiState.detailedAddress.isBlank()) missingFields.add("Địa chỉ chi tiết")
+                        }
+                        
+                        if (missingFields.isNotEmpty()) {
+                            showSnackbar("Vui lòng điền đầy đủ: ${missingFields.joinToString(", ")}")
+                        } else {
+                            viewModel.save(
+                                propertyId = propertyId,
+                                province = selectedProvince?.name,
+                                ward = selectedWard?.name,
+                                lat = markerState.position.latitude,
+                                lon = markerState.position.longitude,
+                                context = context
+                            )
                         }
                     }, 
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = isFormValid && !isLoading
+                    enabled = !uiState.isLoading
                 )
+
             }
         }
 
@@ -510,7 +615,7 @@ fun RoomFormScreen(
             )
         }
 
-        if (isLoading) LoadingWidget()
+        if (uiState.isLoading) LoadingWidget()
     }
 }
 

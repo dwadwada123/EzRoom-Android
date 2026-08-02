@@ -18,10 +18,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import coil.compose.AsyncImage
 import com.example.ezroom.data.repository.InvoiceRepositoryImpl
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetInvoicesUseCase
@@ -31,6 +36,7 @@ import com.example.ezroom.ui.invoice.InvoiceViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +51,10 @@ fun InvoiceDetailScreen(
         }
     )
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val formatter = remember { DecimalFormat("#,### đ") }
+    val clipboardManager = LocalClipboardManager.current
+    var showQRModal by remember { mutableStateOf(false) }
     
     val defaultInvoice = remember {
         Invoice(
@@ -68,11 +77,11 @@ fun InvoiceDetailScreen(
     val displayInvoice = invoice ?: defaultInvoice
     val elecUsage = displayInvoice.newElectricity - displayInvoice.oldElectricity
     val waterUsage = displayInvoice.newWater - displayInvoice.oldWater
-    val elecAmount = elecUsage * 3500L
-    val waterAmount = waterUsage * 15000L
+    val elecAmount = elecUsage * displayInvoice.electricityPrice
+    val waterAmount = waterUsage * displayInvoice.waterPrice
     val totalAmount = displayInvoice.roomPrice + elecAmount + waterAmount + displayInvoice.totalOtherCosts
 
-    var selectedPaymentMethod by remember { mutableStateOf("VNPAY") }
+    var selectedPaymentMethod by remember { mutableStateOf("VIETQR") }
     val isPaid = displayInvoice.status == InvoiceStatus.PAID
 
     Scaffold(
@@ -193,19 +202,10 @@ fun InvoiceDetailScreen(
                     )
 
                     PaymentMethodItem(
-                        title = "VNPay Gateway",
-                        selected = selectedPaymentMethod == "VNPAY",
+                        title = "Chuyển khoản VietQR",
+                        selected = true,
                         icon = Icons.Default.AccountBalance,
-                        onClick = { selectedPaymentMethod = "VNPAY" }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    PaymentMethodItem(
-                        title = "MoMo Wallet",
-                        selected = selectedPaymentMethod == "MOMO",
-                        icon = Icons.Default.AccountBalanceWallet,
-                        onClick = { selectedPaymentMethod = "MOMO" }
+                        onClick = {}
                     )
                 }
             }
@@ -216,14 +216,209 @@ fun InvoiceDetailScreen(
                 text = if (isPaid) "XUẤT HÓA ĐƠN PDF" else "THANH TOÁN NGAY",
                 onClick = { 
                     if (!isPaid) {
-                        viewModel.markAsPaid(displayInvoice.id)
+                        showQRModal = true
+                    } else {
+                        com.example.ezroom.util.PdfExporter.exportInvoicePdf(context, displayInvoice)
+                        onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type) 
                     }
-                    onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type) 
                 },
                 modifier = Modifier.fillMaxWidth()
             )
             
             Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        if (showQRModal) {
+            var qrDetails by remember { mutableStateOf<com.example.ezroom.data.remote.PaymentResponse?>(null) }
+            var isQRLoading by remember { mutableStateOf(true) }
+            var isSubmittingPayment by remember { mutableStateOf(false) }
+            var verifyError by remember { mutableStateOf<String?>(null) }
+            val scope = rememberCoroutineScope()
+
+            LaunchedEffect(displayInvoice.id) {
+                isQRLoading = true
+                qrDetails = InvoiceRepositoryImpl().getPaymentQR(displayInvoice.id)
+                isQRLoading = false
+            }
+
+            val accNo = qrDetails?.accountNumber?.takeIf { it.isNotBlank() } ?: "0898990543"
+            val accName = qrDetails?.accountName?.takeIf { it.isNotBlank() } ?: "EZROOM ESCROW PAYOS"
+            val bankTitle = qrDetails?.bankName?.takeIf { it.isNotBlank() } ?: "MBBank (PayOS Escrow)"
+            val transferContent = "HD ${displayInvoice.id.takeLast(6).uppercase()}"
+            val qrImageUrl = "https://img.vietqr.io/image/MB-$accNo-compact2.png?amount=$totalAmount&addInfo=${android.net.Uri.encode(transferContent)}&accountName=${android.net.Uri.encode(accName)}"
+
+            AlertDialog(
+                onDismissRequest = { if (!isSubmittingPayment) showQRModal = false },
+                title = {
+                    Text(
+                        text = "THANH TOÁN PAYOS ESCROW (TẠM GIỮ)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(210.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White,
+                            shadowElevation = 4.dp,
+                            border = BorderStroke(1.dp, Neutral300)
+                        ) {
+                            if (isQRLoading) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                                }
+                            } else {
+                                AsyncImage(
+                                    model = qrImageUrl,
+                                    contentDescription = "VietQR PayOS Code",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Tổng tiền: ${formatter.format(totalAmount)}",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        verifyError?.let { err ->
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "⚠️ $err",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(10.dp)
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = Neutral100,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Cổng thanh toán:", fontSize = 12.sp, color = Neutral500)
+                                    Text(
+                                        text = bankTitle, 
+                                        fontSize = 12.sp, 
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.weight(1f).padding(start = 8.dp)
+                                    )
+                                }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Chủ tài khoản:", fontSize = 12.sp, color = Neutral500)
+                                    Text(
+                                        text = accName, 
+                                        fontSize = 12.sp, 
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.weight(1f).padding(start = 8.dp)
+                                    )
+                                }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Số tài khoản:", fontSize = 12.sp, color = Neutral500)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.End,
+                                        modifier = Modifier.weight(1f).padding(start = 8.dp)
+                                    ) {
+                                        Text(accNo, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Default.ContentCopy,
+                                            contentDescription = "Copy STK",
+                                            modifier = Modifier.size(14.dp).clickable {
+                                                clipboardManager.setText(AnnotatedString(accNo))
+                                            },
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Nội dung CK:", fontSize = 12.sp, color = Neutral500)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.End,
+                                        modifier = Modifier.weight(1f).padding(start = 8.dp)
+                                    ) {
+                                        Text(transferContent, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SuccessEmerald, textAlign = TextAlign.End)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Default.ContentCopy,
+                                            contentDescription = "Copy nội dung",
+                                            modifier = Modifier.size(14.dp).clickable {
+                                                clipboardManager.setText(AnnotatedString(transferContent))
+                                            },
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = "Tiền thanh toán được PayOS chuyển vào cổng trung gian EzRoom. Hệ thống tự động khấu trừ 5% hoa hồng sàn và chuyển doanh thu thực nhận cho Chủ nhà.",
+                            fontSize = 11.sp,
+                            color = Neutral500,
+                            lineHeight = 15.sp
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isSubmittingPayment = true
+                                verifyError = null
+                                val result = InvoiceRepositoryImpl().payInvoiceWithResult(displayInvoice.id, "VietQR (PayOS Escrow)")
+                                isSubmittingPayment = false
+                                if (result.isSuccess) {
+                                    showQRModal = false
+                                    android.widget.Toast.makeText(context, "Thanh toán hóa đơn thành công!", android.widget.Toast.LENGTH_LONG).show()
+                                    onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type)
+                                } else {
+                                    val errorMsg = result.exceptionOrNull()?.message ?: "Hệ thống PayOS chưa ghi nhận giao dịch chuyển khoản cho đơn hàng này."
+                                    verifyError = errorMsg
+                                    android.widget.Toast.makeText(context, errorMsg, android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        enabled = !isSubmittingPayment,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = SuccessEmerald)
+                    ) {
+                        Text(if (isSubmittingPayment) "ĐANG XÁC THỰC PAYOS..." else "XÁC NHẬN ĐÃ CHUYỂN KHOẢN", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showQRModal = false },
+                        enabled = !isSubmittingPayment
+                    ) {
+                        Text("Đóng")
+                    }
+                }
+            )
         }
     }
 }

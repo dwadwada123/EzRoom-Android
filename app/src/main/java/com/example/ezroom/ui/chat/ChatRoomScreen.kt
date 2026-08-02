@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,13 +35,14 @@ import com.example.ezroom.domain.usecase.GetMessagesUseCase
 import com.example.ezroom.domain.usecase.SendMessageUseCase
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
+import com.example.ezroom.ui.components.SecondaryButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatRoomScreen(
     conversationId: String = "conv_1",
     userName: String = "Trần Vũ Phong",
-    isOnline: Boolean = true,
+    phoneNumber: String = "",
     onNavigateBack: () -> Unit,
     viewModel: ChatViewModel = viewModel(
         factory = viewModelFactory {
@@ -49,6 +51,7 @@ fun ChatRoomScreen(
                 GetConversationsUseCase(repo),
                 GetMessagesUseCase(repo),
                 SendMessageUseCase(repo),
+                com.example.ezroom.domain.usecase.UploadImageUseCase(repo)
             )
         },
     ),
@@ -58,9 +61,67 @@ fun ChatRoomScreen(
     var messageText by remember { mutableStateOf("") }
     var showAttachmentMenu by remember { mutableStateOf(value = false) }
     val sheetState = rememberModalBottomSheetState()
+    
+    val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            val inputStream = context.contentResolver.openInputStream(it)
+            val bytes = inputStream?.readBytes()
+            inputStream?.close()
+            if (bytes != null) {
+                // Determine mime type
+                val mimeType = context.contentResolver.getType(it) ?: "image/jpeg"
+                // Generate a random file name
+                val fileName = "img_${System.currentTimeMillis()}.jpg"
+                viewModel.uploadImageAndSend(conversationId, bytes, fileName, mimeType)
+            }
+        }
+    }
 
     LaunchedEffect(conversationId) {
         viewModel.loadMessages(conversationId, userName)
+    }
+
+    val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
+
+    fun fetchAndSendLocation() {
+        try {
+            fusedLocationClient.getCurrentLocation(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                object : com.google.android.gms.tasks.CancellationToken() {
+                    override fun onCanceledRequested(p0: com.google.android.gms.tasks.OnTokenCanceledListener) = com.google.android.gms.tasks.CancellationTokenSource().token
+                    override fun isCancellationRequested() = false
+                }
+            ).addOnSuccessListener { location ->
+                if (location != null) {
+                    viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = location.latitude, lng = location.longitude)
+                } else {
+                    // Try last location if current location fails
+                    fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
+                        if (lastLoc != null) {
+                            viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = lastLoc.latitude, lng = lastLoc.longitude)
+                        } else {
+                            android.widget.Toast.makeText(context, "Không thể lấy vị trí hiện tại. Vui lòng bật GPS và thử lại.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }.addOnFailureListener {
+                android.widget.Toast.makeText(context, "Lỗi khi lấy vị trí: ${it.message}", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: SecurityException) {
+            android.widget.Toast.makeText(context, "Chưa cấp quyền vị trí", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val locationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            fetchAndSendLocation()
+        } else {
+            android.widget.Toast.makeText(context, "Cần cấp quyền vị trí để gửi", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     if (showAttachmentMenu) {
@@ -71,10 +132,27 @@ fun ChatRoomScreen(
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
             AttachmentMenuContent(
-                onOptionClick = {
+                onOptionClick = { option ->
                     showAttachmentMenu = false
+                    if (option == "image") {
+                        photoPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    } else if (option == "location") {
+                        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            fetchAndSendLocation()
+                        } else {
+                            locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+                    }
                 }
             )
+        }
+    }
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(uiState.messages.size) {
+        if (uiState.messages.isNotEmpty()) {
+            listState.scrollToItem(uiState.messages.size - 1)
         }
     }
 
@@ -121,24 +199,14 @@ fun ChatRoomScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.ExtraBold
                                 )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (isOnline) {
-                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(SuccessEmerald))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
-                                    Text(
-                                        text = if (isOnline) "Đang hoạt động" else "Ngoại tuyến",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (isOnline) SuccessEmerald else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
                             }
                         }
                     },
                     actions = {
                         IconButton(
                             onClick = {
-                                val intent = Intent(Intent.ACTION_DIAL, "tel:0898990543".toUri())
+                                val dialPhone = if (phoneNumber.isNotBlank()) phoneNumber else "0898990543"
+                                val intent = Intent(Intent.ACTION_DIAL, "tel:$dialPhone".toUri())
                                 context.startActivity(intent)
                             },
                             modifier = Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
@@ -225,6 +293,7 @@ fun ChatRoomScreen(
         }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -235,22 +304,14 @@ fun ChatRoomScreen(
                 items = uiState.messages,
                 key = { it.id }
             ) { message ->
-                var visible by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { visible = true }
-                
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = slideInVertically(initialOffsetY = { 20 }) + fadeIn()
-                ) {
-                    ChatBubble(message)
-                }
+                ChatBubble(message)
             }
         }
     }
 }
 
 @Composable
-fun AttachmentMenuContent(onOptionClick: () -> Unit) {
+fun AttachmentMenuContent(onOptionClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -271,14 +332,14 @@ fun AttachmentMenuContent(onOptionClick: () -> Unit) {
                 icon = Icons.Default.Image,
                 label = "Hình ảnh",
                 color = Color(0xFF10B981),
-                onClick = onOptionClick,
+                onClick = { onOptionClick("image") },
                 modifier = Modifier.weight(1f),
             )
             AttachmentOption(
                 icon = Icons.Default.LocationOn,
                 label = "Vị trí",
                 color = Color(0xFFEF4444),
-                onClick = onOptionClick,
+                onClick = { onOptionClick("location") },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -315,6 +376,7 @@ fun AttachmentOption(
 
 @Composable
 fun ChatBubble(message: Message) {
+    val context = LocalContext.current
     val isMe = message.isFromMe
     val alignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
@@ -334,16 +396,73 @@ fun ChatBubble(message: Message) {
                 modifier = Modifier.widthIn(max = 280.dp),
                 border = if (!isMe) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)) else null
             ) {
-                Text(
-                    text = message.text,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                    color = textColor,
-                    style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 24.sp
-                )
+                Column {
+                    if (message.imageUrl != null) {
+                        coil.compose.AsyncImage(
+                            model = message.imageUrl,
+                            contentDescription = "Hình ảnh",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(shape)
+                        )
+                    }
+                    
+                    if (message.latitude != null && message.longitude != null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn, 
+                                    contentDescription = null, 
+                                    tint = ErrorRose,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Đã chia sẻ vị trí", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SecondaryButton(
+                                    text = "Chỉ đường",
+                                    onClick = {
+                                        val uri = android.net.Uri.parse("google.navigation:q=${message.latitude},${message.longitude}")
+                                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                                        intent.setPackage("com.google.android.apps.maps")
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
+                                        } else {
+                                            // Fallback if Maps app is not installed
+                                            val webUri = android.net.Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${message.latitude},${message.longitude}")
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
+                    if (message.text.isNotBlank()) {
+                        Text(
+                            text = message.text,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyLarge,
+                            lineHeight = 24.sp
+                        )
+                    }
+                }
             }
             Text(
-                text = "10:00", 
+                text = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp)), 
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.padding(top = 6.dp, start = 8.dp, end = 8.dp)

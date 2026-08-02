@@ -26,6 +26,7 @@ import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.invoice.InvoiceViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
+import java.text.DecimalFormat
 
 @Composable
 fun RenterInvoiceListScreen(
@@ -209,12 +210,13 @@ private fun RenterInvoiceBentoCard(
             }
             
             Column(horizontalAlignment = Alignment.End) {
+                val formatter = remember { DecimalFormat("#,### đ") }
                 Text(
-                    text = "${item.roomPrice} đ",
+                    text = formatter.format(item.calculatedTotalAmount),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))

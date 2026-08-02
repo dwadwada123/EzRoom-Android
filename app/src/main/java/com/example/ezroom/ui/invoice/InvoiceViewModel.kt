@@ -62,10 +62,18 @@ class InvoiceViewModel(
         loadInvoices()
     }
 
-    fun createInvoice(invoice: Invoice) {
+    fun createInvoice(invoice: Invoice, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            repository.createInvoice(invoice)
-            loadInvoices()
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                repository.createInvoice(invoice)
+                loadInvoices()
+                _uiState.update { it.copy(isLoading = false) }
+                onComplete()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                onComplete()
+            }
         }
     }
 

@@ -25,15 +25,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SubmitReportScreen(
+    roomTitle: String = "Thông tin phòng trọ",
+    roomPrice: String = "",
+    roomImageUrl: String = "",
     onBackClick: () -> Unit = {},
     onSubmitReport: (reason: String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
-    
-    // Mock Data for Room Summary
-    val roomTitle = "Phòng trọ cao cấp Q7 - Full nội thất"
-    val roomPrice = "3.500.000₫/tháng"
-    val roomImageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=400"
+
 
     // Predefined Reasons
     val reasons = listOf(

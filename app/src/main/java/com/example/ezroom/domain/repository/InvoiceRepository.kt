@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface InvoiceRepository {
     fun getInvoices(): Flow<List<Invoice>>
+    suspend fun getInvoiceById(invoiceId: String): com.example.ezroom.core.Try<Invoice>
     suspend fun createInvoice(invoice: Invoice)
     suspend fun updateInvoiceStatus(invoiceId: String, status: com.example.ezroom.domain.model.InvoiceStatus)
 }

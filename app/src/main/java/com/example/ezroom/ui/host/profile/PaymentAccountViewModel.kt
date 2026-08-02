@@ -38,7 +38,7 @@ class PaymentAccountViewModel(
     }
 
     // Business Logic: Load user's saved accounts
-    private fun loadSavedAccounts() {
+    fun loadSavedAccounts() {
         getAccounts().onEach { accounts ->
             _uiState.update { it.copy(savedAccounts = accounts) }
         }.launchIn(viewModelScope)
@@ -73,6 +73,7 @@ class PaymentAccountViewModel(
     fun onSetDefault(accountId: String) {
         viewModelScope.launch {
             setDefault(accountId)
+            loadSavedAccounts()
         }
     }
 
@@ -80,6 +81,7 @@ class PaymentAccountViewModel(
     fun onDelete(accountId: String) {
         viewModelScope.launch {
             deleteAccount(accountId)
+            loadSavedAccounts()
         }
     }
 
@@ -93,6 +95,7 @@ class PaymentAccountViewModel(
                 accountOwner = owner
             )
             saveAccount(newAccount)
+            loadSavedAccounts()
         }
     }
 }

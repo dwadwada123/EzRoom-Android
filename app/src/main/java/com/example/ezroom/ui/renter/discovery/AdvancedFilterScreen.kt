@@ -32,6 +32,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedFilterScreen(
+    initialParams: FilterParams = FilterParams(),
     onFilterApply: (FilterParams) -> Unit = {},
     onDismiss: () -> Unit = {},
     locationViewModel: LocationViewModel = viewModel(),
@@ -51,13 +52,13 @@ fun AdvancedFilterScreen(
     val loadError by locationViewModel.error.collectAsState()
 
     // State Management: Selection State
-    var selectedProvince by remember { mutableStateOf<Province?>(null) }
-    var selectedWard by remember { mutableStateOf<Ward?>(null) }
+    var selectedProvince by remember(initialParams) { mutableStateOf<Province?>(if (initialParams.selectedDistrict.isNotBlank()) Province(initialParams.selectedDistrict, "") else null) }
+    var selectedWard by remember(initialParams) { mutableStateOf<Ward?>(if (initialParams.selectedWard.isNotBlank()) Ward(initialParams.selectedWard, "") else null) }
     
-    var selectedRoomType by remember { mutableStateOf("") }
-    var priceRange by remember { mutableStateOf(uiState.currentParams.priceRange) }
-    var areaRange by remember { mutableStateOf(15f..50f) }
-    var selectedAmenities by remember { mutableStateOf(uiState.currentParams.selectedAmenities.toSet()) }
+    var selectedRoomType by remember(initialParams) { mutableStateOf(initialParams.selectedRoomType) }
+    var priceRange by remember(initialParams) { mutableStateOf(if (initialParams.priceMin > 0f || initialParams.priceMax < 30f) initialParams.priceRange else 0f..30f) }
+    var areaRange by remember(initialParams) { mutableStateOf(10f..100f) }
+    var selectedAmenities by remember(initialParams) { mutableStateOf(initialParams.selectedAmenities.toSet()) }
 
     Scaffold(
         containerColor = Neutral50,
@@ -116,8 +117,10 @@ fun AdvancedFilterScreen(
                         val params = FilterParams(
                             selectedDistrict = selectedProvince?.name ?: "",
                             selectedWard = selectedWard?.name ?: "",
-                            priceRange = priceRange,
-                            selectedAreaRange = "${areaRange.start.roundToInt()} - ${areaRange.endInclusive.roundToInt()} m²",
+                            priceMin = priceRange.start,
+                            priceMax = priceRange.endInclusive,
+                            selectedAreaRange = if (areaRange.start > 10f || areaRange.endInclusive < 100f) "${areaRange.start.roundToInt()} - ${areaRange.endInclusive.roundToInt()} m²" else "",
+                            selectedRoomType = selectedRoomType,
                             selectedAmenities = selectedAmenities.toList()
                         )
                         viewModel.updateParams(params)

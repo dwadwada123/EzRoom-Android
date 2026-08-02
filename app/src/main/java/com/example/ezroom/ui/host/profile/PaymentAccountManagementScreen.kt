@@ -58,6 +58,10 @@ fun PaymentAccountManagementScreen(
     // State Management: UI State from ViewModel
     val uiState by viewModel.uiState.collectAsState()
     
+    LaunchedEffect(Unit) {
+        viewModel.loadSavedAccounts()
+    }
+    
     var showDeleteDialog by remember { mutableStateOf(false) }
     var accountToDelete by remember { mutableStateOf<PaymentAccount?>(null) }
 

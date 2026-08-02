@@ -38,6 +38,9 @@ import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.example.ezroom.data.remote.NetworkClient
+import com.example.ezroom.data.remote.LocationApi
+import com.example.ezroom.data.remote.LocationSuggestion
 
 // Local UI wrapper: Amenity Item for form state
 data class CommonAmenityItem(
@@ -64,6 +67,7 @@ fun PropertyFormScreen(
     val uiState by viewModel.uiState.collectAsState()
     
     var showDiscardDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     // State Management: Location states
     val provinces by locationViewModel.provinces.collectAsState()
@@ -78,15 +82,22 @@ fun PropertyFormScreen(
         viewModel.loadProperty(propertyId)
     }
 
+    val isEditMode = propertyId != null && propertyId != "{propertyId}"
+
     // Navigation: Handle successful save
-    LaunchedEffect(uiState.isSuccess) {
+    LaunchedEffect(uiState.isSuccess, uiState.savedPropertyId) {
+        val savedId = uiState.savedPropertyId
         if (uiState.isSuccess) {
-            val finalId = propertyId ?: "new_prop_id" // Ideally returned from VM
-            onNavigateToCreateFirstRoom(finalId)
+            if (isEditMode) {
+                onBack()
+            } else if (savedId != null) {
+                onNavigateToCreateFirstRoom(savedId)
+            }
         }
     }
 
-    val isEditMode = propertyId != null && propertyId != "{propertyId}"
+
+
     val isFormValid = uiState.name.isNotEmpty() && 
                       (isEditMode || (selectedProvince != null && selectedWard != null)) && 
                       uiState.detailedAddress.isNotEmpty()
@@ -151,11 +162,77 @@ fun PropertyFormScreen(
                     )
                 }
 
+                // UI Component: Map Section
+                val danangCenter = remember { LatLng(16.0544, 108.2022) }
+                val markerState = rememberMarkerState(position = danangCenter)
+                val cameraPositionState = rememberCameraPositionState {
+                    position = CameraPosition.fromLatLngZoom(danangCenter, 15f)
+                }
+
+                // Update map when editing an existing property
+                LaunchedEffect(uiState.latitude, uiState.longitude) {
+                    if (uiState.latitude != null && uiState.longitude != null) {
+                        val pos = LatLng(uiState.latitude!!, uiState.longitude!!)
+                        markerState.position = pos
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(pos, 15f)
+                    }
+                }
+
+                val locationApi = remember { NetworkClient.createService<LocationApi>() }
+                var suggestions by remember { mutableStateOf<List<LocationSuggestion>>(emptyList()) }
+
+                // Debounce address suggestions search
+                LaunchedEffect(uiState.detailedAddress, selectedProvince, selectedWard) {
+                    val query = uiState.detailedAddress
+                    if (query.length < 3) {
+                        suggestions = emptyList()
+                        return@LaunchedEffect
+                    }
+                    delay(500) // Debounce delay
+                    try {
+                        val res = locationApi.suggest(
+                            query = query,
+                            province = selectedProvince?.name,
+                            ward = selectedWard?.name
+                        )
+                        suggestions = res
+                    } catch (e: Exception) {
+                        suggestions = emptyList()
+                    }
+                }
+
+                // Autopin map when Province/Ward changes
+                LaunchedEffect(selectedProvince, selectedWard) {
+                    val provName = selectedProvince?.name ?: ""
+                    val wardName = selectedWard?.name ?: ""
+                    if (provName.isEmpty()) return@LaunchedEffect
+                    
+                    val query = if (wardName.isNotEmpty()) "$wardName, $provName" else provName
+                    try {
+                        val coords = locationApi.geocode(query)
+                        val newLatLng = LatLng(coords.lat, coords.lon)
+                        markerState.position = newLatLng
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(newLatLng, if (wardName.isNotEmpty()) 15f else 12f)
+                    } catch (e: Exception) {
+                        // Fallback: stay where we are
+                    }
+                }
+
                 // UI Component: Detailed Address
-                CustomTextField(
+                AddressSuggestionField(
                     value = uiState.detailedAddress,
                     onValueChange = { viewModel.onDetailedAddressChange(it) },
                     label = "Địa chỉ chi tiết",
+                    suggestions = suggestions,
+                    onSuggestionSelected = { suggestion ->
+                        viewModel.onDetailedAddressChange(suggestion.displayName)
+                        val newLatLng = LatLng(suggestion.lat, suggestion.lon)
+                        markerState.position = newLatLng
+                        scope.launch {
+                            cameraPositionState.position = CameraPosition.fromLatLngZoom(newLatLng, 17f)
+                        }
+                    },
+
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -192,13 +269,6 @@ fun PropertyFormScreen(
                             }
                         }
                     }
-                }
-
-                // UI Component: Map Section
-                val danangCenter = remember { LatLng(16.0544, 108.2022) }
-                val markerState = rememberMarkerState(position = danangCenter)
-                val cameraPositionState = rememberCameraPositionState {
-                    position = CameraPosition.fromLatLngZoom(danangCenter, 15f)
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

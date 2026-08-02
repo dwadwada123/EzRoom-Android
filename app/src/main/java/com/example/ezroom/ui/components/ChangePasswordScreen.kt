@@ -18,13 +18,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.theme.EzRoomTheme
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun ChangePasswordScreen(
     onBackClick: () -> Unit,
     onPasswordChangeSuccess: () -> Unit,
+    onChangePassword: (suspend (String, String) -> Boolean)? = null,
 ) {
     val scope = rememberCoroutineScope()
     
@@ -37,6 +37,7 @@ fun ChangePasswordScreen(
     var confirmPasswordVisible by remember { mutableStateOf(value = false) }
 
     var errorText by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
@@ -48,61 +49,52 @@ fun ChangePasswordScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+    ) { padding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
                 .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxWidth()
         ) {
-            Text(
-                text = "Mật khẩu mới nên có ít nhất 6 ký tự để đảm bảo tính bảo mật.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Mật khẩu hiện tại
             PasswordField(
                 value = currentPassword,
-                onValueChange = {
-                    currentPassword = it
-                    errorText = null
-                },
+                onValueChange = { currentPassword = it },
                 label = "Mật khẩu hiện tại",
-                isVisible = currentPasswordVisible
-            ) {
-                currentPasswordVisible = !currentPasswordVisible
-            }
+                isVisible = currentPasswordVisible,
+                onToggleVisibility = { currentPasswordVisible = !currentPasswordVisible },
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            // Mật khẩu mới
+            Spacer(modifier = Modifier.height(16.dp))
+
             PasswordField(
                 value = newPassword,
-                onValueChange = {
-                    newPassword = it
-                    errorText = null
-                },
+                onValueChange = { newPassword = it },
                 label = "Mật khẩu mới",
-                isVisible = newPasswordVisible
-            ) {
-                newPasswordVisible = !newPasswordVisible
-            }
+                isVisible = newPasswordVisible,
+                onToggleVisibility = { newPasswordVisible = !newPasswordVisible },
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            // Xác nhận mật khẩu mới
+            Spacer(modifier = Modifier.height(16.dp))
+
             PasswordField(
                 value = confirmPassword,
-                onValueChange = {
-                    confirmPassword = it
-                    errorText = null
-                },
+                onValueChange = { confirmPassword = it },
                 label = "Xác nhận mật khẩu mới",
-                isVisible = confirmPasswordVisible
-            ) {
-                confirmPasswordVisible = !confirmPasswordVisible
-            }
+                isVisible = confirmPasswordVisible,
+                onToggleVisibility = { confirmPasswordVisible = !confirmPasswordVisible },
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             if (errorText != null) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = errorText!!,
                     color = MaterialTheme.colorScheme.error,
@@ -127,10 +119,24 @@ fun ChangePasswordScreen(
                         }
                         else -> {
                             errorText = null
-                            onPasswordChangeSuccess()
+                            if (onChangePassword != null) {
+                                scope.launch {
+                                    isLoading = true
+                                    val success = onChangePassword(currentPassword, newPassword)
+                                    isLoading = false
+                                    if (success) {
+                                        onPasswordChangeSuccess()
+                                    } else {
+                                        errorText = "Mật khẩu hiện tại không đúng. Vui lòng thử lại."
+                                    }
+                                }
+                            } else {
+                                onPasswordChangeSuccess()
+                            }
                         }
                     }
                 },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -139,10 +145,18 @@ fun ChangePasswordScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text(
-                    text = "CẬP NHẬT MẬT KHẨU",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text(
+                        text = "CẬP NHẬT MẬT KHẨU",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
         }
     }
@@ -154,18 +168,17 @@ fun PasswordField(
     onValueChange: (String) -> Unit,
     label: String,
     isVisible: Boolean,
-    onVisibilityChange: () -> Unit,
+    onToggleVisibility: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-        leadingIcon = {
-            Icon(imageVector = Icons.Default.Lock, contentDescription = null)
-        },
+        leadingIcon = { Icon(imageVector = Icons.Default.Lock, contentDescription = null) },
         trailingIcon = {
-            IconButton(onClick = onVisibilityChange) {
+            IconButton(onClick = onToggleVisibility) {
                 Icon(
                     imageVector = if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                     contentDescription = if (isVisible) "Ẩn mật khẩu" else "Hiện mật khẩu"
@@ -175,11 +188,8 @@ fun PasswordField(
         visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         singleLine = true,
-        shape = MaterialTheme.shapes.medium,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            focusedLabelColor = MaterialTheme.colorScheme.primary
-        )
+        enabled = enabled,
+        modifier = modifier,
     )
 }
 
@@ -193,4 +203,3 @@ fun ChangePasswordScreenPreview() {
         )
     }
 }
-

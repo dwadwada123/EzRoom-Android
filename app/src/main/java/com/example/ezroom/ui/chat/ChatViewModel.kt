@@ -28,7 +28,8 @@ data class ChatRoomUiState(
 class ChatViewModel(
     private val getConversations: GetConversationsUseCase,
     private val getMessages: GetMessagesUseCase,
-    private val sendMessage: SendMessageUseCase
+    private val sendMessage: SendMessageUseCase,
+    private val uploadImageUseCase: com.example.ezroom.domain.usecase.UploadImageUseCase
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(ChatListUiState())
@@ -69,11 +70,20 @@ class ChatViewModel(
         }
     }
 
-    fun onSendMessage(conversationId: String, text: String) {
+    fun onSendMessage(conversationId: String, text: String, imageUrl: String? = null, lat: Double? = null, lng: Double? = null) {
         viewModelScope.launch {
-            sendMessage(conversationId, text)
+            sendMessage(conversationId, text, imageUrl, lat, lng)
             loadMessages(conversationId, _roomState.value.otherPartyName)
             loadConversations()
+        }
+    }
+
+    fun uploadImageAndSend(conversationId: String, fileBytes: ByteArray, fileName: String, mimeType: String) {
+        viewModelScope.launch {
+            val url = uploadImageUseCase(fileBytes, fileName, mimeType)
+            if (url != null) {
+                onSendMessage(conversationId, "Đã gửi một ảnh", imageUrl = url)
+            }
         }
     }
 }

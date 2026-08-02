@@ -32,6 +32,11 @@ import com.example.ezroom.ui.components.EmptyState
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import androidx.compose.ui.platform.LocalContext
+import java.util.Calendar
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -59,6 +64,8 @@ fun RenterAppointmentListScreen(
     
     var showCancelDialog by remember { mutableStateOf(false) }
     var appointmentToCancel by remember { mutableStateOf<Appointment?>(null) }
+    var showRescheduleDialog by remember { mutableStateOf(false) }
+    var appointmentToReschedule by remember { mutableStateOf<Appointment?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -149,10 +156,16 @@ fun RenterAppointmentListScreen(
                         ) {
                             RenterAppointmentBentoCard(
                                 appointment = item,
-                                onEditClick = { onEditAppointment(item) },
+                                onEditClick = { 
+                                    appointmentToReschedule = item
+                                    showRescheduleDialog = true
+                                },
                                 onCancelClick = { 
                                     appointmentToCancel = item
                                     showCancelDialog = true
+                                },
+                                onApproveClick = {
+                                    viewModel.approveAppointment(item.id)
                                 }
                             )
                         }
@@ -190,6 +203,21 @@ fun RenterAppointmentListScreen(
             )
         }
 
+        if (showRescheduleDialog && appointmentToReschedule != null) {
+            RescheduleDialog(
+                appointment = appointmentToReschedule!!,
+                onDismiss = {
+                    showRescheduleDialog = false
+                    appointmentToReschedule = null
+                },
+                onConfirm = { newDate, newTime ->
+                    viewModel.rescheduleAppointment(appointmentToReschedule!!.id, newDate, newTime)
+                    showRescheduleDialog = false
+                    appointmentToReschedule = null
+                }
+            )
+        }
+
         if (uiState.isLoading) {
             LoadingWidget()
         }
@@ -201,7 +229,8 @@ fun RenterAppointmentListScreen(
 fun RenterAppointmentBentoCard(
     appointment: Appointment,
     onEditClick: () -> Unit = {},
-    onCancelClick: () -> Unit = {}
+    onCancelClick: () -> Unit = {},
+    onApproveClick: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -270,7 +299,47 @@ fun RenterAppointmentBentoCard(
                 )
             }
 
-            if (appointment.status == AppointmentStatus.PENDING) {
+            if (appointment.status == AppointmentStatus.RESCHEDULED) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onApproveClick,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(containerColor = SuccessEmerald)
+                    ) {
+                        Text(text = "Đồng ý", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onCancelClick,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                        ) {
+                            Text(text = "Hủy lịch", style = MaterialTheme.typography.labelLarge)
+                        }
+
+                        OutlinedButton(
+                            onClick = onEditClick,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                        ) {
+                            Text(text = "Thay đổi", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+            } else if (appointment.status == AppointmentStatus.PENDING) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -308,3 +377,126 @@ fun RenterAppointmentListScreenPreview() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RescheduleDialog(
+    appointment: Appointment,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit
+) {
+    val context = LocalContext.current
+    var date by remember { mutableStateOf(appointment.date) }
+    var time by remember { mutableStateOf(appointment.time) }
+
+    fun openDatePicker() {
+        val calendar = Calendar.getInstance()
+        if (date.isNotEmpty()) {
+            val parts = date.split("/")
+            if (parts.size == 3) {
+                try {
+                    calendar.set(Calendar.DAY_OF_MONTH, parts[0].toInt())
+                    calendar.set(Calendar.MONTH, parts[1].toInt() - 1)
+                    calendar.set(Calendar.YEAR, parts[2].toInt())
+                } catch (ignored: Exception) { }
+            }
+        }
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                date = String.format(Locale.getDefault(), "%02d/%02d/%04d", day, month + 1, year)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    fun openTimePicker() {
+        val calendar = Calendar.getInstance()
+        if (time.isNotEmpty()) {
+            val parts = time.split(":")
+            if (parts.size == 2) {
+                try {
+                    calendar.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
+                    calendar.set(Calendar.MINUTE, parts[1].toInt())
+                } catch (ignored: Exception) { }
+            }
+        }
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                time = String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
+            },
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+            true
+        ).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Đề xuất thời gian mới", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(
+                    onClick = { openDatePicker() },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    OutlinedTextField(
+                        value = date,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Chọn ngày xem phòng") },
+                        trailingIcon = {
+                            IconButton(onClick = { openDatePicker() }) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = "Chọn ngày", tint = com.example.ezroom.ui.theme.PrimaryMain)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Surface(
+                    onClick = { openTimePicker() },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    OutlinedTextField(
+                        value = time,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Chọn giờ xem phòng") },
+                        trailingIcon = {
+                            IconButton(onClick = { openTimePicker() }) {
+                                Icon(Icons.Default.Schedule, contentDescription = "Chọn giờ", tint = com.example.ezroom.ui.theme.PrimaryMain)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(date, time) }) {
+                Text("Gửi đề xuất")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Hủy")
+            }
+        },
+        containerColor = Color.White
+    )
+}

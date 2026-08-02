@@ -1,14 +1,16 @@
 package com.example.ezroom.domain.model
 
+import com.google.gson.annotations.SerializedName
+
 // Domain Model: Province
 data class Province(
-    val name: String,
-    val code: String,
-    val wards: List<Ward> = emptyList(),
+    @SerializedName("Name") val name: String,
+    @SerializedName("Code") val code: String,
+    @SerializedName("Wards") val wards: List<Ward> = emptyList(),
 )
 
 // Domain Model: Ward
 data class Ward(
-    val name: String,
-    val code: String,
+    @SerializedName("Name") val name: String,
+    @SerializedName("Code") val code: String,
 )

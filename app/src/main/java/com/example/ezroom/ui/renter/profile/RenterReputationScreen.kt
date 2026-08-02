@@ -25,13 +25,16 @@ import com.example.ezroom.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RenterReputationScreen(
+    renterId: String? = null,
     onBack: () -> Unit
 ) {
     var reviews by remember { mutableStateOf(emptyList<RenterReview>()) }
     val getReviews = remember { GetRenterReviewsUseCase() }
+    val currentUserId = remember { com.example.ezroom.util.TokenManager.getUser()?.id ?: "" }
 
-    LaunchedEffect(Unit) {
-        getReviews("u1").collect { reviews = it }
+    val targetUserId = renterId ?: currentUserId
+    LaunchedEffect(targetUserId) {
+        getReviews(targetUserId).collect { reviews = it }
     }
 
     val averageRating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average()

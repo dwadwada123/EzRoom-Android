@@ -20,7 +20,11 @@ data class Property(
     val longitude: Double,
     val rooms: List<Room> = emptyList(),
     val isHidden: Boolean = false,
+    val hostId: String = "",
+    val rating: Float = 0f,
+    val reviewCount: Int = 0
 ) {
+
     // UI Helpers
     val vacantRoomCount: Int get() = rooms.count { it.status == RoomStatus.ACTIVE }
     
@@ -48,9 +52,10 @@ data class Room(
     val address: String,
     val detailedAddress: String,
     val description: String,
-    val structure: RoomStructure,
+    val structure: RoomStructure = RoomStructure.SINGLE,
     val floorArea: Double,
     val mezzanineArea: Double = 0.0,
+    val capacity: Int = 0,
     val detailedAreas: List<DetailedArea> = emptyList(),
     val rating: Float = 0f,
     val reviewCount: Int = 0,
@@ -64,6 +69,10 @@ data class Room(
     val pastRenters: List<RenterInfo> = emptyList(),
     val isUserHidden: Boolean = false,
     val removalInfo: RoomRemovalInfo? = null,
+    val hostId: String? = null,
+    val hostName: String? = null,
+    val hostPhone: String? = null,
+    val hostAvatarUrl: String? = null,
 )
 
 data class RenterInfo(
@@ -76,18 +85,21 @@ data class RenterInfo(
 )
 
 data class RoomReview(
+    @com.google.gson.annotations.SerializedName("_id", alternate = ["id"])
     val id: String,
-    val userName: String,
+    val userName: String = "Người thuê",
     val userAvatar: Int? = null,
     val rating: Int,
     val comment: String,
-    val date: String,
+    val date: String = "",
     val hostReply: String? = null, // Host's response to renter's review
     val isReported: Boolean = false // If the host thinks this review is unfair
 )
 
 data class RenterReview(
+    @com.google.gson.annotations.SerializedName("_id", alternate = ["id"])
     val id: String,
+    val renterId: String = "",
     val hostName: String,
     val hostAvatar: Int? = null,
     val rating: Int,

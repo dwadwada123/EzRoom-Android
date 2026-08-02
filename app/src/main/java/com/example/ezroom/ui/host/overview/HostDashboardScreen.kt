@@ -39,12 +39,30 @@ fun HostDashboardScreen(
     onCreateContract: () -> Unit = {},
     viewModel: HostDashboardViewModel = viewModel(
         factory = viewModelFactory {
-            HostDashboardViewModel(GetHostStatsUseCase(RoomRepositoryImpl(), AppointmentRepositoryImpl()))
+            HostDashboardViewModel(
+                GetHostStatsUseCase(
+                    RoomRepositoryImpl(),
+                    AppointmentRepositoryImpl(),
+                    com.example.ezroom.data.repository.ContractRepositoryImpl(),
+                    com.example.ezroom.data.repository.InvoiceRepositoryImpl()
+                )
+            )
         },
     ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadStats()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     
     // Dropdown state
     var showDropdown by remember { mutableStateOf(value = false) }
@@ -53,32 +71,43 @@ fun HostDashboardScreen(
 
     // Standard Date Picker Logic (Stable)
     val calendar = Calendar.getInstance()
+    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     
-    val showEndDatePicker = { startStr: String ->
-        DatePickerDialog(
+    val showEndDatePicker = { startCal: Calendar ->
+        val endDialog = DatePickerDialog(
             context,
-            { _, _, month, day ->
-                val endStr = "$day/${month + 1}"
+            { _, y, m, d ->
+                val endCal = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, y)
+                    set(Calendar.MONTH, m)
+                    set(Calendar.DAY_OF_MONTH, d)
+                }
+                val startStr = dateFormat.format(startCal.time)
+                val endStr = dateFormat.format(endCal.time)
                 viewModel.onTimeRangeSelected("$startStr - $endStr")
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH),
-        ).apply {
-            setTitle("Đến ngày")
-            show()
-        }
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        endDialog.setTitle("Đến ngày")
+        endDialog.datePicker.minDate = startCal.timeInMillis
+        endDialog.show()
     }
 
     val startDatePickerDialog = DatePickerDialog(
         context,
-        { _, _, month, day ->
-            val startStr = "$day/${month + 1}"
-            showEndDatePicker(startStr)
+        { _, y, m, d ->
+            val startCal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, y)
+                set(Calendar.MONTH, m)
+                set(Calendar.DAY_OF_MONTH, d)
+            }
+            showEndDatePicker(startCal)
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
     ).apply {
         setTitle("Từ ngày")
     }
@@ -267,7 +296,7 @@ fun HostDashboardScreen(
                 ) {
                     DashboardStatCardContent(
                         title = "Hợp đồng",
-                        value = "12",
+                        value = stats.totalContracts.toString(),
                         icon = Icons.Default.Description,
                         containerColor = Color(0xFFFAFAFA),
                         contentColor = Color(0xFF475569)

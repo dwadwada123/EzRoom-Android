@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.model.MockData
 import com.example.ezroom.data.repository.InvoiceRepositoryImpl
+import com.example.ezroom.data.repository.RoomRepositoryImpl
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetInvoicesUseCase
 import com.example.ezroom.ui.components.CustomTextField
@@ -72,17 +73,32 @@ fun CreateInvoiceScreen(
     val otherCostItems = remember { mutableStateListOf<OtherCostItem>() }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Room selection dropdown state
-    val mockRooms = MockData.rooms
-    var selectedRoom by remember { mutableStateOf(mockRooms.find { it.title == roomName } ?: mockRooms.first()) }
+    // Fetch real rooms from RoomRepository
+    val roomRepo = remember { RoomRepositoryImpl() }
+    var rooms by remember { mutableStateOf<List<Room>>(emptyList()) }
+    var selectedRoom by remember { mutableStateOf<Room?>(null) }
     var isRoomDropdownExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        roomRepo.getHostRooms().collect { list ->
+            rooms = list.filter { it.status == RoomStatus.RENTED }
+        }
+    }
+
+    LaunchedEffect(rooms, roomName) {
+        if (rooms.isNotEmpty() && selectedRoom == null) {
+            selectedRoom = rooms.find { it.title == roomName || it.id == roomName } ?: rooms.first()
+        }
+    }
 
     val formatter = remember { DecimalFormat("#,### đ") }
 
     // Update prices when room is selected
     LaunchedEffect(selectedRoom) {
-        elecPrice = selectedRoom.electricityPrice.toString()
-        waterPrice = selectedRoom.waterPrice.toString()
+        selectedRoom?.let {
+            elecPrice = it.electricityPrice.toString()
+            waterPrice = it.waterPrice.toString()
+        }
     }
 
     val elecUsage = (newElectricity.toIntOrNull() ?: 0) - (oldElectricity.toIntOrNull() ?: 0)
@@ -94,10 +110,11 @@ fun CreateInvoiceScreen(
         val ePrice = elecPrice.toLongOrNull() ?: 0L
         val wPrice = waterPrice.toLongOrNull() ?: 0L
         val otherTotal = otherCostItems.sumOf { it.amount }
-        selectedRoom.price + (eUsage * ePrice) + (wUsage * wPrice) + otherTotal
+        val roomBasePrice = selectedRoom?.price ?: 0L
+        roomBasePrice + (eUsage * ePrice) + (wUsage * wPrice) + otherTotal
     }
 
-    val isFormValid = (oldElectricity.isNotEmpty() && newElectricity.isNotEmpty() && 
+    val isFormValid = selectedRoom != null && (oldElectricity.isNotEmpty() && newElectricity.isNotEmpty() && 
                       oldWater.isNotEmpty() && newWater.isNotEmpty()) &&
                       (elecUsage >= 0 && waterUsage >= 0)
 
@@ -154,12 +171,10 @@ fun CreateInvoiceScreen(
                     )
                     
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !isLoading) { isRoomDropdownExpanded = true }
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = selectedRoom.title,
+                            value = selectedRoom?.title ?: if (rooms.isEmpty()) "Không có phòng đang được thuê" else "Chọn phòng trọ",
                             onValueChange = {},
                             modifier = Modifier.fillMaxWidth(),
                             readOnly = true,
@@ -177,18 +192,33 @@ fun CreateInvoiceScreen(
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                             )
                         )
+
+                        // Transparent overlay capturing touch to reliably toggle dropdown menu
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable(enabled = !isLoading && rooms.isNotEmpty()) {
+                                    isRoomDropdownExpanded = true
+                                }
+                        )
                         
                         DropdownMenu(
                             expanded = isRoomDropdownExpanded,
                             onDismissRequest = { isRoomDropdownExpanded = false },
                             modifier = Modifier.fillMaxWidth(0.85f)
                         ) {
-                            mockRooms.forEach { room ->
+                            rooms.forEach { room ->
                                 DropdownMenuItem(
-                                    text = { Text(room.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    text = {
+                                        Column {
+                                            Text(room.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("${formatter.format(room.price)} / tháng", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                        }
+                                    },
                                     onClick = {
-                                        // Update selected room state
                                         selectedRoom = room
+                                        elecPrice = room.electricityPrice.toString()
+                                        waterPrice = room.waterPrice.toString()
                                         isRoomDropdownExpanded = false
                                     }
                                 )
@@ -203,7 +233,7 @@ fun CreateInvoiceScreen(
                         Icon(Icons.Default.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Tiền phòng cố định: ${formatter.format(selectedRoom.price)}", 
+                            text = "Tiền phòng cố định: ${formatter.format(selectedRoom?.price ?: 0L)}", 
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), 
                             fontSize = 13.sp
                         )
@@ -332,10 +362,10 @@ fun CreateInvoiceScreen(
                                 // Simulate saving to MockData
                                 val newInvoice = Invoice(
                                     id = "INV-${UUID.randomUUID().toString().take(6).uppercase()}",
-                                    roomId = selectedRoom.id,
-                                    roomName = selectedRoom.title,
+                                    roomId = selectedRoom?.id ?: "",
+                                    roomName = selectedRoom?.title ?: "Phòng trọ",
                                     period = SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date()),
-                                    roomPrice = selectedRoom.price,
+                                    roomPrice = selectedRoom?.price ?: 0L,
                                     oldElectricity = oldElectricity.toIntOrNull() ?: 0,
                                     newElectricity = newElectricity.toIntOrNull() ?: 0,
                                     oldWater = oldWater.toIntOrNull() ?: 0,
@@ -345,11 +375,10 @@ fun CreateInvoiceScreen(
                                     type = TransactionType.RENT,
                                     dateCreated = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                                 )
-                                viewModel.createInvoice(newInvoice)
-
-                                delay(1000)
-                                isLoading = false
-                                onInvoiceCreated()
+                                viewModel.createInvoice(newInvoice) {
+                                    isLoading = false
+                                    onInvoiceCreated()
+                                }
                             }
                         }
                     },

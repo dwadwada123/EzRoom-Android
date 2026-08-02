@@ -27,6 +27,8 @@ import com.example.ezroom.ui.theme.Neutral50
 @Composable
 fun ForgotPasswordScreen(
     onBackClick: () -> Unit,
+    onRequestOtp: (email: String, onSuccess: (String) -> Unit, onError: (String) -> Unit) -> Unit = { _, s, _ -> s("Mã OTP đã được gửi.") },
+    onResetPassword: (email: String, otp: String, newPass: String, onSuccess: (String) -> Unit, onError: (String) -> Unit) -> Unit = { _, _, _, s, _ -> s("Đổi mật khẩu thành công.") },
     onResetSuccess: () -> Unit,
 ) {
     var currentStep by remember { mutableIntStateOf(1) }
@@ -37,6 +39,7 @@ fun ForgotPasswordScreen(
     var isPasswordVisible by remember { mutableStateOf(value = false) }
     var isConfirmPasswordVisible by remember { mutableStateOf(value = false) }
     var errorText by remember { mutableStateOf<String?>(value = null) }
+    var isLoading by remember { mutableStateOf(false) }
     
     val scrollState = rememberScrollState()
 
@@ -63,6 +66,10 @@ fun ForgotPasswordScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
             AnimatedContent(
                 targetState = currentStep,
                 label = "StepTransition",
@@ -76,7 +83,19 @@ fun ForgotPasswordScreen(
                         },
                         onNextStep = {
                             if (email.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                                currentStep = 2
+                                isLoading = true
+                                errorText = null
+                                onRequestOtp(
+                                    email,
+                                    { msg ->
+                                        isLoading = false
+                                        currentStep = 2
+                                    },
+                                    { err ->
+                                        isLoading = false
+                                        errorText = err
+                                    }
+                                )
                             } else {
                                 errorText = "Email không hợp lệ. Vui lòng kiểm tra lại."
                             }
@@ -98,7 +117,21 @@ fun ForgotPasswordScreen(
                                 otpCode.length < 4 -> errorText = "Mã OTP phải có 4-6 ký tự."
                                 newPassword.length < 6 -> errorText = "Mật khẩu quá ngắn (tối thiểu 6 ký tự)."
                                 newPassword != confirmPassword -> errorText = "Mật khẩu xác nhận không khớp."
-                                else -> onResetSuccess()
+                                else -> {
+                                    isLoading = true
+                                    errorText = null
+                                    onResetPassword(
+                                        email, otpCode, newPassword,
+                                        { msg ->
+                                            isLoading = false
+                                            onResetSuccess()
+                                        },
+                                        { err ->
+                                            isLoading = false
+                                            errorText = err
+                                        }
+                                    )
+                                }
                             }
                         },
                     )
@@ -116,6 +149,7 @@ fun ForgotPasswordScreen(
         }
     }
 }
+
 
 @Composable
 fun StepOneEmailInput(

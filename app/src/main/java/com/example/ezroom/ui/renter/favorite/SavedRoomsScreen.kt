@@ -22,6 +22,13 @@ import com.example.ezroom.ui.components.RoomCard
 import com.example.ezroom.ui.theme.ErrorRose
 import com.example.ezroom.ui.theme.Neutral50
 import com.example.ezroom.ui.theme.PrimaryMain
+import com.example.ezroom.data.model.MockData
+import kotlinx.coroutines.launch
+import com.example.ezroom.data.remote.NetworkClient
+import com.example.ezroom.data.remote.UserProfileApi
+import com.example.ezroom.data.remote.AuthApi
+import com.example.ezroom.domain.model.Room
+
 
 // Data Model: Saved Room UI State
 data class SavedRoomUI(
@@ -30,7 +37,7 @@ data class SavedRoomUI(
     val address: String,
     val price: String,
     val imageUrl: String,
-    val rating: Float = 4.5f,
+    val rating: Float = 0f,
 )
 
 // UI Component: Saved Rooms Screen
@@ -39,28 +46,74 @@ fun SavedRoomsScreen(
     onRoomClick: (String) -> Unit,
     onNavigateToExplore: () -> Unit,
     onShowSnackbar: (String) -> Unit,
+    userProfileApi: UserProfileApi = remember { NetworkClient.createService<UserProfileApi>() },
+    authApi: AuthApi = remember { NetworkClient.createService<AuthApi>() }
 ) {
-    // State Management: Mock data for saved rooms
-    var savedRooms by remember { 
-        mutableStateOf(
-            listOf(
-                SavedRoomUI(
-                    id = "room_1",
-                    title = "Phòng trọ cao cấp Quận 7",
-                    address = "Quận 7, TP.HCM",
-                    price = "3.500.000 đ",
-                    imageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=400",
-                ),
-                SavedRoomUI(
-                    id = "room_2",
-                    title = "Chung cư mini Bình Thạnh",
-                    address = "Bình Thạnh, TP.HCM",
-                    price = "5.000.000 đ",
-                    imageUrl = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=400",
-                ),
-            )
-        )
+    val scope = rememberCoroutineScope()
+    var favoriteIds by remember { mutableStateOf(emptyList<String>()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val user = remember { com.example.ezroom.util.TokenManager.getUser() }
+    var allRooms by remember { mutableStateOf(emptyList<Room>()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val response = authApi.getProfile()
+            if (response.success && response.user != null) {
+                com.example.ezroom.util.TokenManager.saveUser(response.user)
+                favoriteIds = response.user.favoriteRoomIds
+            }
+            val roomApi = NetworkClient.createService<com.example.ezroom.data.remote.RoomApi>()
+            allRooms = roomApi.getRooms().map { r ->
+                Room(
+                    id = r.resolvedId,
+                    propertyId = r.propertyId,
+                    title = r.title,
+                    price = r.price,
+                    priceFormatted = "${r.price} đ",
+                    electricityPrice = r.electricityPrice,
+                    waterPrice = r.waterPrice,
+                    address = r.address,
+                    detailedAddress = r.detailedAddress,
+                    description = r.description,
+                    structure = try { com.example.ezroom.domain.model.RoomStructure.valueOf(r.structure) } catch (e: Exception) { com.example.ezroom.domain.model.RoomStructure.SINGLE },
+                    floorArea = r.floorArea,
+                    images = r.images?.map { img ->
+                        com.example.ezroom.domain.model.RoomImage(
+                            url = img["url"] ?: "",
+                            category = img["category"] ?: "Khác"
+                        )
+                    } ?: emptyList(),
+                    amenities = emptyList(),
+                    status = try { com.example.ezroom.domain.model.RoomStatus.valueOf(r.status) } catch (e: Exception) { com.example.ezroom.domain.model.RoomStatus.ACTIVE },
+                    latitude = r.latitude,
+                    longitude = r.longitude,
+                    rating = r.rating,
+                    reviewCount = r.reviewCount
+                )
+            }
+        } catch (e: Exception) {
+            favoriteIds = com.example.ezroom.util.TokenManager.getUser()?.favoriteRoomIds ?: emptyList()
+        } finally {
+            isLoading = false
+        }
     }
+
+
+    val savedRooms = remember(favoriteIds, allRooms) {
+        allRooms.filter { it.id in favoriteIds }.map { room ->
+            val image = room.images.firstOrNull()
+            val imageUrl = image?.url?.takeIf { it.isNotBlank() } ?: ""
+            SavedRoomUI(
+                id = room.id,
+                title = room.title,
+                address = room.address,
+                price = room.priceFormatted,
+                imageUrl = imageUrl,
+                rating = room.rating
+            )
+        }
+    }
+
 
     // State Management: Dialog states
     var showUnfavoriteDialog by remember { mutableStateOf(false) }
@@ -147,10 +200,26 @@ fun SavedRoomsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            savedRooms = savedRooms.filter { it.id != roomToUnfavorite?.id }
-                            onShowSnackbar("Đã xóa khỏi danh sách yêu thích")
-                            showUnfavoriteDialog = false
-                            roomToUnfavorite = null
+                            scope.launch {
+                                try {
+                                    val r = userProfileApi.removeFavorite(
+                                        com.example.ezroom.data.remote.RemoveFavoriteRequest(user?.id ?: "", roomToUnfavorite?.id ?: "")
+                                    )
+                                    if (r.success) {
+                                        favoriteIds = r.favoriteRoomIds
+                                        // Sync user state
+                                        val updatedUser = user?.copy(favoriteRoomIds = r.favoriteRoomIds)
+                                        if (updatedUser != null) {
+                                            com.example.ezroom.util.TokenManager.saveUser(updatedUser)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    // Error handling
+                                }
+                                onShowSnackbar("Đã xóa khỏi danh sách yêu thích")
+                                showUnfavoriteDialog = false
+                                roomToUnfavorite = null
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
                     ) {
@@ -166,7 +235,7 @@ fun SavedRoomsScreen(
             )
         }
 
-        // UI Component: Unfavorite All Dialog
+        // Unfavorite All Dialog
         if (showUnfavoriteAllDialog) {
             AlertDialog(
                 onDismissRequest = { showUnfavoriteAllDialog = false },
@@ -175,9 +244,27 @@ fun SavedRoomsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            savedRooms = emptyList()
-                            onShowSnackbar("Đã xóa tất cả phòng yêu thích")
-                            showUnfavoriteAllDialog = false
+                            scope.launch {
+                                try {
+                                    var lastFavoriteIds = favoriteIds
+                                    for (id in favoriteIds) {
+                                        val r = userProfileApi.removeFavorite(
+                                            com.example.ezroom.data.remote.RemoveFavoriteRequest(user?.id ?: "", id)
+                                        )
+                                        if (r.success) lastFavoriteIds = r.favoriteRoomIds
+                                    }
+                                    favoriteIds = emptyList()
+                                    // Sync user state
+                                    val updatedUser = user?.copy(favoriteRoomIds = emptyList())
+                                    if (updatedUser != null) {
+                                        com.example.ezroom.util.TokenManager.saveUser(updatedUser)
+                                    }
+                                } catch (e: Exception) {
+                                    // Error handling
+                                }
+                                onShowSnackbar("Đã xóa tất cả phòng yêu thích")
+                                showUnfavoriteAllDialog = false
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
                     ) {

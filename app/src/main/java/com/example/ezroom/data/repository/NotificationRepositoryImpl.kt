@@ -1,28 +1,40 @@
 package com.example.ezroom.data.repository
 
-import com.example.ezroom.data.model.MockData
 import com.example.ezroom.domain.model.NotificationItem
 import com.example.ezroom.domain.repository.NotificationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class NotificationRepositoryImpl : NotificationRepository {
+class NotificationRepositoryImpl(
+    private val api: com.example.ezroom.data.remote.NotificationApi = com.example.ezroom.data.remote.NetworkClient.createService()
+) : NotificationRepository {
     override fun getNotifications(): Flow<List<NotificationItem>> = flow {
-        emit(MockData.notifications)
+        try {
+            val user = com.example.ezroom.util.TokenManager.getUser()
+            if (user != null) {
+                emit(api.getNotifications(user.id))
+            } else {
+                emit(emptyList())
+            }
+        } catch (e: java.lang.Exception) {
+            emit(emptyList())
+        }
     }
 
     override suspend fun markAsRead(notificationId: String) {
-        val index = MockData.notifications.indexOfFirst { it.id == notificationId }
-        if (index != -1) {
-            MockData.notifications[index] = MockData.notifications[index].copy(isRead = true)
+        try {
+            api.markAsRead(notificationId)
+        } catch (e: java.lang.Exception) {
+            // Error handling
         }
     }
 
     override suspend fun markAllAsRead() {
-        MockData.notifications.forEachIndexed { index, item ->
-            if (!item.isRead) {
-                MockData.notifications[index] = item.copy(isRead = true)
-            }
+        try {
+            val user = com.example.ezroom.util.TokenManager.getUser() ?: return
+            api.markAllAsRead(mapOf("userId" to user.id))
+        } catch (e: java.lang.Exception) {
+            // Error handling
         }
     }
 }

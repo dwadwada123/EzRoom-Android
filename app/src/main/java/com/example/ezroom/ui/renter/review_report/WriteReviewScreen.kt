@@ -27,15 +27,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun WriteReviewScreen(
+    roomTitle: String = "Thông tin phòng trọ",
+    roomPrice: String = "",
+    roomImageUrl: String = "",
     onBackClick: () -> Unit = {},
     onSubmitReview: (Int, String) -> Unit = { _, _ -> },
 ) {
     val scope = rememberCoroutineScope()
-    
-    // Mock Data for Room Summary
-    val roomTitle = "Phòng trọ cao cấp Q7 - Full nội thất"
-    val roomPrice = "3.500.000₫/tháng"
-    val roomImageUrl = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=400"
+
 
     // States
     var rating by remember { mutableIntStateOf(0) }

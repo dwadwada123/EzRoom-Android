@@ -1,31 +1,26 @@
 package com.example.ezroom.data.repository
 
-import com.example.ezroom.data.remote.LocationApi
-import com.example.ezroom.data.remote.ProvinceDto
-import com.example.ezroom.data.remote.WardDto
+import com.example.ezroom.EzRoomApplication
 import com.example.ezroom.domain.model.Province
-import com.example.ezroom.domain.model.Ward
 import com.example.ezroom.domain.repository.LocationRepository
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.io.InputStreamReader
 
-// Data Layer: Location Repository Implementation
-class LocationRepositoryImpl(
-    private val api: LocationApi = LocationApi.create()
-) : LocationRepository {
+class LocationRepositoryImpl : LocationRepository {
 
     override suspend fun getProvinces(): List<Province> {
-        return api.getProvinces().map { it.toDomain() }
+        return try {
+            val context = EzRoomApplication.getContext()
+            val inputStream = context.assets.open("data/vietnam_provinces.json")
+            val reader = InputStreamReader(inputStream)
+            val listType = object : TypeToken<List<Province>>() {}.type
+            val provinces: List<Province> = Gson().fromJson(reader, listType)
+            reader.close()
+            provinces
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 }
-
-// Data Mapping: Province DTO to Domain
-fun ProvinceDto.toDomain() = Province(
-    name = name,
-    code = code,
-    wards = wards.map { it.toDomain() }
-)
-
-// Data Mapping: Ward DTO to Domain
-fun WardDto.toDomain() = Ward(
-    name = name,
-    code = code
-)

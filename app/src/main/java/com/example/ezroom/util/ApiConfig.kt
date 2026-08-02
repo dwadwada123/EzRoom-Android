@@ -3,6 +3,10 @@ package com.example.ezroom.util
 import android.os.Build
 
 object ApiConfig {
+    // Base URL configuration for emulator and physical device
+    private const val BASE_URL_DEVICE = "http://192.168.2.12:3000/"
+    private const val BASE_URL_EMULATOR = "http://10.0.2.2:3000/"
+
     // Check if running on emulator
     private fun isEmulator(): Boolean {
         return (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
@@ -23,10 +27,6 @@ object ApiConfig {
 
     // Get API base URL
     fun getBaseUrl(): String {
-        return if (isEmulator()) {
-            "http://10.0.2.2:3000/"
-        } else {
-            "http://192.168.2.12:3000/"
-        }
+        return if (isEmulator()) BASE_URL_EMULATOR else BASE_URL_DEVICE
     }
 }

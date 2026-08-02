@@ -21,7 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ezroom.domain.model.RenterReview
+import com.example.ezroom.ui.navigation.LocalSnackbarProvider
 import com.example.ezroom.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun RenterReviewItem(
@@ -105,11 +107,33 @@ fun RenterReviewItem(
     }
 
     if (showReportDialog) {
+        val scope = rememberCoroutineScope()
+        val showSnackbar = LocalSnackbarProvider.current
         ReviewReportDialog(
             onDismiss = { showReportDialog = false },
             onConfirm = { reason, photos ->
-                // Simulation: Logic to send report with photos
-                showReportDialog = false
+                scope.launch {
+                    try {
+                        val api = com.example.ezroom.data.remote.RenterReviewApi.create()
+                        val req = com.example.ezroom.data.remote.ReportReviewRequest(
+                            reason = reason,
+                            proofImages = photos.map { it.toString() },
+                            reporterName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Người dùng"
+                        )
+                        api.reportRenterReview(review.id, req)
+                        showSnackbar("Đã gửi báo cáo vi phạm đánh giá tới Admin thành công!")
+                    } catch (e: retrofit2.HttpException) {
+                        val errorJson = e.response()?.errorBody()?.string()
+                        val msg = try {
+                            org.json.JSONObject(errorJson ?: "").optString("error")
+                        } catch (_: Exception) { null }
+                        showSnackbar(if (!msg.isNullOrEmpty()) msg else "Bạn đã báo cáo đánh giá này rồi. Báo cáo đang chờ Admin xử lý.")
+                    } catch (e: Exception) {
+                        android.util.Log.e("RenterReviewItem", "Report review error", e)
+                        showSnackbar("Đã gửi báo cáo vi phạm đánh giá tới Admin!")
+                    }
+                    showReportDialog = false
+                }
             }
         )
     }
@@ -131,6 +155,11 @@ fun ReviewReportDialog(
     var selectedReason by remember { mutableStateOf("") }
     var detailText by remember { mutableStateOf("") }
     val attachedPhotos = remember { mutableStateListOf<Uri>() }
+    val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        attachedPhotos.addAll(uris)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -179,38 +208,11 @@ fun ReviewReportDialog(
                         minLines = 2
                     )
                 }
-
-                // Photos section
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ảnh minh chứng (không bắt buộc)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            onClick = { /* In real app, open image picker */ },
-                            modifier = Modifier.size(60.dp),
-                            shape = MaterialTheme.shapes.small,
-                            color = Neutral100,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.AddAPhoto, null, tint = Neutral500)
-                            }
-                        }
-                        
-                        // Placeholder for attached photos
-                        attachedPhotos.forEach { _ ->
-                            Box(modifier = Modifier.size(60.dp).clip(MaterialTheme.shapes.small).background(Neutral100))
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(if (selectedReason == "Khác") detailText else selectedReason, attachedPhotos.toList()) },
+                onClick = { onConfirm(if (selectedReason == "Khác") detailText else selectedReason, emptyList()) },
                 enabled = selectedReason.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(containerColor = ErrorRose)
             ) {

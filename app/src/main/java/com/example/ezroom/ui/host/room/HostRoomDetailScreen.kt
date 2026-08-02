@@ -45,7 +45,7 @@ fun HostRoomDetailScreen(
     modifier: Modifier = Modifier,
     room: Room? = null,
     onBackClick: () -> Unit = {},
-    onEditClick: (String) -> Unit = {},
+    onEditClick: (Room) -> Unit = {},
     onDeleteClick: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -53,18 +53,76 @@ fun HostRoomDetailScreen(
 
     // Initial room data
     val displayRoom = remember(room) { room ?: mockRoomWithRenters() }
-    val reviews = remember { mutableStateListOf<RoomReview>().apply { addAll(displayRoom.reviews) } }
+    val reviews = remember { mutableStateListOf<RoomReview>() }
 
-    var showRenterReview by remember { mutableStateOf(value = false) }
+    // Fetch room reviews left by renters
+    LaunchedEffect(displayRoom.id) {
+        reviews.clear()
+        reviews.addAll(displayRoom.reviews)
+        try {
+            val roomReviewApi = com.example.ezroom.data.remote.RoomReviewApi.create()
+            val remoteReviews: List<com.example.ezroom.data.remote.RoomReviewResponse> = roomReviewApi.getRoomReviews(displayRoom.id)
+            if (remoteReviews.isNotEmpty()) {
+                val mapped = remoteReviews.map { res: com.example.ezroom.data.remote.RoomReviewResponse ->
+                    RoomReview(
+                        id = res.id,
+                        userName = res.reviewerName,
+                        rating = res.rating,
+                        comment = res.comment,
+                        date = res.createdAt.take(10)
+                    )
+                }
+                reviews.clear()
+                reviews.addAll(mapped)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HostRoomDetail", "Failed to fetch room reviews", e)
+        }
+    }
+
+    var showRenterReview by remember { mutableStateOf(false) }
     var renterNameToReview by remember { mutableStateOf("") }
+    var renterIdToReview by remember { mutableStateOf("") }
+    var renterPhoneToReview by remember { mutableStateOf("") }
+    var existingReviewToEdit by remember { mutableStateOf<com.example.ezroom.domain.model.RenterReview?>(null) }
+    
+    // Map of renterId/renterPhone -> RenterReview
+    var existingReviewsMap by remember { mutableStateOf<Map<String, com.example.ezroom.domain.model.RenterReview>>(emptyMap()) }
+
+    // Fetch existing renter reviews from MongoDB Backend
+    LaunchedEffect(displayRoom.currentRenter, displayRoom.pastRenters) {
+        val allRenters = listOfNotNull(displayRoom.currentRenter) + displayRoom.pastRenters
+        val newMap = mutableMapOf<String, com.example.ezroom.domain.model.RenterReview>()
+        
+        allRenters.forEach { renter ->
+            val keysToTry = listOfNotNull(renter.phone.takeIf { it.isNotBlank() }, renter.id.takeIf { it.isNotBlank() })
+            for (key in keysToTry) {
+                try {
+                    val api = com.example.ezroom.data.remote.RenterReviewApi.create()
+                    val list = api.getRenterReviews(key)
+                    if (list.isNotEmpty()) {
+                        val currentHostName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+                        val match = list.find { it.hostName == currentHostName || it.renterId == renter.id || it.renterId == renter.phone } ?: list.firstOrNull()
+                        if (match != null) {
+                            newMap[renter.phone.ifBlank { renter.id }] = match
+                            newMap[renter.id] = match
+                            if (renter.phone.isNotBlank()) newMap[renter.phone] = match
+                            break
+                        }
+                    }
+                } catch (e: Exception) { /* fallback */ }
+            }
+        }
+        existingReviewsMap = newMap
+    }
 
     // Filter & Reply State
     var selectedFilter by remember { mutableStateOf("Tất cả") }
     val filters = listOf("Tất cả", "5 sao", "4 sao", "3 sao", "Dưới 2 sao", "Chưa phản hồi")
     
-    var showReplyDialog by remember { mutableStateOf(value = false) }
+    var showReplyDialog by remember { mutableStateOf(false) }
     var reviewToReply by remember { mutableStateOf<RoomReview?>(null) }
-    var isEditingReply by remember { mutableStateOf(value = false) }
+    var isEditingReply by remember { mutableStateOf(false) }
     
     val filteredReviews = remember(selectedFilter, reviews.toList()) {
         when (selectedFilter) {
@@ -80,41 +138,144 @@ fun HostRoomDetailScreen(
     val visibleState = remember { MutableTransitionState(false) }.apply { targetState = true }
 
     if (showRenterReview) {
+        val currentHostName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+        val reviewToEdit = existingReviewToEdit
+
         com.example.ezroom.ui.host.components.RenterReviewDialog(
             renterName = renterNameToReview,
+            isEditMode = reviewToEdit != null,
+            initialRating = reviewToEdit?.rating ?: 5,
+            initialComment = reviewToEdit?.comment ?: "",
+            initialTags = reviewToEdit?.tags ?: emptyList(),
             onDismiss = { showRenterReview = false },
-            onSubmit = { _, _, _ -> showRenterReview = false },
+            onSubmit = { ratingScore, selectedTags, commentText ->
+                scope.launch {
+                    try {
+                        val api = com.example.ezroom.data.remote.RenterReviewApi.create()
+                        val currentDate = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+                        
+                        if (reviewToEdit != null) {
+                            // Update existing review in MongoDB
+                            val updated = reviewToEdit.copy(
+                                rating = ratingScore,
+                                tags = selectedTags,
+                                comment = commentText,
+                                date = currentDate
+                            )
+                            api.updateRenterReview(updated.id, updated)
+                            existingReviewsMap = existingReviewsMap.toMutableMap().apply {
+                                if (renterPhoneToReview.isNotBlank()) put(renterPhoneToReview, updated)
+                                if (renterIdToReview.isNotBlank()) put(renterIdToReview, updated)
+                            }
+                        } else {
+                            // Create new review in MongoDB
+                            val targetRenterId = renterPhoneToReview.ifBlank { renterIdToReview }
+                            val newReview = com.example.ezroom.domain.model.RenterReview(
+                                id = java.util.UUID.randomUUID().toString(),
+                                renterId = targetRenterId,
+                                hostName = currentHostName,
+                                rating = ratingScore,
+                                tags = selectedTags,
+                                comment = commentText,
+                                date = currentDate
+                            )
+                            val res = api.createRenterReview(newReview)
+                            android.util.Log.d("HostRoomDetail", "Create review res: $res")
+                            existingReviewsMap = existingReviewsMap.toMutableMap().apply {
+                                if (renterPhoneToReview.isNotBlank()) put(renterPhoneToReview, newReview)
+                                if (renterIdToReview.isNotBlank()) put(renterIdToReview, newReview)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("HostRoomDetail", "Error saving renter review", e)
+                    }
+                    showRenterReview = false
+                }
+            },
+            onDelete = {
+                scope.launch {
+                    try {
+                        if (reviewToEdit != null) {
+                            val api = com.example.ezroom.data.remote.RenterReviewApi.create()
+                            api.deleteRenterReview(reviewToEdit.id)
+                            existingReviewsMap = existingReviewsMap.toMutableMap().apply {
+                                if (renterPhoneToReview.isNotBlank()) remove(renterPhoneToReview)
+                                if (renterIdToReview.isNotBlank()) remove(renterIdToReview)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("HostRoomDetail", "Error deleting review", e)
+                    }
+                    showRenterReview = false
+                }
+            }
+        )
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Xóa phòng trọ?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    text = "Bạn có chắc muốn xóa phòng \"${displayRoom.title}\"? Hành động này không thể hoàn tác.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDeleteClick(displayRoom.id)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Hủy")
+                }
+            }
         )
     }
 
     Scaffold(
         bottomBar = {
-            AnimatedVisibility(
-                visibleState = visibleState,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            ) {
-                Surface(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp).shadow(24.dp, shape = CircleShape),
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = CircleShape,
-                    tonalElevation = 8.dp,
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            if (displayRoom.status != com.example.ezroom.domain.model.RoomStatus.REMOVED) {
+                AnimatedVisibility(
+                    visibleState = visibleState,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                 ) {
+                    Surface(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp).shadow(24.dp, shape = CircleShape),
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = CircleShape,
+                        tonalElevation = 8.dp,
                     ) {
-                        Surface(
-                            onClick = { showDeleteConfirm = true },
-                            modifier = Modifier.size(56.dp), 
-                            shape = CircleShape, 
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), 
-                            contentColor = MaterialTheme.colorScheme.error
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Delete, contentDescription = "Xóa bài") }
+                            // Only show Delete button for non-rented rooms
+                            if (displayRoom.status != com.example.ezroom.domain.model.RoomStatus.RENTED) {
+                                Surface(
+                                    onClick = { showDeleteConfirm = true },
+                                    modifier = Modifier.size(56.dp), 
+                                    shape = CircleShape, 
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), 
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Delete, contentDescription = "Xóa bài") }
+                                }
+                            }
+                            
+                            PrimaryButton(text = "CHỈNH SỬA", onClick = { onEditClick(displayRoom) }, modifier = Modifier.weight(1f))
                         }
-                        
-                        PrimaryButton(text = "CHỈNH SỬA", onClick = { onEditClick(displayRoom.id) }, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -123,15 +284,75 @@ fun HostRoomDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(bottom = paddingValues.calculateBottomPadding())) {
             LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                if (displayRoom.status == com.example.ezroom.domain.model.RoomStatus.REMOVED) {
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 60.dp),
+                            color = ErrorRose.copy(alpha = 0.1f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRose),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = ErrorRose)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Phòng trọ này đã bị Admin gỡ bỏ",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ErrorRose
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val reasonText = displayRoom.removalInfo?.reason ?: "Vi phạm tiêu chuẩn cộng đồng"
+                                val dateText = displayRoom.removalInfo?.removedDate?.takeIf { it.isNotBlank() } ?: "Gần đây"
+                                Text(text = "Lý do: $reasonText", style = MaterialTheme.typography.bodyMedium, color = Neutral900)
+                                Text(text = "Thời gian gỡ: $dateText", style = MaterialTheme.typography.bodySmall, color = Neutral500)
+                            }
+                        }
+                    }
+                }
+
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))) {
-                        AsyncImage(
-                            model = displayRoom.images.firstOrNull()?.resId,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
-                        )
+                    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { displayRoom.images.size.coerceAtLeast(1) })
+                    val coroutineScope = rememberCoroutineScope()
+
+                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))) {
+                        androidx.compose.foundation.pager.HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            val image = displayRoom.images.getOrNull(page)
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(
+                                    model = image?.url?.takeIf { it.isNotBlank() } ?: image?.resId,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                    placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                )
+                                
+                                // Tag Badge
+                                if (!image?.category.isNullOrBlank()) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(16.dp),
+                                        color = Color.Black.copy(alpha = 0.6f),
+                                        contentColor = Color.White,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = image?.category ?: "",
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         Surface(
                             modifier = Modifier.align(Alignment.BottomStart).padding(24.dp),
                             color = if (displayRoom.status == RoomStatus.ACTIVE) SuccessEmerald else AccentAmber,
@@ -144,6 +365,65 @@ fun HostRoomDetailScreen(
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.ExtraBold,
                             )
+                        }
+
+                        // Navigation Arrows
+                        if (displayRoom.images.size > 1) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Surface(
+                                    onClick = { 
+                                        coroutineScope.launch {
+                                            if (pagerState.currentPage > 0) {
+                                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.size(40.dp),
+                                    shape = CircleShape,
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    contentColor = Color.White
+                                ) {
+                                    Icon(Icons.Default.ChevronLeft, contentDescription = "Previous", modifier = Modifier.padding(8.dp))
+                                }
+                                
+                                Surface(
+                                    onClick = { 
+                                        coroutineScope.launch {
+                                            if (pagerState.currentPage < displayRoom.images.size - 1) {
+                                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.size(40.dp),
+                                    shape = CircleShape,
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    contentColor = Color.White
+                                ) {
+                                    Icon(Icons.Default.ChevronRight, contentDescription = "Next", modifier = Modifier.padding(8.dp))
+                                }
+                            }
+                            
+                            // Page indicator
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(16.dp),
+                                color = Color.Black.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "${pagerState.currentPage + 1}/${displayRoom.images.size}",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -169,7 +449,7 @@ fun HostRoomDetailScreen(
                     Column(modifier = Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             BentoStatCard(Icons.Default.SquareFoot, "Tổng diện tích", "${displayRoom.floorArea} m²", Modifier.weight(1f))
-                            BentoStatCard(Icons.Default.Group, "Sức chứa", "2-3 người", Modifier.weight(1f))
+                            BentoStatCard(Icons.Default.Group, "Sức chứa", if (displayRoom.capacity > 0) "${displayRoom.capacity} người" else "Không rõ", Modifier.weight(1f))
                         }
                         if (displayRoom.detailedAreas.isNotEmpty()) {
                             Surface(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = Color.White, border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100)) {
@@ -189,9 +469,9 @@ fun HostRoomDetailScreen(
                 }
 
                 // Renters Management
-                if (displayRoom.currentRenter != null || displayRoom.pastRenters.isNotEmpty()) {
+                if (displayRoom.currentRenter != null || displayRoom.pastRenters.isNotEmpty() || displayRoom.status == RoomStatus.RENTED) {
                     item {
-                        var isRentersExpanded by remember { mutableStateOf(value = false) }
+                        var isRentersExpanded by remember { mutableStateOf(true) }
                         
                         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                             Surface(
@@ -228,6 +508,9 @@ fun HostRoomDetailScreen(
                                     // Current Renter
                                     val currentRenter = displayRoom.currentRenter
                                     if (currentRenter != null) {
+                                        val existingCurrent = existingReviewsMap[currentRenter.phone] ?: existingReviewsMap[currentRenter.id]
+                                        val hasReviewedCurrent = existingCurrent != null
+
                                         Text(
                                             text = "Đang ở",
                                             style = MaterialTheme.typography.labelLarge,
@@ -238,8 +521,12 @@ fun HostRoomDetailScreen(
                                         RenterManagementCard(
                                             renter = currentRenter,
                                             isCurrent = true,
+                                            hasReviewed = hasReviewedCurrent,
                                             onRateClick = {
                                                 renterNameToReview = currentRenter.name
+                                                renterIdToReview = currentRenter.id
+                                                renterPhoneToReview = currentRenter.phone
+                                                existingReviewToEdit = existingCurrent
                                                 showRenterReview = true
                                             },
                                         )
@@ -256,11 +543,18 @@ fun HostRoomDetailScreen(
                                             modifier = Modifier.padding(bottom = 8.dp),
                                         )
                                         displayRoom.pastRenters.forEach { renter ->
+                                            val existingPast = existingReviewsMap[renter.phone] ?: existingReviewsMap[renter.id]
+                                            val hasReviewedPast = existingPast != null
+
                                             RenterManagementCard(
                                                 renter = renter,
                                                 isCurrent = false,
+                                                hasReviewed = hasReviewedPast,
                                                 onRateClick = {
                                                     renterNameToReview = renter.name
+                                                    renterIdToReview = renter.id
+                                                    renterPhoneToReview = renter.phone
+                                                    existingReviewToEdit = existingPast
                                                     showRenterReview = true
                                                 },
                                             )
@@ -380,6 +674,7 @@ fun HostRoomDetailScreen(
 fun RenterManagementCard(
     renter: RenterInfo,
     isCurrent: Boolean,
+    hasReviewed: Boolean = false,
     onRateClick: () -> Unit,
 ) {
     Surface(
@@ -426,15 +721,23 @@ fun RenterManagementCard(
                 onClick = onRateClick,
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCurrent) PrimaryMain else Neutral100,
-                    contentColor = if (isCurrent) Color.White else Neutral700,
+                    containerColor = if (hasReviewed) AccentAmber.copy(alpha = 0.15f) else (if (isCurrent) PrimaryMain else Neutral100),
+                    contentColor = if (hasReviewed) AccentAmber else (if (isCurrent) Color.White else Neutral700),
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 modifier = Modifier.height(36.dp),
             ) {
-                Icon(Icons.Default.Star, null, modifier = Modifier.size(14.dp))
+                Icon(
+                    imageVector = if (hasReviewed) Icons.Default.Edit else Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Đánh giá", style = MaterialTheme.typography.labelSmall)
+                Text(
+                    text = if (hasReviewed) "Sửa đánh giá" else "Đánh giá",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (hasReviewed) FontWeight.Bold else FontWeight.Medium
+                )
             }
         }
     }

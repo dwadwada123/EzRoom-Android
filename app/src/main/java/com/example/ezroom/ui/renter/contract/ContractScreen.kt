@@ -22,9 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.ContractRepositoryImpl
+import com.example.ezroom.data.repository.RoomRepositoryImpl
 import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetContractsUseCase
 import com.example.ezroom.domain.usecase.SignContractUseCase
+import com.example.ezroom.domain.usecase.GetRoomsUseCase
 import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.host.contract.ContractViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
@@ -43,16 +45,19 @@ fun ContractScreen(
     viewModel: ContractViewModel = viewModel(
         factory = viewModelFactory {
             val repository = ContractRepositoryImpl()
+            val roomRepo = RoomRepositoryImpl()
             ContractViewModel(
                 GetContractsUseCase(repository),
                 SignContractUseCase(repository),
                 repository,
+                GetRoomsUseCase(roomRepo),
                 isHost = false
             )
         }
     )
 ) {
     var isAgreed by remember { mutableStateOf(false) }
+    var isSigning by remember { mutableStateOf(false) }
     val formatter = remember { DecimalFormat("#,### đ") }
 
     Scaffold(
@@ -76,21 +81,25 @@ fun ContractScreen(
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     when (contract.status) {
-                        ContractStatus.WAITING_SIGN -> {
+                        ContractStatus.WAITING_SIGN, ContractStatus.DRAFT -> {
                             Row(
-                                modifier = Modifier.fillMaxWidth().clickable { isAgreed = !isAgreed }.padding(bottom = 16.dp),
+                                modifier = Modifier.fillMaxWidth().clickable { if (!isSigning) isAgreed = !isAgreed }.padding(bottom = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Checkbox(checked = isAgreed, onCheckedChange = { isAgreed = it })
+                                Checkbox(checked = isAgreed, onCheckedChange = { if (!isSigning) isAgreed = it })
                                 Text("Tôi đã đọc và đồng ý với các điều khoản", style = MaterialTheme.typography.bodySmall)
                             }
                             PrimaryButton(
-                                text = "KÝ HỢP ĐỒNG",
+                                text = if (isSigning) "ĐANG XỬ LÝ..." else "KÝ HỢP ĐỒNG",
                                 onClick = { 
-                                    viewModel.signContract(contract.id)
-                                    onSignSuccess()
+                                    if (isSigning) return@PrimaryButton
+                                    isSigning = true
+                                    viewModel.signContract(contract.id) {
+                                        isSigning = false
+                                        onSignSuccess()
+                                    }
                                 },
-                                enabled = isAgreed,
+                                enabled = isAgreed && !isSigning,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -135,6 +144,18 @@ fun ContractScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             if (contract.depositStatus == DepositStatus.FROZEN) {
+                val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                val isArrived = try {
+                    val date = contract.disburseDate?.let { sdf.parse(it) }
+                    val today = sdf.parse(sdf.format(java.util.Date()))
+                    date != null && today != null && !date.after(today)
+                } catch (e: Exception) { true }
+
+                val bannerText = if (isArrived) 
+                    "Tiền cọc đã đủ điều kiện giải ngân và được chuyển cho Chủ nhà theo thời hạn hợp đồng."
+                else 
+                    "Tiền cọc của bạn đang được đóng băng an toàn tại EzRoom. Giải ngân vào: ${contract.disburseDate}"
+
                 Surface(
                     color = SuccessEmerald.copy(alpha = 0.05f),
                     shape = RoundedCornerShape(12.dp),
@@ -144,7 +165,7 @@ fun ContractScreen(
                         Icon(Icons.Default.Shield, null, tint = SuccessEmerald, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Tiền cọc của bạn đang được đóng băng an toàn tại EzRoom.",
+                            text = bannerText,
                             style = MaterialTheme.typography.bodySmall,
                             color = SuccessEmerald,
                             fontWeight = FontWeight.Bold
@@ -195,8 +216,10 @@ fun ContractScreen(
                     HorizontalDivider(color = Neutral100)
 
                     ContractSectionItem(title = "ĐIỀU 1: THÔNG TIN PHÒNG") {
+                        val displayRoomName = contract.roomName.takeIf { !it.isNullOrBlank() } ?: "Phòng trọ"
+                        val displayAddress = contract.address?.takeIf { it.isNotBlank() } ?: "Địa chỉ phòng trọ"
                         Text(
-                            text = "• Phòng: ${contract.roomName}\n• Địa chỉ: ${contract.id}",
+                            text = "• Phòng: $displayRoomName\n• Địa chỉ: $displayAddress",
                             fontSize = 13.sp, lineHeight = 20.sp
                         )
                     }

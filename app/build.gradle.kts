@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.coil.compose)
     implementation(libs.google.maps)
+    implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation(libs.maps.compose)
     implementation(libs.gson)
     implementation(libs.okhttp)

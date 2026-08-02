@@ -27,8 +27,6 @@ class AppointmentViewModel(
     private val _uiState = MutableStateFlow(AppointmentUiState())
     val uiState: StateFlow<AppointmentUiState> = _uiState.asStateFlow()
 
-    private val statusFilters = listOf(AppointmentStatus.PENDING, AppointmentStatus.APPROVED, AppointmentStatus.CANCELED)
-
     init {
         loadAppointments()
     }
@@ -36,15 +34,22 @@ class AppointmentViewModel(
     fun loadAppointments() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            delay(800)
+            delay(400)
             
-            getAppointments(forRenter = true, userName = "Nguyễn Văn A")
+            val user = com.example.ezroom.util.TokenManager.getUser()
+            val name = user?.name ?: "Nguyễn Văn A"
+            getAppointments(forRenter = true, userName = name)
                 .onEach { result ->
                     when (result) {
                         is Try.Success -> {
                             _uiState.update { state ->
+                                val filtered = when (state.selectedTabIndex) {
+                                    0 -> result.value.filter { it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.RESCHEDULED }
+                                    1 -> result.value.filter { it.status == AppointmentStatus.APPROVED }
+                                    else -> result.value.filter { it.status == AppointmentStatus.CANCELED }
+                                }
                                 state.copy(
-                                    appointments = result.value.filter { it.status == statusFilters[state.selectedTabIndex] },
+                                    appointments = filtered,
                                     isLoading = false
                                 )
                             }
@@ -60,12 +65,26 @@ class AppointmentViewModel(
 
     fun onTabSelected(index: Int) {
         _uiState.update { it.copy(selectedTabIndex = index) }
-        loadAppointments() // Re-filter
+        loadAppointments()
+    }
+
+    fun approveAppointment(appointmentId: String) {
+        viewModelScope.launch {
+            updateStatus(appointmentId, AppointmentStatus.APPROVED)
+            loadAppointments()
+        }
     }
 
     fun cancelAppointment(appointmentId: String) {
         viewModelScope.launch {
             updateStatus(appointmentId, AppointmentStatus.CANCELED)
+            loadAppointments()
+        }
+    }
+
+    fun rescheduleAppointment(appointmentId: String, newDate: String, newTime: String) {
+        viewModelScope.launch {
+            updateStatus(appointmentId, AppointmentStatus.PENDING, newDate, newTime)
             loadAppointments()
         }
     }

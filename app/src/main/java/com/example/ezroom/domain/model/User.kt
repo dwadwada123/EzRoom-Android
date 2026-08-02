@@ -8,5 +8,10 @@ data class User(
     val avatarUrl: String? = null,
     val role: String, // RENTER or HOST
     val isEkycVerified: Boolean = false,
-    val creditScore: Float = 0f
+    val ekycStatus: String? = null,
+    val ekycRejectReason: String? = null,
+    val creditScore: Float = 0f,
+    val favoriteRoomIds: List<String> = emptyList(),
+    val paymentAccounts: List<PaymentAccount> = emptyList(),
+    val password: String? = null
 )

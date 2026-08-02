@@ -22,5 +22,11 @@ class GetMessagesUseCase(private val repository: ChatRepository) {
 }
 
 class SendMessageUseCase(private val repository: ChatRepository) {
-    suspend operator fun invoke(conversationId: String, text: String) = repository.sendMessage(conversationId, text)
+    suspend operator fun invoke(conversationId: String, text: String, imageUrl: String? = null, lat: Double? = null, lng: Double? = null) = 
+        repository.sendMessage(conversationId, text, imageUrl, lat, lng)
+}
+
+class UploadImageUseCase(private val repository: ChatRepository) {
+    suspend operator fun invoke(fileBytes: ByteArray, fileName: String, mimeType: String): String? = 
+        repository.uploadImage(fileBytes, fileName, mimeType)
 }

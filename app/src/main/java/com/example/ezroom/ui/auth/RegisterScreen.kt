@@ -15,13 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.ezroom.ui.components.CustomTextField
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.PasswordTextField
@@ -44,7 +42,7 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf(UserRole.RENTER) }
-    var isLoading by remember { mutableStateOf(value = false) }
+    var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val isEmailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() || email.isEmpty()
@@ -110,6 +108,10 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
+            val showPhoneError = phoneNumber.isNotEmpty() && !isPhoneValid
+            val showEmailError = email.isNotEmpty() && !isEmailValid
+            val showPasswordError = password.isNotEmpty() && password.length < 6
+
             CustomTextField(
                 value = fullName,
                 onValueChange = { fullName = it },
@@ -129,7 +131,17 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 enabled = !isLoading,
+                isError = showPhoneError,
             )
+
+            if (showPhoneError) {
+                Text(
+                    text = "Số điện thoại không hợp lệ (phải từ 10 chữ số)",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -141,7 +153,17 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 enabled = !isLoading,
+                isError = showEmailError,
             )
+
+            if (showEmailError) {
+                Text(
+                    text = "Định dạng Email không hợp lệ (ví dụ: name@example.com)",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -151,7 +173,17 @@ fun RegisterScreen(
                 label = "Mật khẩu",
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading,
+                isError = showPasswordError,
             )
+
+            if (showPasswordError) {
+                Text(
+                    text = "Mật khẩu phải chứa ít nhất 6 ký tự",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp)
+                )
+            }
             
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -192,7 +224,7 @@ fun RegisterScreen(
                     if (isFormValid) {
                         scope.launch {
                             isLoading = true
-                            delay(1500)
+                            delay(1000)
                             isLoading = false
                             onRegisterClick(fullName, phoneNumber, email, password, selectedRole)
                         }
@@ -205,25 +237,25 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Đã có tài khoản?",
+                    text = "Đã có tài khoản? ",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                TextButton(onClick = onBackToLoginClick, enabled = !isLoading) {
+                TextButton(
+                    onClick = onBackToLoginClick,
+                    enabled = !isLoading
+                ) {
                     Text(
                         text = "Đăng nhập",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
-
+            
             Spacer(modifier = Modifier.height(32.dp))
         }
 
@@ -280,4 +312,3 @@ fun RegisterScreenPreview() {
         RegisterScreen()
     }
 }
-

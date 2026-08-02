@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 interface RoomRepository {
     fun getRooms(): Flow<List<Room>>
     fun getProperties(): Flow<List<Property>>
+    fun getHostRooms(): Flow<List<Room>>
+    fun getHostProperties(): Flow<List<Property>>
+    suspend fun getRoomsByPropertyId(propertyId: String): List<Room>
     
     suspend fun togglePropertyVisibility(propertyId: String)
     suspend fun deleteProperty(propertyId: String)
@@ -16,4 +19,9 @@ interface RoomRepository {
     suspend fun saveProperty(property: Property)
     suspend fun getPropertyById(propertyId: String): Property?
     suspend fun submitAppeal(roomId: String, appealText: String, images: List<String>)
+    suspend fun getRoomById(roomId: String): Room?
+    suspend fun saveRoom(room: Room)
+    suspend fun uploadRoomImage(fileBytes: ByteArray, fileName: String, mimeType: String): String?
+    suspend fun getRoomReviews(roomId: String): List<com.example.ezroom.domain.model.RoomReview>
+    suspend fun submitRoomReview(roomId: String, rating: Int, comment: String): Boolean
 }

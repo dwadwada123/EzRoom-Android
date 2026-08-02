@@ -9,10 +9,14 @@ import com.example.ezroom.domain.usecase.VerifyEkycUseCase
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+import android.content.Context
+import android.net.Uri
+
 data class ProfileUiState(
     val user: User? = null,
     val isLoading: Boolean = false,
-    val isEkycSuccess: Boolean = false
+    val isEkycSuccess: Boolean = false,
+    val errorMessage: String? = null
 )
 
 class ProfileViewModel(
@@ -45,11 +49,19 @@ class ProfileViewModel(
         }
     }
 
-    fun onVerifyEkyc(idCardNumber: String, frontImage: String, backImage: String) {
+    fun onVerifyEkyc(idCardNumber: String, frontUri: Uri, backUri: Uri, selfieUri: Uri, context: Context) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            verifyEkyc(idCardNumber, frontImage, backImage)
-            _uiState.update { it.copy(isLoading = false, isEkycSuccess = true) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val result = verifyEkyc(idCardNumber, frontUri, backUri, selfieUri, context)
+            if (result.isSuccess) {
+                _uiState.update { it.copy(isLoading = false, isEkycSuccess = true) }
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = result.exceptionOrNull()?.message ?: "Có lỗi xảy ra") }
+            }
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

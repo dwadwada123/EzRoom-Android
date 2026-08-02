@@ -27,6 +27,7 @@ import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.components.StatusBadge
 import com.example.ezroom.ui.theme.*
 import java.text.DecimalFormat
+import kotlinx.coroutines.launch
 
 /**
  * EzRoom Host-Specific Invoice Detail
@@ -59,12 +60,12 @@ fun HostInvoiceDetailScreen(
     }
 
     val isPaid = displayInvoice.status == InvoiceStatus.PAID
-    val elecUsage = displayInvoice.newElectricity - displayInvoice.oldElectricity
-    val waterUsage = displayInvoice.newWater - displayInvoice.oldWater
-    val elecAmount = elecUsage * 3500L
-    val waterAmount = waterUsage * 15000L
+    val elecUsage = (displayInvoice.newElectricity - displayInvoice.oldElectricity).coerceAtLeast(0)
+    val waterUsage = (displayInvoice.newWater - displayInvoice.oldWater).coerceAtLeast(0)
+    val elecAmount = elecUsage * displayInvoice.electricityPrice
+    val waterAmount = waterUsage * displayInvoice.waterPrice
     val commission = (displayInvoice.roomPrice * 0.05).toLong()
-    val totalAmount = displayInvoice.roomPrice + elecAmount + waterAmount + displayInvoice.totalOtherCosts
+    val totalAmount = displayInvoice.calculatedTotalAmount
     val finalRevenue = totalAmount - commission
 
     Scaffold(
@@ -128,6 +129,8 @@ fun HostInvoiceDetailScreen(
                 }
             }
 
+            val context = androidx.compose.ui.platform.LocalContext.current
+
             // Renter & Transaction Info Section
             SectionHeader(if (isPaid) "Thông tin thanh toán" else "Thông tin khách thuê")
             Surface(
@@ -137,14 +140,14 @@ fun HostInvoiceDetailScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    InfoRow(icon = Icons.Default.Person, label = "Người thuê", value = "Nguyễn Văn A")
+                    InfoRow(icon = Icons.Default.Person, label = "Người thuê", value = displayInvoice.renterName ?: "Không rõ")
                     InfoRow(icon = Icons.Default.MeetingRoom, label = "Tên phòng", value = displayInvoice.roomName)
                     if (isPaid) {
-                        InfoRow(icon = Icons.Default.Payment, label = "Hình thức", value = displayInvoice.paymentMethod ?: "Tiền mặt")
-                        InfoRow(icon = Icons.Default.EventAvailable, label = "Ngày thanh toán", value = "12/05/2026")
+                        InfoRow(icon = Icons.Default.Payment, label = "Hình thức", value = displayInvoice.paymentMethod ?: "PayOS (VietQR)")
+                        InfoRow(icon = Icons.Default.EventAvailable, label = "Ngày thanh toán", value = displayInvoice.dateCreated)
                     } else {
-                        InfoRow(icon = Icons.Default.CalendarMonth, label = "Hạn thanh toán", value = "20/05/2026")
-                        InfoRow(icon = Icons.Default.Phone, label = "Liên hệ", value = "0901234567")
+                        InfoRow(icon = Icons.Default.CalendarMonth, label = "Hạn thanh toán", value = "25/${displayInvoice.period}")
+                        InfoRow(icon = Icons.Default.Phone, label = "Liên hệ", value = displayInvoice.renterPhone ?: "Không rõ")
                     }
                 }
             }
@@ -165,10 +168,6 @@ fun HostInvoiceDetailScreen(
                     displayInvoice.otherCosts.forEach { item ->
                         DetailLine(item.reason, formatter.format(item.amount))
                     }
-
-                    if (isPaid) {
-                        DetailLine("Phí nền tảng (5% tiền phòng)", "- ${formatter.format(commission)}")
-                    }
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     
@@ -176,12 +175,28 @@ fun HostInvoiceDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Tổng cộng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Tổng hóa đơn (Khách trả)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(
-                            text = formatter.format(if (isPaid) finalRevenue else totalAmount),
+                            text = formatter.format(totalAmount),
+                            style = MaterialTheme.typography.titleSmall, 
+                            fontWeight = FontWeight.Bold, 
+                            color = if (isPaid) SuccessEmerald else AccentAmber,
+                            textAlign = TextAlign.End
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    DetailLine("Phí nền tảng (5% tiền phòng)", "- ${formatter.format(commission)}")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Doanh thu thực nhận", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PrimaryMain)
+                        Text(
+                            text = formatter.format(finalRevenue),
                             style = MaterialTheme.typography.titleMedium, 
                             fontWeight = FontWeight.Bold, 
-                            color = if (isPaid) PrimaryMain else AccentAmber,
+                            color = PrimaryMain,
                             textAlign = TextAlign.End
                         )
                     }
@@ -190,11 +205,15 @@ fun HostInvoiceDetailScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            val scope = rememberCoroutineScope()
+
             // Admin Actions
             if (isPaid) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
-                        onClick = { /* Export to Excel */ },
+                        onClick = { 
+                            com.example.ezroom.util.PdfExporter.exportInvoicePdf(context, displayInvoice)
+                        },
                         modifier = Modifier.weight(1f).height(52.dp),
                         shape = MaterialTheme.shapes.medium,
                         border = BorderStroke(1.dp, PrimaryMain)
@@ -206,7 +225,13 @@ fun HostInvoiceDetailScreen(
                     
                     PrimaryButton(
                         text = "GỬI BIÊN LAI",
-                        onClick = { /* Send via Email/Chat */ },
+                        onClick = { 
+                            scope.launch {
+                                val res = com.example.ezroom.data.repository.InvoiceRepositoryImpl().sendInvoiceReceipt(displayInvoice.id)
+                                val msg = if (res.isSuccess) res.getOrDefault("Đã gửi biên lai qua tin nhắn!") else (res.exceptionOrNull()?.message ?: "Lỗi gửi biên lai")
+                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        },
                         modifier = Modifier.weight(1.4f)
                     )
                 }
@@ -214,7 +239,13 @@ fun HostInvoiceDetailScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     PrimaryButton(
                         text = "NHẮC THANH TOÁN",
-                        onClick = { /* Send notification */ },
+                        onClick = { 
+                            scope.launch {
+                                val res = com.example.ezroom.data.repository.InvoiceRepositoryImpl().remindInvoice(displayInvoice.id)
+                                val msg = if (res.isSuccess) res.getOrDefault("Đã gửi tin nhắn nhắc thanh toán!") else (res.exceptionOrNull()?.message ?: "Lỗi gửi nhắc nhở")
+                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

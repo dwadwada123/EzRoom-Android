@@ -20,8 +20,11 @@ data class PropertyFormUiState(
     val detailedAddress: String = "",
     val description: String = "",
     val commonAmenities: List<CommonAmenityItem> = emptyList(),
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
+    val savedPropertyId: String? = null,
     val error: String? = null
 )
 
@@ -35,19 +38,28 @@ class PropertyFormViewModel(
     val uiState: StateFlow<PropertyFormUiState> = _uiState.asStateFlow()
 
     init {
-        // Initialization: Set default amenities
-        val defaultAmenities = listOf(
-            CommonAmenityItem("Bảo vệ 24/7"),
-            CommonAmenityItem("Camera an ninh"),
-            CommonAmenityItem("Thang máy"),
-            CommonAmenityItem("Nhà xe chung"),
-            CommonAmenityItem("WiFi chung"),
-            CommonAmenityItem("Dọn vệ sinh"),
-            CommonAmenityItem("Cửa vân tay"),
-            CommonAmenityItem("Hồ bơi"),
-            CommonAmenityItem("Phòng Gym")
-        )
-        _uiState.update { it.copy(commonAmenities = defaultAmenities) }
+        // Initialization: Fetch amenities
+        viewModelScope.launch {
+            try {
+                val api = com.example.ezroom.data.remote.NetworkClient.createService<com.example.ezroom.data.remote.AmenityApi>()
+                val allAmenities = api.getAmenities()
+                val propAmenities = allAmenities.filter { it.type == "PROPERTY" || it.type.isNullOrBlank() }.map { it.name }
+                val fetched = if (propAmenities.isNotEmpty()) propAmenities else allAmenities.map { it.name }
+                if (fetched.isNotEmpty()) {
+                    _uiState.update { it.copy(commonAmenities = fetched.map { CommonAmenityItem(it) }) }
+                } else {
+                    _uiState.update { it.copy(commonAmenities = listOf(
+                        CommonAmenityItem("Bảo vệ 24/7"), CommonAmenityItem("Camera an ninh"), 
+                        CommonAmenityItem("Thang máy"), CommonAmenityItem("Nhà xe chung")
+                    )) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(commonAmenities = listOf(
+                    CommonAmenityItem("Bảo vệ 24/7"), CommonAmenityItem("Camera an ninh"), 
+                    CommonAmenityItem("Thang máy"), CommonAmenityItem("Nhà xe chung")
+                )) }
+            }
+        }
     }
 
     // Business Logic: Load property for editing
@@ -66,6 +78,8 @@ class PropertyFormViewModel(
                         commonAmenities = state.commonAmenities.map { item ->
                             item.copy(isChecked = property.commonAmenities.any { it.name == item.name })
                         },
+                        latitude = property.latitude,
+                        longitude = property.longitude,
                         isLoading = false
                     )
                 }
@@ -96,20 +110,25 @@ class PropertyFormViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
+            val newId = if (isEditMode) propertyId!! else UUID.randomUUID().toString()
+            val currentUser = com.example.ezroom.util.TokenManager.getUser()
             val property = Property(
-                id = if (isEditMode) propertyId!! else UUID.randomUUID().toString(),
+                id = newId,
                 name = currentState.name,
                 type = PropertyType.COMPLEX,
-                address = if (isEditMode) "" else "${ward}, ${province}", // Simplified for mock
+                address = if (isEditMode) "" else "${ward ?: ""}, ${province ?: ""}".trim(',', ' '),
                 detailedAddress = currentState.detailedAddress,
                 description = currentState.description,
                 commonAmenities = currentState.commonAmenities.filter { it.isChecked }.map { Amenity(it.name) },
                 latitude = lat,
-                longitude = lon
+                longitude = lon,
+                hostId = currentUser?.id ?: "host_default"
             )
             
             saveProperty(property)
-            _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+            _uiState.update { it.copy(isLoading = false, isSuccess = true, savedPropertyId = newId) }
+
+
         }
     }
 }

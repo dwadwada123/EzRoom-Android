@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -38,7 +39,11 @@ import com.example.ezroom.ui.theme.*
 fun NotificationScreen(
     // Event callbacks
     onNavigateBack: () -> Unit,
-    onNavigateToSignContract: (String) -> Unit = {},
+    onNavigateToChat: (conversationId: String) -> Unit = {},
+    onNavigateToContract: (contractId: String) -> Unit = {},
+    onNavigateToInvoice: (invoiceId: String) -> Unit = {},
+    onNavigateToAppointments: () -> Unit = {},
+    onNavigateToRoom: (roomId: String) -> Unit = {},
     viewModel: NotificationViewModel = viewModel(
         factory = viewModelFactory {
             val repo = NotificationRepositoryImpl()
@@ -147,8 +152,23 @@ fun NotificationScreen(
                                     item = notification,
                                     onClick = { 
                                         viewModel.onNotificationRead(notification.id)
-                                        if (notification.type == "CONTRACT") {
-                                            onNavigateToSignContract(notification.targetId ?: notification.id)
+                                        val targetId = notification.targetId
+                                        when (notification.type.uppercase()) {
+                                            "CHAT" -> {
+                                                if (!targetId.isNullOrEmpty()) onNavigateToChat(targetId)
+                                            }
+                                            "CONTRACT" -> {
+                                                if (!targetId.isNullOrEmpty()) onNavigateToContract(targetId)
+                                            }
+                                            "INVOICE", "BILL" -> {
+                                                if (!targetId.isNullOrEmpty()) onNavigateToInvoice(targetId)
+                                            }
+                                            "APPOINTMENT", "SCHEDULE" -> {
+                                                onNavigateToAppointments()
+                                            }
+                                            "MODERATION", "ROOM" -> {
+                                                if (!targetId.isNullOrEmpty()) onNavigateToRoom(targetId)
+                                            }
                                         }
                                     },
                                 )
@@ -167,10 +187,12 @@ fun NotificationRow(
     item: NotificationItem,
     onClick: () -> Unit = {}
 ) {
-    val (icon, color) = when (item.type) {
-        "BILL" -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
-        "SCHEDULE" -> Icons.Default.EventAvailable to TealAccent
+    val (icon, color) = when (item.type.uppercase()) {
+        "BILL", "INVOICE" -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
+        "SCHEDULE", "APPOINTMENT" -> Icons.Default.EventAvailable to TealAccent
         "CONTRACT" -> Icons.Default.Description to OrangePrimary
+        "CHAT" -> Icons.AutoMirrored.Filled.Chat to Color(0xFF4CAF50)
+        "MODERATION" -> Icons.Default.VerifiedUser to Color(0xFF9C27B0)
         else -> Icons.Default.Info to Color(0xFF2196F3)
     }
 
@@ -199,18 +221,24 @@ fun NotificationRow(
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = item.title,
                         fontWeight = if (item.isRead) FontWeight.SemiBold else FontWeight.ExtraBold,
                         fontSize = 15.sp,
-                        color = OnBackgroundLight
+                        color = OnBackgroundLight,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = item.time,
+                        text = com.example.ezroom.util.DateTimeUtils.formatSmartTime(item.time),
                         fontSize = 11.sp,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        maxLines = 1
                     )
                 }
 

@@ -28,13 +28,16 @@ import com.example.ezroom.domain.usecase.GetAppointmentsUseCase
 import com.example.ezroom.domain.usecase.UpdateAppointmentStatusUseCase
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import androidx.compose.ui.platform.LocalContext
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HostAppointmentListScreen(
     onNavigateBack: () -> Unit = {},
-    onCreateContract: () -> Unit = {},
+    onCreateContract: (Appointment) -> Unit = {},
     onRenterClick: (String) -> Unit = {},
     viewModel: HostAppointmentViewModel = viewModel(
         factory = viewModelFactory {
@@ -49,6 +52,17 @@ fun HostAppointmentListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
+    
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadAppointments()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     
     var selectedAppointmentId by remember { mutableStateOf("") }
     var selectedActionStatus by remember { mutableStateOf<AppointmentStatus?>(null) }
@@ -140,7 +154,8 @@ fun HostAppointmentListScreen(
                                 appointmentToReschedule = appointment
                                 showRescheduleDialog = true
                             },
-                            onRenterClick = { onRenterClick(appointment.renterName) }
+                            onRenterClick = { onRenterClick(appointment.renterId ?: "") },
+                            onCreateContract = { onCreateContract(appointment) }
                         )
                     }
                 }
@@ -205,7 +220,8 @@ fun AppointmentCard(
     onApprove: () -> Unit,
     onCancel: () -> Unit,
     onReschedule: () -> Unit,
-    onRenterClick: () -> Unit
+    onRenterClick: () -> Unit,
+    onCreateContract: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -265,7 +281,7 @@ fun AppointmentCard(
                 )
             }
             
-            if (appointment.status == AppointmentStatus.PENDING || appointment.status == AppointmentStatus.RESCHEDULED) {
+            if (appointment.status == AppointmentStatus.PENDING) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Main Action
@@ -298,6 +314,39 @@ fun AppointmentCard(
                             Text("Hẹn lại")
                         }
                     }
+                }
+            } else if (appointment.status == AppointmentStatus.RESCHEDULED) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRose),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRose.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Hủy lịch")
+                    }
+                    OutlinedButton(
+                        onClick = onReschedule,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryMain),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Hẹn lại")
+                    }
+                }
+            } else if (appointment.status == AppointmentStatus.APPROVED) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onCreateContract,
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Lập hợp đồng ngay", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -345,26 +394,107 @@ fun RescheduleDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
+    val context = LocalContext.current
     var date by remember { mutableStateOf(appointment.date) }
     var time by remember { mutableStateOf(appointment.time) }
-    
+
+    fun openDatePicker() {
+        val calendar = Calendar.getInstance()
+        if (date.isNotEmpty()) {
+            val parts = date.split("/")
+            if (parts.size == 3) {
+                try {
+                    calendar.set(Calendar.DAY_OF_MONTH, parts[0].toInt())
+                    calendar.set(Calendar.MONTH, parts[1].toInt() - 1)
+                    calendar.set(Calendar.YEAR, parts[2].toInt())
+                } catch (ignored: Exception) { }
+            }
+        }
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                date = String.format(Locale.getDefault(), "%02d/%02d/%04d", day, month + 1, year)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    fun openTimePicker() {
+        val calendar = Calendar.getInstance()
+        if (time.isNotEmpty()) {
+            val parts = time.split(":")
+            if (parts.size == 2) {
+                try {
+                    calendar.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
+                    calendar.set(Calendar.MINUTE, parts[1].toInt())
+                } catch (ignored: Exception) { }
+            }
+        }
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                time = String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
+            },
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+            true
+        ).show()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Đề xuất thời gian mới", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
-                    label = { Text("Ngày") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = time,
-                    onValueChange = { time = it },
-                    label = { Text("Giờ") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Surface(
+                    onClick = { openDatePicker() },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    OutlinedTextField(
+                        value = date,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Chọn ngày xem phòng") },
+                        trailingIcon = {
+                            IconButton(onClick = { openDatePicker() }) {
+                                Icon(Icons.Default.CalendarMonth, contentDescription = "Chọn ngày", tint = com.example.ezroom.ui.theme.PrimaryMain)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Surface(
+                    onClick = { openTimePicker() },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    OutlinedTextField(
+                        value = time,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Chọn giờ xem phòng") },
+                        trailingIcon = {
+                            IconButton(onClick = { openTimePicker() }) {
+                                Icon(Icons.Default.Schedule, contentDescription = "Chọn giờ", tint = com.example.ezroom.ui.theme.PrimaryMain)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {

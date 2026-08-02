@@ -1,10 +1,11 @@
 package com.example.ezroom.ui.renter.contract
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -13,58 +14,88 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ezroom.data.remote.PaymentResponse
+import com.example.ezroom.data.repository.ContractRepositoryImpl
 import com.example.ezroom.domain.model.Contract
-import com.example.ezroom.ui.components.PrimaryButton
 import com.example.ezroom.ui.theme.*
+import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 
-// UI Component: Payment QR screen for Deposit Escrow
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentQRScreen(
     contract: Contract,
-    onPaymentConfirmed: () -> Unit,
+    onPaymentConfirmed: suspend () -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val formatter = remember { DecimalFormat("#,### đ") }
-    val transferContent = "HOPDONG ${contract.id.takeLast(6).uppercase()}"
+    val transferContent = "COC ${contract.id.takeLast(6).uppercase()}"
+    val clipboardManager = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    var paymentDetails by remember { mutableStateOf<PaymentResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(contract.id) {
+        isLoading = true
+        val res = ContractRepositoryImpl().getPaymentQR(contract.id)
+        paymentDetails = res
+        isLoading = false
+    }
+
+    val accountNumber = paymentDetails?.accountNumber?.takeIf { it.isNotBlank() } ?: "9999999999"
+    val accountName = paymentDetails?.accountName?.takeIf { it.isNotBlank() } ?: "EZROOM ESCROW PAYOS"
+    val bankName = paymentDetails?.bankName?.takeIf { it.isNotBlank() } ?: "MBBank (PayOS)"
+
+    val qrImageUrl = "https://img.vietqr.io/image/MB-$accountNumber-compact2.png?amount=${contract.depositAmount}&addInfo=${android.net.Uri.encode(transferContent)}&accountName=${android.net.Uri.encode(accountName)}"
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Thanh toán tiền cọc", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Trở về")
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Neutral50
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // UI Component: Protection Badge (Fintech logic)
+            // 1. Protection Badge Card
             Surface(
-                color = SuccessEmerald.copy(alpha = 0.1f),
+                modifier = Modifier.fillMaxWidth(),
+                color = SuccessEmerald.copy(alpha = 0.08f),
                 shape = RoundedCornerShape(12.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, SuccessEmerald.copy(alpha = 0.2f))
             ) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Shield, null, tint = SuccessEmerald, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(Icons.Default.Shield, contentDescription = null, tint = SuccessEmerald, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Tiền cọc của bạn được EzRoom bảo vệ an toàn.",
+                        text = "Tiền cọc của bạn được EzRoom đóng băng bảo vệ an toàn 100%.",
                         style = MaterialTheme.typography.bodySmall,
                         color = SuccessEmerald,
                         fontWeight = FontWeight.Bold
@@ -72,59 +103,168 @@ fun PaymentQRScreen(
                 }
             }
 
-            // UI Component: QR Code Container
+            // 2. QR Code Card Container
             Surface(
-                modifier = Modifier.size(240.dp),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
                 color = Color.White,
-                shadowElevation = 8.dp
+                shadowElevation = 4.dp
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(20.dp)) {
-                    // Placeholder for QR
-                    Icon(Icons.Default.AccountBalance, null, modifier = Modifier.fillMaxSize(), tint = Neutral900)
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Quét mã VietQR / PayOS",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Neutral900
+                    )
+
+                    Box(
+                        modifier = Modifier.size(210.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = PrimaryMain)
+                        } else {
+                            coil.compose.AsyncImage(
+                                model = qrImageUrl,
+                                contentDescription = "Mã QR Thanh toán Cọc PayOS",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Sử dụng ứng dụng Ngân hàng hoặc Ví điện tử bất kỳ để quét mã",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Neutral500,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
 
-            Text(
-                text = "Quét mã để thanh toán",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Neutral500
-            )
-
-            // UI Component: Payment Details Card
+            // 3. Payment Transfer Details Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 color = Color.White,
                 border = androidx.compose.foundation.BorderStroke(1.dp, Neutral100)
             ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PaymentInfoRow(label = "Số tiền cọc", value = formatter.format(contract.depositAmount), isHighlight = true)
-                    PaymentInfoRow(label = "Nội dung chuyển khoản", value = transferContent, hasCopy = true)
-                    PaymentInfoRow(label = "Ngân hàng", value = "EzRoom Escrow - MBBank")
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = "Thông tin chuyển khoản thủ công",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryMain
+                    )
+
+                    HorizontalDivider(color = Neutral100)
+
+                    PaymentInfoRow(
+                        label = "Số tiền cọc",
+                        value = formatter.format(contract.depositAmount),
+                        isHighlight = true
+                    )
+
+                    PaymentInfoRow(
+                        label = "Số tài khoản",
+                        value = accountNumber,
+                        hasCopy = true,
+                        onCopy = {
+                            clipboardManager.setText(AnnotatedString(accountNumber))
+                            scope.launch { snackbarHostState.showSnackbar("Đã chép số tài khoản: $accountNumber") }
+                        }
+                    )
+
+                    PaymentInfoRow(
+                        label = "Chủ tài khoản",
+                        value = accountName
+                    )
+
+                    PaymentInfoRow(
+                        label = "Ngân hàng",
+                        value = bankName
+                    )
+
+                    PaymentInfoRow(
+                        label = "Nội dung chuyển khoản",
+                        value = transferContent,
+                        hasCopy = true,
+                        onCopy = {
+                            clipboardManager.setText(AnnotatedString(transferContent))
+                            scope.launch { snackbarHostState.showSnackbar("Đã chép nội dung: $transferContent") }
+                        }
+                    )
                 }
             }
 
-            // UI Component: Instruction Note
+            // 4. Instructions Card
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(Icons.Default.Info, null, tint = PrimaryMain, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Info, contentDescription = null, tint = PrimaryMain, modifier = Modifier.size(18.dp))
                 Text(
-                    text = "Hệ thống sẽ tự động xác nhận sau 1-3 phút khi nhận được tiền.",
+                    text = "Sau khi thực hiện chuyển khoản thành công, vui lòng bấm nút bên dưới để hệ thống kích hoạt Hợp đồng ngay lập tức.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Neutral500
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            PrimaryButton(
-                text = "TÔI ĐÃ CHUYỂN KHOẢN",
-                onClick = onPaymentConfirmed,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // 5. Prominent Action Button with explicit White Text
+            Button(
+                onClick = {
+                    if (!isSubmitting) {
+                        isSubmitting = true
+                        scope.launch {
+                            onPaymentConfirmed()
+                            isSubmitting = false
+                        }
+                    }
+                },
+                enabled = !isSubmitting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryMain,
+                    contentColor = Color.White,
+                    disabledContainerColor = PrimaryMain.copy(alpha = 0.6f),
+                    disabledContentColor = Color.White.copy(alpha = 0.8f)
+                )
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.5.dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "ĐANG XÁC NHẬN THANH TOÁN...",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = "TÔI ĐÃ CHUYỂN KHOẢN CỌC",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                }
+            }
         }
     }
 }
@@ -134,11 +274,19 @@ private fun PaymentInfoRow(
     label: String,
     value: String,
     isHighlight: Boolean = false,
-    hasCopy: Boolean = false
+    hasCopy: Boolean = false,
+    onCopy: () -> Unit = {}
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(text = label, style = MaterialTheme.typography.bodySmall, color = Neutral500)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = if (hasCopy) Modifier.clickable { onCopy() } else Modifier
+        ) {
             Text(
                 text = value,
                 style = if (isHighlight) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
@@ -146,8 +294,13 @@ private fun PaymentInfoRow(
                 color = if (isHighlight) PrimaryMain else Neutral900
             )
             if (hasCopy) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.ContentCopy, null, tint = PrimaryMain, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = "Sao chép",
+                    tint = PrimaryMain,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }

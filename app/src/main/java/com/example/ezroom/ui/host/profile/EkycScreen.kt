@@ -1,31 +1,42 @@
 package com.example.ezroom.ui.host.profile
 
+import android.content.Context
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.ezroom.data.repository.UserRepositoryImpl
 import com.example.ezroom.domain.usecase.GetCurrentUserUseCase
 import com.example.ezroom.domain.usecase.UpdateProfileUseCase
@@ -34,6 +45,12 @@ import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.profile.ProfileViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.EzRoomTheme
+import java.io.File
+
+private fun createImageUri(context: Context): Uri {
+    val file = File(context.cacheDir, "camera_img_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+}
 
 enum class EkycStep {
     INSTRUCTIONS,
@@ -58,11 +75,30 @@ fun EkycScreen(
 ) {
     // State definitions
     var currentStep by remember { mutableStateOf(EkycStep.INSTRUCTIONS) }
+    var idCardNumber by remember { mutableStateOf("") }
+    
+    val context = LocalContext.current
     var frontIdUri by remember { mutableStateOf<Uri?>(null) }
     var backIdUri by remember { mutableStateOf<Uri?>(null) }
     var selfieUri by remember { mutableStateOf<Uri?>(null) }
 
+    var tempFrontUri by remember { mutableStateOf<Uri?>(null) }
+    var tempBackUri by remember { mutableStateOf<Uri?>(null) }
+    var tempSelfieUri by remember { mutableStateOf<Uri?>(null) }
+
+    val frontCameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) frontIdUri = tempFrontUri
+    }
+    val backCameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) backIdUri = tempBackUri
+    }
+    val selfieCameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) selfieUri = tempSelfieUri
+    }
+
     val uiState by viewModel.uiState.collectAsState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle success transition
     LaunchedEffect(uiState.isEkycSuccess) {
@@ -71,8 +107,16 @@ fun EkycScreen(
         }
     }
 
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearError()
+        }
+    }
+
     // Main layout container
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CommonTopAppBar(
                 title = "Xác thực danh tính",
@@ -115,22 +159,35 @@ fun EkycScreen(
                         UploadIdSection(
                             frontUri = frontIdUri,
                             backUri = backIdUri,
-                            onCaptureFront = { frontIdUri = Uri.EMPTY },
-                            onCaptureBack = { backIdUri = Uri.EMPTY },
+                            idCardNumber = idCardNumber,
+                            onIdCardNumberChange = { idCardNumber = it },
+                            onCaptureFront = { 
+                                tempFrontUri = createImageUri(context)
+                                tempFrontUri?.let { frontCameraLauncher.launch(it) }
+                            },
+                            onCaptureBack = { 
+                                tempBackUri = createImageUri(context)
+                                tempBackUri?.let { backCameraLauncher.launch(it) }
+                            },
                             onNextClick = { currentStep = EkycStep.SELFIE }
                         )
                     }
                     EkycStep.SELFIE -> {
                         SelfieSection(
                             selfieUri = selfieUri,
-                            onCapture = { selfieUri = Uri.EMPTY },
+                            onCapture = { 
+                                tempSelfieUri = createImageUri(context)
+                                tempSelfieUri?.let { selfieCameraLauncher.launch(it) }
+                            },
                             onCompleteClick = { 
-                                viewModel.onVerifyEkyc("123456789", "front", "back")
+                                if (frontIdUri != null && backIdUri != null && selfieUri != null) {
+                                    viewModel.onVerifyEkyc(idCardNumber, frontIdUri!!, backIdUri!!, selfieUri!!, context)
+                                }
                             }
                         )
                     }
                     EkycStep.SUCCESS -> {
-                        SuccessSection(
+                        PendingSection(
                             onFinishClick = onNavigateBack
                         )
                     }
@@ -234,6 +291,8 @@ private fun InstructionItem(icon: ImageVector, title: String, desc: String) {
 private fun UploadIdSection(
     frontUri: Uri?,
     backUri: Uri?,
+    idCardNumber: String,
+    onIdCardNumberChange: (String) -> Unit,
     onCaptureFront: () -> Unit,
     onCaptureBack: () -> Unit,
     onNextClick: () -> Unit
@@ -251,9 +310,28 @@ private fun UploadIdSection(
     )
     Spacer(modifier = Modifier.height(28.dp))
 
+    val isIdValid = idCardNumber.matches(Regex("^[0-9]{9}$|^[0-9]{12}$"))
+
+    OutlinedTextField(
+        value = idCardNumber,
+        onValueChange = onIdCardNumberChange,
+        label = { Text("Số CMND/CCCD") },
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        isError = idCardNumber.isNotEmpty() && !isIdValid,
+        supportingText = {
+            if (idCardNumber.isNotEmpty() && !isIdValid) {
+                Text("Số CMND/CCCD phải có 9 hoặc 12 chữ số")
+            }
+        },
+        singleLine = true
+    )
+
+    Spacer(modifier = Modifier.height(20.dp))
+
     IdCardCaptureBox(
         title = "Mặt trước",
-        isCaptured = frontUri != null,
+        imageUri = frontUri,
         onClick = onCaptureFront
     )
 
@@ -261,7 +339,7 @@ private fun UploadIdSection(
 
     IdCardCaptureBox(
         title = "Mặt sau",
-        isCaptured = backUri != null,
+        imageUri = backUri,
         onClick = onCaptureBack
     )
 
@@ -270,7 +348,7 @@ private fun UploadIdSection(
     // Action buttons row
     Button(
         onClick = onNextClick,
-        enabled = frontUri != null && backUri != null,
+        enabled = frontUri != null && backUri != null && isIdValid,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -279,7 +357,8 @@ private fun UploadIdSection(
 }
 
 @Composable
-private fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> Unit) {
+private fun IdCardCaptureBox(title: String, imageUri: Uri?, onClick: () -> Unit) {
+    val isCaptured = imageUri != null
     val borderColor = if (isCaptured) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     val containerColor = if (isCaptured) MaterialTheme.colorScheme.primary.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 
@@ -294,26 +373,12 @@ private fun IdCardCaptureBox(title: String, isCaptured: Boolean, onClick: () -> 
         contentAlignment = Alignment.Center
     ) {
         if (isCaptured) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle, 
-                    contentDescription = null, 
-                    tint = MaterialTheme.colorScheme.primary, 
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Đã chụp $title", 
-                    style = MaterialTheme.typography.titleMedium, 
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Chạm để chụp lại", 
-                    style = MaterialTheme.typography.bodySmall, 
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            AsyncImage(
+                model = imageUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
@@ -364,11 +429,11 @@ private fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClic
         contentAlignment = Alignment.Center
     ) {
         if (selfieUri != null) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle, 
-                contentDescription = null, 
-                tint = MaterialTheme.colorScheme.primary, 
-                modifier = Modifier.size(80.dp)
+            AsyncImage(
+                model = selfieUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         } else {
             Icon(
@@ -394,27 +459,27 @@ private fun SelfieSection(selfieUri: Uri?, onCapture: () -> Unit, onCompleteClic
 }
 
 @Composable
-private fun SuccessSection(onFinishClick: () -> Unit) {
+private fun PendingSection(onFinishClick: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = Icons.Default.CheckCircle,
+            imageVector = Icons.Default.HourglassTop,
             contentDescription = null,
             modifier = Modifier.size(100.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = Color(0xFFF57C00) // Amber/Orange
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Gửi thông tin thành công!",
+            text = "Đã gửi hồ sơ thành công!",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Hệ thống đang xét duyệt hồ sơ của bạn. Kết quả sẽ được thông báo trong vòng 24h.",
+            text = "Hệ thống đang xét duyệt hồ sơ của bạn. Thông thường mất 1–3 ngày làm việc. Chúng tôi sẽ thông báo kết quả qua ứng dụng.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -425,7 +490,7 @@ private fun SuccessSection(onFinishClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = MaterialTheme.shapes.medium
         ) {
-            Text("Quay lại trang cá nhân", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+            Text("Về trang chủ", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
         }
     }
 }

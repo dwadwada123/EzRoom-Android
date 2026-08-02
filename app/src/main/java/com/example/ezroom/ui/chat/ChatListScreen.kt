@@ -30,9 +30,49 @@ import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+fun formatChatListTimestamp(rawTimestamp: String?): String {
+    if (rawTimestamp.isNullOrBlank()) return ""
+
+    val date: Date = try {
+        val epoch = rawTimestamp.toLongOrNull()
+        if (epoch != null) {
+            Date(epoch)
+        } else {
+            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            isoFormat.parse(rawTimestamp) ?: Date()
+        }
+    } catch (e: Exception) {
+        return rawTimestamp
+    }
+
+    val calMsg = Calendar.getInstance().apply { time = date }
+    val calToday = Calendar.getInstance()
+    val calYesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+    val isToday = calMsg.get(Calendar.YEAR) == calToday.get(Calendar.YEAR) &&
+            calMsg.get(Calendar.DAY_OF_YEAR) == calToday.get(Calendar.DAY_OF_YEAR)
+
+    val isYesterday = calMsg.get(Calendar.YEAR) == calYesterday.get(Calendar.YEAR) &&
+            calMsg.get(Calendar.DAY_OF_YEAR) == calYesterday.get(Calendar.DAY_OF_YEAR)
+
+    return when {
+        isToday -> "Hôm nay"
+        isYesterday -> "Hôm qua"
+        else -> {
+            val fmt = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
+            fmt.format(date)
+        }
+    }
+}
+
 @Composable
 fun ChatListScreen(
-    onConversationClick: (String, String) -> Unit,
+    onConversationClick: (String, String, String) -> Unit,
     viewModel: ChatViewModel = viewModel(
         factory = viewModelFactory {
             val repo = ChatRepositoryImpl()
@@ -40,6 +80,7 @@ fun ChatListScreen(
                 GetConversationsUseCase(repo),
                 GetMessagesUseCase(repo),
                 SendMessageUseCase(repo),
+                com.example.ezroom.domain.usecase.UploadImageUseCase(repo)
             )
         },
     ),
@@ -104,7 +145,7 @@ fun ChatListScreen(
                         ConversationListItem(
                             chat = chat, 
                             onClick = { 
-                                onConversationClick(chat.id, chat.otherPartyName) 
+                                onConversationClick(chat.id, chat.otherPartyName ?: "Người dùng", chat.otherPartyPhone ?: "0000000000") 
                             },
                         )
                     }
@@ -145,7 +186,7 @@ private fun ConversationListItem(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = chat.otherPartyName.take(1),
+                            text = chat.otherPartyName?.take(1) ?: "U",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary
@@ -179,29 +220,29 @@ private fun ConversationListItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = chat.otherPartyName,
+                        text = chat.otherPartyName ?: "Người dùng",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (chat.unreadCount > 0) FontWeight.ExtraBold else FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = chat.timestamp,
+                        text = formatChatListTimestamp(chat.timestamp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.primary else Neutral500,
+                        fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Normal
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = chat.lastMessage,
+                        text = chat.lastMessage ?: "",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.onSurface 
-                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.onSurface else Neutral500,
+                        fontWeight = if (chat.unreadCount > 0) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        fontWeight = if (chat.unreadCount > 0) FontWeight.SemiBold else FontWeight.Normal,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -231,7 +272,7 @@ private fun ConversationListItem(
 fun PreviewChatListScreen() {
     EzRoomTheme {
         ChatListScreen(
-            onConversationClick = { _, _ -> }
+            onConversationClick = { _, _, _ -> }
         )
     }
 }

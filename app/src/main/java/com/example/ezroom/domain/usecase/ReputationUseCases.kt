@@ -1,13 +1,18 @@
 package com.example.ezroom.domain.usecase
 
 import com.example.ezroom.domain.model.RenterReview
-import com.example.ezroom.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
-import com.example.ezroom.data.model.MockData
+import kotlinx.coroutines.flow.flow
 
-class GetRenterReviewsUseCase() {
-    operator fun invoke(userId: String): Flow<List<RenterReview>> = flowOf(
-        MockData.renterReviews
-    )
+class GetRenterReviewsUseCase(
+    private val api: com.example.ezroom.data.remote.RenterReviewApi = com.example.ezroom.data.remote.RenterReviewApi.create()
+) {
+    operator fun invoke(userId: String): Flow<List<RenterReview>> = flow {
+        try {
+            val reviews = api.getRenterReviews(userId)
+            emit(reviews)
+        } catch (e: java.lang.Exception) {
+            emit(emptyList())
+        }
+    }
 }

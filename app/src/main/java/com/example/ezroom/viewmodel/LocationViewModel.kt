@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-// State Management: Location Data
+// Location viewmodel
 class LocationViewModel(
     private val repository: LocationRepository = LocationRepositoryImpl()
 ) : ViewModel() {
@@ -31,7 +31,7 @@ class LocationViewModel(
         fetchProvinces()
     }
 
-    // Business Logic: Load Provinces
+    // Fetch provinces
     fun fetchProvinces() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -47,7 +47,7 @@ class LocationViewModel(
         }
     }
 
-    // Business Logic: Select Province and update Wards
+    // Select province
     fun selectProvince(provinceCode: String) {
         val province = _provinces.value.find { it.code == provinceCode }
         _wards.value = province?.wards ?: emptyList()

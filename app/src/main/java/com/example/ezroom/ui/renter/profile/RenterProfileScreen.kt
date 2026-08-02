@@ -34,6 +34,7 @@ import com.example.ezroom.domain.model.*
 import com.example.ezroom.domain.usecase.GetCurrentUserUseCase
 import com.example.ezroom.domain.usecase.UpdateProfileUseCase
 import com.example.ezroom.domain.usecase.VerifyEkycUseCase
+import com.example.ezroom.domain.usecase.GetRenterReviewsUseCase
 import com.example.ezroom.ui.components.RenterReviewItem
 import com.example.ezroom.ui.profile.ProfileViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
@@ -68,9 +69,16 @@ fun RenterProfileScreen(
     var isEditing by remember { mutableStateOf(value = false) }
     
     val user = uiState.user ?: return
-    
+    if (user.id.isBlank()) return
+
     val scrollState = rememberScrollState()
-    val reviews = com.example.ezroom.data.model.MockData.renterReviews
+    var reviews by remember { mutableStateOf(emptyList<com.example.ezroom.domain.model.RenterReview>()) }
+    val getReviewsUseCase = remember { GetRenterReviewsUseCase() }
+    LaunchedEffect(user.id) {
+        if (user.id.isNotBlank()) {
+            getReviewsUseCase(user.id).collect { reviews = it }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
@@ -95,40 +103,7 @@ fun RenterProfileScreen(
                     
                     // Removed EkycVerifiedBadge for Renter as requested
 
-                    Text(
-                        text = "Tiện ích của tôi",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        BentoMenuItem(
-                            icon = Icons.Outlined.FavoriteBorder,
-                            title = "Yêu thích",
-                            subtitle = "12 phòng",
-                            modifier = Modifier.weight(1f),
-                            onClick = onNavigateToFavorite
-                        )
-                        BentoMenuItem(
-                            icon = Icons.Outlined.DateRange,
-                            title = "Lịch hẹn",
-                            subtitle = "3 lịch",
-                            modifier = Modifier.weight(1f),
-                            onClick = onNavigateToAppointments
-                        )
-                    }
-
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    BentoMenuItem(
-                        icon = Icons.Outlined.Receipt,
-                        title = "Hóa đơn thanh toán",
-                        subtitle = "Tháng 05/2026",
-                        isFullWidth = true,
-                        onClick = onNavigateToInvoices
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
 
                     Text(
                         text = "Cài đặt hệ thống",
@@ -144,8 +119,6 @@ fun RenterProfileScreen(
                     ) {
                         Column {
                             MenuItemRow(icon = Icons.Outlined.Lock, title = "Đổi mật khẩu", onClick = onNavigateToChangePassword)
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
-                            MenuItemRow(icon = Icons.AutoMirrored.Outlined.HelpOutline, title = "Trung tâm hỗ trợ", onClick = {})
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
                             MenuItemRow(
                                 icon = Icons.AutoMirrored.Filled.Logout, 
@@ -403,13 +376,24 @@ fun EditProfileForm(
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
                 value = editedPhone,
-                onValueChange = { editedPhone = it },
-                label = { Text("Số điện thoại") },
+                onValueChange = { },
+                label = { Text("Số điện thoại (Định danh)") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = false,
+                readOnly = true,
+                trailingIcon = { Icon(Icons.Default.Lock, contentDescription = "Khóa") },
+                supportingText = {
+                    Text(
+                        text = "🔒 Số điện thoại là thông tin định danh hợp đồng, không thể tự thay đổi.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
                 shape = CircleShape,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface
+                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
             Spacer(modifier = Modifier.height(32.dp))

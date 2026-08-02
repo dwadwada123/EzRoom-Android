@@ -26,6 +26,7 @@ import com.example.ezroom.ui.components.EmptyState
 import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.components.StatusBadge
 import com.example.ezroom.ui.theme.*
+import java.text.DecimalFormat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -57,6 +58,17 @@ fun HostInvoiceListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val tabs = listOf("Tất cả", "Chưa đóng", "Đã đóng")
+    
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadInvoices()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Main layout container
     Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
@@ -182,6 +194,7 @@ private fun InvoiceItemCard(
     item: Invoice,
     onClick: () -> Unit
 ) {
+    val formatter = remember { DecimalFormat("#,### đ") }
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -199,11 +212,11 @@ private fun InvoiceItemCard(
                 val periodText = if (item.period == "Cọc giữ chỗ") "Tiền cọc giữ chỗ" else "Hóa đơn Tháng ${item.period}"
                 Text(text = periodText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Phòng: ${item.roomName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = "Phòng: ${item.roomName} • Khách: ${item.renterName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(text = "Ngày lập: ${item.dateCreated}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = "${item.roomPrice} đ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                Text(text = formatter.format(item.calculatedTotalAmount), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, fontSize = 17.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 
                 val badgeColor = if (item.status == InvoiceStatus.PAID) SuccessEmerald else AccentAmber

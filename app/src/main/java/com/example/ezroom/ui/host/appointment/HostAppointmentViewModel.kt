@@ -32,12 +32,14 @@ class HostAppointmentViewModel(
         loadAppointments()
     }
 
-    private fun loadAppointments() {
+    fun loadAppointments() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             delay(800)
             
-            getAppointments(forRenter = false, userName = "Lê Văn Chủ")
+            val user = com.example.ezroom.util.TokenManager.getUser()
+            val name = user?.name ?: "Lê Văn Chủ"
+            getAppointments(forRenter = false, userName = name)
                 .onEach { result ->
                     _uiState.update { state ->
                         val appointments = if (result is Try.Success) {
@@ -71,15 +73,7 @@ class HostAppointmentViewModel(
 
     fun rescheduleAppointment(appointmentId: String, newDate: String, newTime: String) {
         viewModelScope.launch {
-            val index = MockData.appointments.indexOfFirst { it.id == appointmentId }
-            if (index != -1) {
-                val updated = MockData.appointments[index].copy(
-                    date = newDate,
-                    time = newTime,
-                    status = AppointmentStatus.RESCHEDULED
-                )
-                MockData.appointments[index] = updated
-            }
+            updateStatus(appointmentId, AppointmentStatus.RESCHEDULED, newDate, newTime)
             loadAppointments()
         }
     }

@@ -5,6 +5,7 @@ data class Contract(
     val id: String,
     val roomId: String,
     val roomName: String,
+    val address: String? = null,
     val renterName: String,
     val renterPhone: String,
     val hostName: String? = null,

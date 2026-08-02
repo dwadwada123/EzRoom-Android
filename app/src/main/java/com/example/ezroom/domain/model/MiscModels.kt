@@ -16,13 +16,19 @@ data class HostStats(
     val rentedRooms: Int,
     val expectedRevenue: String,
     val totalAppointments: Int,
-    val occupancyRate: Float
+    val occupancyRate: Float,
+    val totalContracts: Int = 0
 )
 
 data class FilterParams(
     val selectedDistrict: String = "",
     val selectedWard: String = "",
-    val priceRange: ClosedFloatingPointRange<Float> = 1f..10f,
+    val priceMin: Float = 0f,
+    val priceMax: Float = 30f,
     val selectedAreaRange: String = "",
+    val selectedRoomType: String = "",
     val selectedAmenities: List<String> = emptyList()
-)
+) : java.io.Serializable {
+    val priceRange: ClosedFloatingPointRange<Float>
+        get() = priceMin..priceMax
+}

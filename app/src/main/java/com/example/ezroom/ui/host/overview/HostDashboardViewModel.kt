@@ -25,7 +25,7 @@ class HostDashboardViewModel(
         loadStats()
     }
 
-    private fun loadStats() {
+    fun loadStats() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             delay(800)

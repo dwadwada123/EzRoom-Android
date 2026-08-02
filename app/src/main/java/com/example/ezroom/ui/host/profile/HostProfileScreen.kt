@@ -31,7 +31,7 @@ import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.EzRoomTheme
 
 enum class EkycStatus {
-    UNVERIFIED, PENDING, VERIFIED
+    UNVERIFIED, PENDING, VERIFIED, REJECTED
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +40,7 @@ fun HostProfileScreen(
     // Event callbacks
     onNavigateToEkyc: () -> Unit = {},
     onNavigateToDepositAccount: () -> Unit = {},
+    onNavigateToContracts: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onLogout: () -> Unit = {},
     onBack: () -> Unit = {},
@@ -59,7 +60,12 @@ fun HostProfileScreen(
     
     // State definitions
     val scrollState = rememberScrollState()
-    val ekycStatus = if (user.isEkycVerified) EkycStatus.VERIFIED else EkycStatus.UNVERIFIED
+    val ekycStatus = when (user.ekycStatus.orEmpty()) {
+        "VERIFIED" -> EkycStatus.VERIFIED
+        "PENDING" -> EkycStatus.PENDING
+        "REJECTED" -> EkycStatus.REJECTED
+        else -> EkycStatus.UNVERIFIED
+    }
 
     // Main layout container
     Scaffold(
@@ -118,6 +124,7 @@ fun HostProfileScreen(
             // Verification status section
             EkycStatusCard(
                 status = ekycStatus,
+                rejectReason = user.ekycRejectReason,
                 onClick = onNavigateToEkyc
             )
 
@@ -131,6 +138,19 @@ fun HostProfileScreen(
                 tonalElevation = 1.dp
             ) {
                 Column {
+                    MenuOptionItem(
+                        icon = Icons.Default.Description,
+                        title = "Quản lý hợp đồng",
+                        subtitle = "Xem danh sách hợp đồng & trạng thái tiền cọc",
+                        onClick = onNavigateToContracts
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
                     MenuOptionItem(
                         icon = Icons.Default.AccountBalance,
                         title = "Tài khoản nhận tiền",
@@ -209,43 +229,45 @@ fun HostProfileScreen(
 }
 
 @Composable
-fun EkycStatusCard(status: EkycStatus, onClick: () -> Unit) {
+fun EkycStatusCard(status: EkycStatus, rejectReason: String? = null, onClick: () -> Unit) {
     // Dynamic styling based on status
     val containerColor = when (status) {
         EkycStatus.VERIFIED -> Color(0xFFE0F2F1)
         EkycStatus.PENDING -> Color(0xFFFFF3E0)
-        EkycStatus.UNVERIFIED -> MaterialTheme.colorScheme.errorContainer
+        EkycStatus.UNVERIFIED, EkycStatus.REJECTED -> MaterialTheme.colorScheme.errorContainer
     }
     
     val contentColor = when (status) {
         EkycStatus.VERIFIED -> Color(0xFF00796B)
         EkycStatus.PENDING -> Color(0xFFE65100)
-        EkycStatus.UNVERIFIED -> MaterialTheme.colorScheme.onErrorContainer
+        EkycStatus.UNVERIFIED, EkycStatus.REJECTED -> MaterialTheme.colorScheme.onErrorContainer
     }
 
     val icon = when (status) {
         EkycStatus.VERIFIED -> Icons.Outlined.CheckCircle
-        EkycStatus.PENDING -> Icons.Default.Settings
-        EkycStatus.UNVERIFIED -> Icons.Default.Warning
+        EkycStatus.PENDING -> Icons.Default.HourglassTop
+        EkycStatus.UNVERIFIED, EkycStatus.REJECTED -> Icons.Default.Warning
     }
     
     val titleText = when (status) {
         EkycStatus.VERIFIED -> "Tài khoản đã xác minh"
         EkycStatus.PENDING -> "Đang chờ duyệt"
         EkycStatus.UNVERIFIED -> "Tài khoản chưa xác thực"
+        EkycStatus.REJECTED -> "Xác thực bị từ chối"
     }
     
     val subText = when (status) {
         EkycStatus.VERIFIED -> "Hồ sơ của bạn đã được duyệt và an toàn."
         EkycStatus.PENDING -> "Thông tin của bạn đang được hệ thống kiểm tra."
         EkycStatus.UNVERIFIED -> "Vui lòng xác thực CCCD để đăng tin và nhận cọc."
+        EkycStatus.REJECTED -> rejectReason?.takeIf { it.isNotBlank() } ?: "Vui lòng xác thực lại CCCD để đăng tin."
     }
 
     // Interactive card container
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = status == EkycStatus.UNVERIFIED) { onClick() },
+            .clickable(enabled = status == EkycStatus.UNVERIFIED || status == EkycStatus.REJECTED) { onClick() },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
