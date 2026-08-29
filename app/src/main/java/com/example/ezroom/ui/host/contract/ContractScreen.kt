@@ -320,3 +320,32 @@ private fun ContractDetailRow(label: String, value: String) {
         Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun HostContractScreenPreview() {
+    val dummyContract = Contract(
+        id = "1",
+        roomId = "101",
+        roomName = "Phòng 101 - Tòa nhà A",
+        address = "123 Đường ABC, Quận 1, TP.HCM",
+        renterName = "Nguyễn Văn A",
+        renterPhone = "0987654321",
+        hostName = "Lê Thị B",
+        startDate = "01/10/2024",
+        endDate = "01/10/2025",
+        depositAmount = 2000000L,
+        depositStatus = DepositStatus.FROZEN,
+        status = ContractStatus.ACTIVE,
+        dateCreated = "20/09/2024",
+        disburseDate = "05/10/2024",
+        isProtected = true
+    )
+    EzRoomTheme {
+        HostContractScreen(
+            contract = dummyContract,
+            onNavigateBack = {},
+            onSignContract = {}
+        )
+    }
+}

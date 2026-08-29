@@ -6,9 +6,11 @@ import androidx.compose.ui.graphics.Color
 val PrimaryMain = Color(0xFF2563EB)
 val PrimaryLight = Color(0xFFDBEAFE)
 val PrimarySurface = Color(0xFFF0F7FF)
-
+val LogoNavy = Color(0xFF0A3366)     // Xanh đậm chủ đạo
+val LogoCyan = Color(0xFF00AEEF)     // Xanh sáng biểu tượng
+val SurfaceCard = Color(0xFFF0F5FA)  // Màu nền lót thẻ nhẹ nhàng
 val AccentTeal = Color(0xFF0D9488)
-val AccentAmber = Color(0xFFF59E0B)
+val AccentAmber = Color(0xFFD32F2F)
 val SuccessEmerald = Color(0xFF10B981)
 val ErrorRose = Color(0xFFF43F5E)
 
@@ -52,3 +54,9 @@ val SurfaceLight = White
 val SurfaceGrey = Color(0xFFF3F4F6)
 val OnPrimaryLight = White
 val OnBackgroundLight = Neutral900
+
+val primaryColor = Color(0xFF4F46E5)
+val cardBgColor = Color(0xFFFAFAFC)
+val borderColor = Color(0xFFE5E7EB)
+val activeBorderColor = Color(0xFF818CF8)
+val labelTextColor = Color(0xFF6B7280)

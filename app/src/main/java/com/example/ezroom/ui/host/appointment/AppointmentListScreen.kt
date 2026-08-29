@@ -31,6 +31,7 @@ import com.example.ezroom.ui.theme.*
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,7 +52,6 @@ fun HostAppointmentListScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
     
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -64,153 +64,14 @@ fun HostAppointmentListScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     
-    var selectedAppointmentId by remember { mutableStateOf("") }
-    var selectedActionStatus by remember { mutableStateOf<AppointmentStatus?>(null) }
-    var showActionConfirmation by remember { mutableStateOf(false) }
-    
-    var showRescheduleDialog by remember { mutableStateOf(false) }
-    var appointmentToReschedule by remember { mutableStateOf<Appointment?>(null) }
-
-    Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pill-shaped Tab Selection (Like Renter Side for consistency)
-            Surface(
-                modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth(),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        val isSelected = uiState.selectedTabIndex == index
-                        val backgroundColor by animateColorAsState(
-                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            label = "TabBg"
-                        )
-                        val contentColor by animateColorAsState(
-                            if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            label = "TabContent"
-                        )
-
-                        Surface(
-                            onClick = { viewModel.onTabSelected(index) },
-                            modifier = Modifier.weight(1f),
-                            shape = CircleShape,
-                            color = backgroundColor,
-                            contentColor = contentColor
-                        ) {
-                            Box(
-                                modifier = Modifier.padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = title,
-                                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
-                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryMain)
-                }
-            } else if (uiState.appointments.isEmpty()) {
-                EmptyAppointments()
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(uiState.appointments, key = { it.id }) { appointment ->
-                        AppointmentCard(
-                            appointment = appointment,
-                            onApprove = {
-                                selectedAppointmentId = appointment.id
-                                selectedActionStatus = AppointmentStatus.APPROVED
-                                showActionConfirmation = true
-                            },
-                            onCancel = {
-                                selectedAppointmentId = appointment.id
-                                selectedActionStatus = AppointmentStatus.CANCELED
-                                showActionConfirmation = true
-                            },
-                            onReschedule = {
-                                appointmentToReschedule = appointment
-                                showRescheduleDialog = true
-                            },
-                            onRenterClick = { onRenterClick(appointment.renterId ?: "") },
-                            onCreateContract = { onCreateContract(appointment) }
-                        )
-                    }
-                }
-            }
-        }
-        
-        // Reschedule Dialog
-        if (showRescheduleDialog && appointmentToReschedule != null) {
-            RescheduleDialog(
-                appointment = appointmentToReschedule!!,
-                onDismiss = { showRescheduleDialog = false },
-                onConfirm = { newDate, newTime ->
-                    viewModel.rescheduleAppointment(appointmentToReschedule!!.id, newDate, newTime)
-                    showRescheduleDialog = false
-                }
-            )
-        }
-
-        // Action Confirmation Dialog
-        if (showActionConfirmation) {
-            val isApprove = selectedActionStatus == AppointmentStatus.APPROVED
-            AlertDialog(
-                onDismissRequest = { showActionConfirmation = false },
-                title = { Text(if (isApprove) "Xác nhận lịch hẹn" else "Hủy lịch hẹn", fontWeight = FontWeight.Bold) },
-                text = { 
-                    Text(
-                        if (isApprove) 
-                            "Hệ thống sẽ gửi thông báo xác nhận đến khách thuê. Bạn có chắc chắn?" 
-                        else "Lịch hẹn này sẽ bị hủy và thông báo sẽ được gửi tới khách. Bạn có chắc chắn?"
-                    ) 
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            selectedActionStatus?.let { status ->
-                                viewModel.updateAppointmentStatus(selectedAppointmentId, status)
-                            }
-                            showActionConfirmation = false
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isApprove) SuccessEmerald else ErrorRose
-                        )
-                    ) {
-                        Text(if (isApprove) "Xác nhận" else "Xác nhận hủy")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showActionConfirmation = false }) {
-                        Text("Bỏ qua")
-                    }
-                },
-                containerColor = Color.White
-            )
-        }
-    }
+    HostAppointmentListContent(
+        uiState = uiState,
+        onTabSelected = { viewModel.onTabSelected(it) },
+        onUpdateStatus = { id, status -> viewModel.updateAppointmentStatus(id, status) },
+        onReschedule = { id, date, time -> viewModel.rescheduleAppointment(id, date, time) },
+        onRenterClick = onRenterClick,
+        onCreateContract = onCreateContract
+    )
 }
 
 // UI Component: Appointment Card for Host
@@ -509,4 +370,213 @@ fun RescheduleDialog(
         },
         containerColor = Color.White
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HostAppointmentListContent(
+    uiState: HostAppointmentUiState,
+    onTabSelected: (Int) -> Unit,
+    onUpdateStatus: (String, AppointmentStatus) -> Unit,
+    onReschedule: (String, String, String) -> Unit,
+    onRenterClick: (String) -> Unit,
+    onCreateContract: (Appointment) -> Unit
+) {
+    val tabs = listOf("Chờ duyệt", "Đã xác nhận", "Đã hủy")
+    
+    var selectedAppointmentId by remember { mutableStateOf("") }
+    var selectedActionStatus by remember { mutableStateOf<AppointmentStatus?>(null) }
+    var showActionConfirmation by remember { mutableStateOf(false) }
+    
+    var showRescheduleDialog by remember { mutableStateOf(false) }
+    var appointmentToReschedule by remember { mutableStateOf<Appointment?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pill-shaped Tab Selection
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth(),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        val isSelected = uiState.selectedTabIndex == index
+                        val backgroundColor by animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            label = "TabBg"
+                        )
+                        val contentColor by animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            label = "TabContent"
+                        )
+
+                        Surface(
+                            onClick = { onTabSelected(index) },
+                            modifier = Modifier.weight(1f),
+                            shape = CircleShape,
+                            color = backgroundColor,
+                            contentColor = contentColor
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryMain)
+                }
+            } else if (uiState.appointments.isEmpty()) {
+                EmptyAppointments()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 20.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(uiState.appointments, key = { it.id }) { appointment ->
+                        AppointmentCard(
+                            appointment = appointment,
+                            onApprove = {
+                                selectedAppointmentId = appointment.id
+                                selectedActionStatus = AppointmentStatus.APPROVED
+                                showActionConfirmation = true
+                            },
+                            onCancel = {
+                                selectedAppointmentId = appointment.id
+                                selectedActionStatus = AppointmentStatus.CANCELED
+                                showActionConfirmation = true
+                            },
+                            onReschedule = {
+                                appointmentToReschedule = appointment
+                                showRescheduleDialog = true
+                            },
+                            onRenterClick = { onRenterClick(appointment.renterId ?: "") },
+                            onCreateContract = { onCreateContract(appointment) }
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Reschedule Dialog
+        if (showRescheduleDialog && appointmentToReschedule != null) {
+            RescheduleDialog(
+                appointment = appointmentToReschedule!!,
+                onDismiss = { showRescheduleDialog = false },
+                onConfirm = { newDate, newTime ->
+                    onReschedule(appointmentToReschedule!!.id, newDate, newTime)
+                    showRescheduleDialog = false
+                }
+            )
+        }
+
+        // Action Confirmation Dialog
+        if (showActionConfirmation) {
+            val isApprove = selectedActionStatus == AppointmentStatus.APPROVED
+            AlertDialog(
+                onDismissRequest = { showActionConfirmation = false },
+                title = { Text(if (isApprove) "Xác nhận lịch hẹn" else "Hủy lịch hẹn", fontWeight = FontWeight.Bold) },
+                text = { 
+                    Text(
+                        if (isApprove) 
+                            "Hệ thống sẽ gửi thông báo xác nhận đến khách thuê. Bạn có chắc chắn?" 
+                        else "Lịch hẹn này sẽ bị hủy và thông báo sẽ được gửi tới khách. Bạn có chắc chắn?"
+                    ) 
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            selectedActionStatus?.let { status ->
+                                onUpdateStatus(selectedAppointmentId, status)
+                            }
+                            showActionConfirmation = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isApprove) SuccessEmerald else ErrorRose
+                        )
+                    ) {
+                        Text(if (isApprove) "Xác nhận" else "Xác nhận hủy")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showActionConfirmation = false }) {
+                        Text("Bỏ qua")
+                    }
+                },
+                containerColor = Color.White
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HostAppointmentListScreenPreview() {
+    val sampleAppointments = listOf(
+        Appointment(
+            id = "1",
+            roomId = "room1",
+            roomName = "Phòng trọ cao cấp Quận 7",
+            renterId = "renter1",
+            renterName = "Nguyễn Văn A",
+            renterPhone = "0901234567",
+            hostName = "Lê Văn Chủ",
+            date = "25/05/2024",
+            time = "10:00",
+            note = "Muốn xem phòng vào buổi sáng",
+            status = AppointmentStatus.PENDING
+        ),
+        Appointment(
+            id = "2",
+            roomId = "room2",
+            roomName = "Căn hộ Studio dịch vụ",
+            renterId = "renter2",
+            renterName = "Trần Thị B",
+            renterPhone = "0907654321",
+            hostName = "Lê Văn Chủ",
+            date = "26/05/2024",
+            time = "15:30",
+            note = "",
+            status = AppointmentStatus.APPROVED
+        )
+    )
+    
+    EzRoomTheme {
+        HostAppointmentListContent(
+            uiState = HostAppointmentUiState(
+                appointments = sampleAppointments,
+                isLoading = false,
+                selectedTabIndex = 0
+            ),
+            onTabSelected = {},
+            onUpdateStatus = { _, _ -> },
+            onReschedule = { _, _, _ -> },
+            onRenterClick = {},
+            onCreateContract = {}
+        )
+    }
 }

@@ -16,10 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.components.EmptyState
 import com.example.ezroom.ui.components.RoomCard
 import com.example.ezroom.ui.theme.ErrorRose
+import com.example.ezroom.ui.theme.EzRoomTheme
 import com.example.ezroom.ui.theme.Neutral50
 import com.example.ezroom.ui.theme.PrimaryMain
 import com.example.ezroom.data.model.MockData
@@ -120,78 +122,18 @@ fun SavedRoomsScreen(
     var roomToUnfavorite by remember { mutableStateOf<SavedRoomUI?>(null) }
     var showUnfavoriteAllDialog by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Neutral50)) {
-        if (savedRooms.isEmpty()) {
-            EmptyState(
-                title = "Chưa có phòng yêu thích",
-                description = "Hãy khám phá và lưu lại những căn phòng bạn ưng ý nhất.",
-                icon = Icons.Default.Favorite,
-                actionText = "Khám phá ngay",
-                onAction = onNavigateToExplore,
-            )
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // UI Component: Action Bar
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = { showUnfavoriteAllDialog = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = ErrorRose)
-                    ) {
-                        Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Bỏ thích tất cả", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
+    SavedRoomsContent(
+        savedRooms = savedRooms,
+        onRoomClick = onRoomClick,
+        onNavigateToExplore = onNavigateToExplore,
+        onUnfavoriteClick = { room ->
+            roomToUnfavorite = room
+            showUnfavoriteDialog = true
+        },
+        onUnfavoriteAllClick = { showUnfavoriteAllDialog = true }
+    )
 
-                // UI Component: Animated List
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    itemsIndexed(savedRooms, key = { _, it -> it.id }) { index, room ->
-                        var isVisible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            isVisible = true
-                        }
-                        
-                        AnimatedVisibility(
-                            visible = isVisible,
-                            enter = slideInVertically(
-                                initialOffsetY = { 100 },
-                                animationSpec = tween(durationMillis = 400, delayMillis = index * 100)
-                            ) + fadeIn(animationSpec = tween(durationMillis = 400, delayMillis = index * 100))
-                        ) {
-                            RoomCard(
-                                title = room.title,
-                                price = room.price,
-                                address = room.address,
-                                rating = room.rating,
-                                imageUrl = room.imageUrl,
-                                onClick = { onRoomClick(room.id) },
-                                trailingIcon = {
-                                    IconButton(
-                                        onClick = {
-                                            roomToUnfavorite = room
-                                            showUnfavoriteDialog = true
-                                        },
-                                        modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f), CircleShape)
-                                    ) {
-                                        Icon(Icons.Default.Favorite, null, tint = Color.Red, modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    item { Spacer(modifier = Modifier.height(100.dp)) }
-                }
-            }
-        }
-
-        // UI Component: Single Unfavorite Dialog
+    // UI Component: Single Unfavorite Dialog
         if (showUnfavoriteDialog && roomToUnfavorite != null) {
             AlertDialog(
                 onDismissRequest = { showUnfavoriteDialog = false },
@@ -279,5 +221,129 @@ fun SavedRoomsScreen(
                 containerColor = Color.White
             )
         }
+}
+
+@Composable
+private fun SavedRoomsContent(
+    savedRooms: List<SavedRoomUI>,
+    onRoomClick: (String) -> Unit,
+    onNavigateToExplore: () -> Unit,
+    onUnfavoriteClick: (SavedRoomUI) -> Unit,
+    onUnfavoriteAllClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxSize().background(Neutral50)) {
+        if (savedRooms.isEmpty()) {
+            EmptyState(
+                title = "Chưa có phòng yêu thích",
+                description = "Hãy khám phá và lưu lại những căn phòng bạn ưng ý nhất.",
+                icon = Icons.Default.Favorite,
+                actionText = "Khám phá ngay",
+                onAction = onNavigateToExplore,
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // UI Component: Action Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onUnfavoriteAllClick,
+                        colors = ButtonDefaults.textButtonColors(contentColor = ErrorRose)
+                    ) {
+                        Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Bỏ thích tất cả", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // UI Component: Animated List
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    itemsIndexed(savedRooms, key = { _, it -> it.id }) { index, room ->
+                        var isVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            isVisible = true
+                        }
+                        
+                        AnimatedVisibility(
+                            visible = isVisible,
+                            enter = slideInVertically(
+                                initialOffsetY = { 100 },
+                                animationSpec = tween(durationMillis = 400, delayMillis = index * 100)
+                            ) + fadeIn(animationSpec = tween(durationMillis = 400, delayMillis = index * 100))
+                        ) {
+                            RoomCard(
+                                title = room.title,
+                                price = room.price,
+                                address = room.address,
+                                rating = room.rating,
+                                imageUrl = room.imageUrl,
+                                onClick = { onRoomClick(room.id) },
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = { onUnfavoriteClick(room) },
+                                        modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f), CircleShape)
+                                    ) {
+                                        Icon(Icons.Default.Favorite, null, tint = Color.Red, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    item { Spacer(modifier = Modifier.height(100.dp)) }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SavedRoomsScreenPreview() {
+    val sampleRooms = listOf(
+        SavedRoomUI(
+            id = "1",
+            title = "Phòng trọ cao cấp Quận 7",
+            address = "123 Nguyễn Văn Linh, Quận 7, TP.HCM",
+            price = "3.500.000 đ",
+            imageUrl = "",
+            rating = 4.5f
+        ),
+        SavedRoomUI(
+            id = "2",
+            title = "Căn hộ dịch vụ tiện nghi",
+            address = "456 Lê Văn Sỹ, Quận 3, TP.HCM",
+            price = "5.000.000 đ",
+            imageUrl = "",
+            rating = 4.8f
+        )
+    )
+    EzRoomTheme {
+        SavedRoomsContent(
+            savedRooms = sampleRooms,
+            onRoomClick = {},
+            onNavigateToExplore = {},
+            onUnfavoriteClick = {},
+            onUnfavoriteAllClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SavedRoomsScreenEmptyPreview() {
+    EzRoomTheme {
+        SavedRoomsContent(
+            savedRooms = emptyList(),
+            onRoomClick = {},
+            onNavigateToExplore = {},
+            onUnfavoriteClick = {},
+            onUnfavoriteAllClick = {}
+        )
     }
 }

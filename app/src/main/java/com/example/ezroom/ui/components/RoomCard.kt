@@ -18,6 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -169,6 +170,23 @@ fun RoomCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RoomCardPreview() {
+    com.example.ezroom.ui.theme.EzRoomTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            RoomCard(
+                title = "Phòng trọ cao cấp trung tâm Quận 1",
+                price = "5.500.000 đ/tháng",
+                address = "123 Lê Lợi, Phường Bến Thành, Quận 1",
+                rating = 4.8f,
+                imageUrl = android.R.drawable.ic_menu_gallery,
+                onClick = {}
+            )
         }
     }
 }

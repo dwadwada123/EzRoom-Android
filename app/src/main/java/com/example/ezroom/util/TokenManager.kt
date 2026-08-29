@@ -12,35 +12,39 @@ object TokenManager {
     private const val KEY_USER = "current_user"
     private const val KEY_REMEMBER_ME = "remember_me"
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        EzRoomApplication.getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val sharedPreferences: SharedPreferences? by lazy {
+        try {
+            EzRoomApplication.getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private val gson = Gson()
 
     fun saveToken(token: String) {
-        sharedPreferences.edit().putString(KEY_TOKEN, token).apply()
+        sharedPreferences?.edit()?.putString(KEY_TOKEN, token)?.apply()
     }
 
     fun getToken(): String? {
-        return sharedPreferences.getString(KEY_TOKEN, null)
+        return sharedPreferences?.getString(KEY_TOKEN, null)
     }
 
     fun saveRememberMe(rememberMe: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_REMEMBER_ME, rememberMe).apply()
+        sharedPreferences?.edit()?.putBoolean(KEY_REMEMBER_ME, rememberMe)?.apply()
     }
 
     fun isRememberMe(): Boolean {
-        return sharedPreferences.getBoolean(KEY_REMEMBER_ME, false)
+        return sharedPreferences?.getBoolean(KEY_REMEMBER_ME, false) ?: false
     }
 
     fun saveUser(user: User) {
         val userJson = gson.toJson(user)
-        sharedPreferences.edit().putString(KEY_USER, userJson).apply()
+        sharedPreferences?.edit()?.putString(KEY_USER, userJson)?.apply()
     }
 
     fun getUser(): User? {
-        val userJson = sharedPreferences.getString(KEY_USER, null) ?: return null
+        val userJson = sharedPreferences?.getString(KEY_USER, null) ?: return null
         return try {
             // Parse the raw JSON to handle both old (_id) and new (id) formats
             val jsonObj = com.google.gson.JsonParser.parseString(userJson).asJsonObject
@@ -62,10 +66,10 @@ object TokenManager {
     }
 
     fun clear() {
-        sharedPreferences.edit()
-            .remove(KEY_TOKEN)
-            .remove(KEY_USER)
-            .remove(KEY_REMEMBER_ME)
-            .apply()
+        sharedPreferences?.edit()
+            ?.remove(KEY_TOKEN)
+            ?.remove(KEY_USER)
+            ?.remove(KEY_REMEMBER_ME)
+            ?.apply()
     }
 }

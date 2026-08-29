@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,6 +20,8 @@ import com.example.ezroom.domain.model.AppointmentStatus
 import com.example.ezroom.data.model.MockData
 import com.example.ezroom.ui.components.StatusBadge
 import com.example.ezroom.ui.theme.*
+
+private val peaceSansFont = FontFamily.Default
 
 @Composable
 fun HostAppointmentCard(
@@ -43,8 +45,7 @@ fun HostAppointmentCard(
         AppointmentStatus.CANCELED -> "Đã hủy"
         AppointmentStatus.RESCHEDULED -> "Đã hẹn lại"
     }
-// ... keep colors
-    
+
     val statusColor = when (appointment.status) {
         AppointmentStatus.PENDING -> AccentAmber
         AppointmentStatus.APPROVED -> AccentTeal
@@ -61,7 +62,6 @@ fun HostAppointmentCard(
         shadowElevation = 4.dp
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // ... (keep header)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -70,9 +70,10 @@ fun HostAppointmentCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = appointment.renterName, 
+                            text = appointment.renterName,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = peaceSansFont
                         )
                         if (renterRating > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
@@ -86,45 +87,59 @@ fun HostAppointmentCard(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(Icons.Default.Star, null, modifier = Modifier.size(10.dp))
-                                    Text(text = "%.1f".format(renterRating), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = "%.1f".format(renterRating),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = peaceSansFont
+                                    )
                                 }
                             }
                         }
                     }
                     Text(
-                        text = appointment.roomName, 
-                        style = MaterialTheme.typography.bodySmall, 
+                        text = appointment.roomName,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontFamily = peaceSansFont
                     )
                 }
                 StatusBadge(text = statusText, color = statusColor)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Icon(
-                        Icons.Default.Event, 
-                        contentDescription = null, 
-                        tint = MaterialTheme.colorScheme.primary, 
+                        Icons.Default.Event,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = appointment.date, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = appointment.date,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = peaceSansFont
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Icon(
-                        Icons.Default.Schedule, 
-                        contentDescription = null, 
-                        tint = MaterialTheme.colorScheme.primary, 
+                        Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = appointment.time, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = appointment.time,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = peaceSansFont
+                    )
                 }
             }
 
@@ -142,7 +157,7 @@ fun HostAppointmentCard(
                         border = BorderStroke(1.dp, ErrorRose.copy(alpha = 0.5f)),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(text = "Từ chối", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(text = "Từ chối", fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = peaceSansFont)
                     }
 
                     OutlinedButton(
@@ -153,7 +168,7 @@ fun HostAppointmentCard(
                         border = BorderStroke(1.dp, PrimaryMain.copy(alpha = 0.5f)),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(text = "Hẹn lại", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(text = "Hẹn lại", fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = peaceSansFont)
                     }
 
                     Button(
@@ -163,7 +178,7 @@ fun HostAppointmentCard(
                         colors = ButtonDefaults.buttonColors(containerColor = AccentTeal),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(text = "Xác nhận", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(text = "Xác nhận", fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = peaceSansFont)
                     }
                 }
             } else if (appointment.status == AppointmentStatus.APPROVED) {
@@ -176,7 +191,7 @@ fun HostAppointmentCard(
                 ) {
                     Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Lập hợp đồng ngay", fontWeight = FontWeight.Bold)
+                    Text(text = "Lập hợp đồng ngay", fontWeight = FontWeight.Bold, fontFamily = peaceSansFont)
                 }
             }
         }
@@ -204,4 +219,3 @@ fun HostAppointmentCardPreview() {
         )
     }
 }
-

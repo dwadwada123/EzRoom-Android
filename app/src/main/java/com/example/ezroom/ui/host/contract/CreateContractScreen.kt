@@ -1,46 +1,51 @@
 package com.example.ezroom.ui.host.contract
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.ContractRepositoryImpl
 import com.example.ezroom.data.repository.RoomRepositoryImpl
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.ui.graphics.Color
-import com.example.ezroom.ui.theme.PrimaryMain
 import com.example.ezroom.domain.model.Contract
 import com.example.ezroom.domain.model.ContractStatus
 import com.example.ezroom.domain.model.DepositStatus
 import com.example.ezroom.domain.usecase.GetContractsUseCase
-import com.example.ezroom.domain.usecase.SignContractUseCase
 import com.example.ezroom.domain.usecase.GetRoomsUseCase
-import com.example.ezroom.ui.renter.discovery.viewModelFactory
-import com.example.ezroom.ui.components.CommonTopAppBar
-import com.example.ezroom.ui.components.CustomTextField
+import com.example.ezroom.domain.usecase.SignContractUseCase
 import com.example.ezroom.ui.components.LoadingWidget
-import com.example.ezroom.ui.components.PrimaryButton
-import com.example.ezroom.ui.theme.EzRoomTheme
-import com.example.ezroom.ui.theme.OrangePrimary
-import kotlinx.coroutines.delay
+import com.example.ezroom.ui.renter.discovery.viewModelFactory
+import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.*
+
+private val peaceSansFont = FontFamily.Default
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,79 +69,59 @@ fun CreateContractScreen(
         }
     )
 ) {
-    // State definitions
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
 
     val uiState by viewModel.uiState.collectAsState()
     val rooms = uiState.rooms
-
     val depositStatuses = listOf("Chưa đóng", "Đã đóng")
 
     var expandedRoomDropdown by remember { mutableStateOf(false) }
     var selectedRoomId by remember { mutableStateOf("") }
     var selectedRoomName by remember { mutableStateOf("") }
-
     var renterName by remember { mutableStateOf("") }
     var renterPhone by remember { mutableStateOf("") }
-
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
-
     var depositAmount by remember { mutableStateOf("") }
     var expandedStatusDropdown by remember { mutableStateOf(false) }
     var selectedStatus by remember { mutableStateOf(depositStatuses[0]) }
     var isLoading by remember { mutableStateOf(false) }
+    var showUnregisteredDialog by remember { mutableStateOf(false) }
+
+    val authApi = remember { com.example.ezroom.data.remote.NetworkClient.createService<com.example.ezroom.data.remote.AuthApi>() }
 
     LaunchedEffect(rooms, initialRoomId, initialRenterPhone, initialRenterName) {
         if (!initialRoomId.isNullOrBlank()) {
-            val matchingRoom = rooms.find { 
-                it.id == initialRoomId || 
-                it.title.equals(initialRoomId, ignoreCase = true) 
-            }
-            if (matchingRoom != null) {
-                selectedRoomId = matchingRoom.id
-                selectedRoomName = matchingRoom.title
+            rooms.find { it.id == initialRoomId || it.title.equals(initialRoomId, ignoreCase = true) }?.let {
+                selectedRoomId = it.id
+                selectedRoomName = it.title
             }
         }
-        if (!initialRenterPhone.isNullOrBlank() && renterPhone.isEmpty()) {
-            renterPhone = initialRenterPhone
-        }
-        if (!initialRenterName.isNullOrBlank() && renterName.isEmpty()) {
-            renterName = initialRenterName
-        }
+        if (!initialRenterPhone.isNullOrBlank() && renterPhone.isEmpty()) renterPhone = initialRenterPhone
+        if (!initialRenterName.isNullOrBlank() && renterName.isEmpty()) renterName = initialRenterName
     }
 
-    // Date picker trigger
     val calendar = Calendar.getInstance()
-    val datePickerDialog = { onDateSelected: (String) -> Unit ->
+    val showDatePicker = { onDateSelected: (String) -> Unit ->
         DatePickerDialog(
             context,
-            { _, year, month, dayOfMonth ->
-                onDateSelected("$dayOfMonth/${month + 1}/$year")
-            },
+            { _, year, month, dayOfMonth -> onDateSelected("$dayOfMonth/${month + 1}/$year") },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        )
+        ).show()
     }
 
-    val isFormValid = selectedRoomId.isNotEmpty() &&
-            renterName.isNotBlank() &&
-            renterPhone.isNotBlank() &&
-            startDate.isNotBlank() &&
-            depositAmount.isNotBlank()
-
-    val authApi = remember { com.example.ezroom.data.remote.NetworkClient.createService<com.example.ezroom.data.remote.AuthApi>() }
-    var showUnregisteredDialog by remember { mutableStateOf(false) }
+    val isFormValid = selectedRoomId.isNotEmpty() && renterName.isNotBlank() && renterPhone.isNotBlank() && startDate.isNotBlank() && depositAmount.isNotBlank()
 
     fun proceedWithContractCreation(foundRenterId: String) {
-        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         val parsedDeposit = depositAmount.toLongOrNull() ?: 0L
         val initialDepositStatus = if (parsedDeposit == 0L || selectedStatus == "Đã đóng") DepositStatus.FROZEN else DepositStatus.UNPAID
-
         val currentHostName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+
         val contract = Contract(
             id = UUID.randomUUID().toString(),
             roomId = selectedRoomId,
@@ -149,192 +134,67 @@ fun CreateContractScreen(
             depositAmount = parsedDeposit,
             depositStatus = initialDepositStatus,
             status = ContractStatus.WAITING_SIGN,
-            dateCreated = sdf.format(java.util.Date())
+            dateCreated = sdf.format(Date())
         )
         viewModel.createContract(contract)
         onProceedToTerms(contract)
     }
 
-    // Main layout container
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(White)) {
         Scaffold(
             topBar = {
-                CommonTopAppBar(
-                    title = "Khởi tạo hợp đồng",
-                    onBackClick = onBackClick
+                CenterAlignedTopAppBar(
+                    title = { Text("Khởi tạo hợp đồng", fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = peaceSansFont, color = Neutral900) },
+                    navigationIcon = {
+                        Surface(
+                            modifier = Modifier.padding(start = 12.dp).size(40.dp),
+                            shape = CircleShape,
+                            color = White,
+                            shadowElevation = 2.dp
+                        ) {
+                            IconButton(onClick = onBackClick, enabled = !isLoading) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Quay lại", tint = Neutral900, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = White)
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = White
         ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(scrollState)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Section: Room Selection
-                SectionTitle(text = "Chọn phòng trọ")
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    CustomTextField(
-                        value = selectedRoomName,
-                        onValueChange = {},
-                        label = "Phòng trọ",
-                        placeholder = "Chọn phòng để lập hợp đồng",
-                        readOnly = true,
-                        trailingIcon = {
-                            IconButton(onClick = { expandedRoomDropdown = true }, enabled = !isLoading) {
-                                Icon(
-                                    imageVector = if (expandedRoomDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                                    contentDescription = null
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(enabled = !isLoading) { expandedRoomDropdown = true }
-                    )
-                    DropdownMenu(
-                        expanded = expandedRoomDropdown,
-                        onDismissRequest = { expandedRoomDropdown = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        rooms.forEach { room ->
-                            DropdownMenuItem(
-                                text = { Text(room.title) },
-                                onClick = {
-                                    selectedRoomId = room.id
-                                    selectedRoomName = room.title
-                                    expandedRoomDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Section: Renter Information
-                SectionTitle(text = "Thông tin người thuê")
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CustomTextField(
-                        value = renterName,
-                        onValueChange = { renterName = it },
-                        label = "Họ và tên khách thuê",
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
-                    )
-                    CustomTextField(
-                        value = renterPhone,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) renterPhone = it },
-                        label = "Số điện thoại",
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        enabled = !isLoading
-                    )
-                }
-
-                // Section: Duration Selection
-                SectionTitle(text = "Thời hạn thuê")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        CustomTextField(
-                            value = startDate,
-                            onValueChange = {},
-                            label = "Ngày bắt đầu",
-                            modifier = Modifier.fillMaxWidth(),
+                // CHỌN PHÒNG TRỌ
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionTitle("CHỌN PHÒNG TRỌ")
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        ContractInputField(
+                            value = selectedRoomName,
+                            placeholder = "Chọn phòng để lập hợp đồng",
+                            leadingIcon = Icons.Outlined.Home,
                             readOnly = true,
                             enabled = !isLoading,
-                            trailingIcon = {
-                                IconButton(onClick = { datePickerDialog { startDate = it }.show() }, enabled = !isLoading) {
-                                    Icon(Icons.Default.CalendarMonth, contentDescription = "Chọn ngày bắt đầu")
-                                }
-                            }
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable(enabled = !isLoading) { datePickerDialog { startDate = it }.show() }
-                        )
-                    }
-                    
-                    Box(modifier = Modifier.weight(1f)) {
-                        CustomTextField(
-                            value = endDate,
-                            onValueChange = {},
-                            label = "Ngày kết thúc (Dự kiến)",
-                            modifier = Modifier.fillMaxWidth(),
-                            readOnly = true,
-                            enabled = !isLoading,
-                            trailingIcon = {
-                                IconButton(onClick = { datePickerDialog { endDate = it }.show() }, enabled = !isLoading) {
-                                    Icon(Icons.Default.CalendarMonth, contentDescription = "Chọn ngày kết thúc")
-                                }
-                            }
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable(enabled = !isLoading) { datePickerDialog { endDate = it }.show() }
-                        )
-                    }
-                }
-
-                // Section: Deposit Configuration
-                SectionTitle(text = "Cấu hình tiền cọc")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CustomTextField(
-                        value = depositAmount,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) depositAmount = it },
-                        label = "Số tiền cọc",
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        enabled = !isLoading
-                    )
-                    
-                    Box(modifier = Modifier.weight(1f)) {
-                        CustomTextField(
-                            value = selectedStatus,
-                            onValueChange = {},
-                            label = "Trạng thái",
-                            readOnly = true,
-                            enabled = !isLoading,
-                            trailingIcon = {
-                                IconButton(onClick = { expandedStatusDropdown = true }, enabled = !isLoading) {
-                                    Icon(
-                                        imageVector = if (expandedStatusDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable(enabled = !isLoading) { expandedStatusDropdown = true }
+                            onClick = { expandedRoomDropdown = true },
+                            trailingIcon = { Icon(if (expandedRoomDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown, null, tint = Neutral700) }
                         )
                         DropdownMenu(
-                            expanded = expandedStatusDropdown,
-                            onDismissRequest = { expandedStatusDropdown = false },
-                            modifier = Modifier.fillMaxWidth(0.4f)
+                            expanded = expandedRoomDropdown,
+                            onDismissRequest = { expandedRoomDropdown = false },
+                            modifier = Modifier.fillMaxWidth(0.85f).background(White)
                         ) {
-                            depositStatuses.forEach { status ->
+                            rooms.forEach { room ->
                                 DropdownMenuItem(
-                                    text = { Text(status) },
+                                    text = { Text(room.title, fontFamily = peaceSansFont) },
                                     onClick = {
-                                        selectedStatus = status
-                                        expandedStatusDropdown = false
+                                        selectedRoomId = room.id
+                                        selectedRoomName = room.title
+                                        expandedRoomDropdown = false
                                     }
                                 )
                             }
@@ -342,11 +202,55 @@ fun CreateContractScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // THÔNG TIN NGƯỜI THUÊ
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionTitle("THÔNG TIN NGƯỜI THUÊ")
+                    ContractInputField(label = "Họ và tên khách thuê", value = renterName, onValueChange = { renterName = it }, placeholder = "Nguyễn Văn A", leadingIcon = Icons.Outlined.Person, enabled = !isLoading)
+                    ContractInputField(label = "Số điện thoại", value = renterPhone, onValueChange = { if (it.all { c -> c.isDigit() }) renterPhone = it }, placeholder = "0987 654 321", leadingIcon = Icons.Outlined.Phone, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), enabled = !isLoading)
+                }
 
-                // Action buttons row
-                PrimaryButton(
-                    text = "TIẾP TỤC / SOẠN ĐIỀU KHOẢN",
+                // THỜI HẠN THUÊ
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionTitle("THỜI HẠN THUÊ")
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ContractInputField(label = "Ngày bắt đầu", value = startDate, placeholder = "DD/MM/YYYY", leadingIcon = Icons.Outlined.CalendarToday, readOnly = true, enabled = !isLoading, onClick = { showDatePicker { startDate = it } }, modifier = Modifier.weight(1f))
+                        ContractInputField(label = "Ngày kết thúc (Dự kiến)", value = endDate, placeholder = "DD/MM/YYYY", leadingIcon = Icons.Outlined.CalendarToday, readOnly = true, enabled = !isLoading, onClick = { showDatePicker { endDate = it } }, modifier = Modifier.weight(1f))
+                    }
+                }
+
+                // CẤU HÌNH TIỀN CỌC
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionTitle("CẤU HÌNH TIỀN CỌC")
+                    ContractInputField(label = "Số tiền cọc", value = depositAmount, onValueChange = { if (it.all { c -> c.isDigit() }) depositAmount = it }, placeholder = "5.000.000đ", leadingIcon = Icons.Outlined.CreditCard, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), enabled = !isLoading)
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        ContractInputField(
+                            label = "Trạng thái",
+                            value = selectedStatus,
+                            leadingIcon = Icons.Outlined.AccessTime,
+                            readOnly = true,
+                            enabled = !isLoading,
+                            onClick = { expandedStatusDropdown = true },
+                            trailingIcon = { Icon(if (expandedStatusDropdown) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown, null, tint = Neutral700) }
+                        )
+                        DropdownMenu(
+                            expanded = expandedStatusDropdown,
+                            onDismissRequest = { expandedStatusDropdown = false },
+                            modifier = Modifier.fillMaxWidth(0.85f).background(White)
+                        ) {
+                            depositStatuses.forEach { status ->
+                                DropdownMenuItem(
+                                    text = { Text(status, fontFamily = peaceSansFont) },
+                                    onClick = { selectedStatus = status; expandedStatusDropdown = false }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
                     onClick = {
                         if (isFormValid) {
                             scope.launch {
@@ -356,9 +260,7 @@ fun CreateContractScreen(
                                     isLoading = false
                                     if (res.success && res.exists && res.user != null) {
                                         proceedWithContractCreation(res.user.id)
-                                    } else {
-                                        showUnregisteredDialog = true
-                                    }
+                                    } else showUnregisteredDialog = true
                                 } catch (e: Exception) {
                                     isLoading = false
                                     showUnregisteredDialog = true
@@ -366,9 +268,13 @@ fun CreateContractScreen(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = isFormValid && !isLoading
-                )
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    enabled = isFormValid && !isLoading,
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain, disabledContainerColor = PrimaryMain.copy(alpha = 0.4f))
+                ) {
+                    Text("TIẾP TỤC / SOẠN ĐIỀU KHOẢN", fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = peaceSansFont, color = White)
+                }
             }
         }
 
@@ -377,46 +283,87 @@ fun CreateContractScreen(
                 onDismissRequest = { showUnregisteredDialog = false },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = PrimaryMain)
+                        Icon(Icons.Default.Warning, null, tint = PrimaryMain)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Chưa tìm thấy tài khoản", fontWeight = FontWeight.Bold)
+                        Text("Chưa tìm thấy tài khoản", fontWeight = FontWeight.Bold, fontFamily = peaceSansFont)
                     }
                 },
                 text = {
                     Text(
-                        text = "Số điện thoại $renterPhone chưa có tài khoản trên ứng dụng EzRoom.\n\n" +
+                        "Số điện thoại $renterPhone chưa có tài khoản trên ứng dụng EzRoom.\n\n" +
                                 "Để gửi hợp đồng online và yêu cầu người thuê ký xác nhận, vui lòng nhắc khách thuê tải ứng dụng EzRoom và đăng ký bằng SĐT này trước.",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = peaceSansFont
                     )
                 },
                 confirmButton = {
-                    Button(
-                        onClick = { showUnregisteredDialog = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain)
-                    ) {
-                        Text("ĐÃ HIỂU", fontWeight = FontWeight.Bold)
+                    Button(onClick = { showUnregisteredDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = PrimaryMain)) {
+                        Text("ĐÃ HIỂU", fontWeight = FontWeight.Bold, fontFamily = peaceSansFont)
                     }
                 },
-                containerColor = Color.White
+                containerColor = White
             )
         }
 
-        if (isLoading) {
-            LoadingWidget()
-        }
+        if (isLoading) LoadingWidget()
     }
 }
 
 @Composable
 fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium.copy(
-            fontWeight = FontWeight.Bold,
-            color = OrangePrimary
-        ),
-        modifier = Modifier.padding(bottom = 4.dp)
-    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(modifier = Modifier.width(3.dp).height(14.dp).background(PrimaryMain, RoundedCornerShape(2.dp)))
+        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = peaceSansFont, color = PrimaryMain)
+    }
+}
+
+@Composable
+private fun ContractInputField(
+    label: String? = null,
+    value: String,
+    onValueChange: (String) -> Unit = {},
+    placeholder: String = "",
+    leadingIcon: ImageVector? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    readOnly: Boolean = false,
+    enabled: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (!label.isNullOrBlank()) {
+            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, fontFamily = peaceSansFont, color = Neutral500)
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth().then(if (onClick != null && enabled) Modifier.clickable { onClick() } else Modifier),
+            shape = RoundedCornerShape(16.dp),
+            color = SurfaceCard,
+            border = BorderStroke(1.dp, borderColor)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text(placeholder, fontFamily = peaceSansFont, fontSize = 14.sp, color = Neutral500.copy(alpha = 0.6f)) },
+                leadingIcon = leadingIcon?.let { { Icon(it, null, tint = Neutral700, modifier = Modifier.size(20.dp)) } },
+                trailingIcon = trailingIcon,
+                readOnly = readOnly,
+                enabled = enabled && onClick == null,
+                singleLine = true,
+                keyboardOptions = keyboardOptions,
+                textStyle = TextStyle(fontFamily = peaceSansFont, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Neutral900),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true)
@@ -426,4 +373,3 @@ fun CreateContractScreenPreview() {
         CreateContractScreen()
     }
 }
-

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.ezroom.data.remote.PaymentResponse
 import com.example.ezroom.data.repository.ContractRepositoryImpl
 import com.example.ezroom.domain.model.Contract
@@ -34,8 +35,6 @@ fun PaymentQRScreen(
     onPaymentConfirmed: suspend () -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    val formatter = remember { DecimalFormat("#,### đ") }
-    val transferContent = "COC ${contract.id.takeLast(6).uppercase()}"
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -50,6 +49,49 @@ fun PaymentQRScreen(
         paymentDetails = res
         isLoading = false
     }
+
+    PaymentQRContent(
+        contract = contract,
+        paymentDetails = paymentDetails,
+        isLoading = isLoading,
+        isSubmitting = isSubmitting,
+        onPaymentConfirmed = {
+            if (!isSubmitting) {
+                isSubmitting = true
+                scope.launch {
+                    onPaymentConfirmed()
+                    isSubmitting = false
+                }
+            }
+        },
+        onNavigateBack = onNavigateBack,
+        onCopyAccountNumber = { accountNumber ->
+            clipboardManager.setText(AnnotatedString(accountNumber))
+            scope.launch { snackbarHostState.showSnackbar("Đã chép số tài khoản: $accountNumber") }
+        },
+        onCopyTransferContent = { transferContent ->
+            clipboardManager.setText(AnnotatedString(transferContent))
+            scope.launch { snackbarHostState.showSnackbar("Đã chép nội dung: $transferContent") }
+        },
+        snackbarHostState = snackbarHostState
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaymentQRContent(
+    contract: Contract,
+    paymentDetails: PaymentResponse?,
+    isLoading: Boolean,
+    isSubmitting: Boolean,
+    onPaymentConfirmed: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onCopyAccountNumber: (String) -> Unit,
+    onCopyTransferContent: (String) -> Unit,
+    snackbarHostState: SnackbarHostState
+) {
+    val formatter = remember { DecimalFormat("#,### đ") }
+    val transferContent = "COC ${contract.id.takeLast(6).uppercase()}"
 
     val accountNumber = paymentDetails?.accountNumber?.takeIf { it.isNotBlank() } ?: "9999999999"
     val accountName = paymentDetails?.accountName?.takeIf { it.isNotBlank() } ?: "EZROOM ESCROW PAYOS"
@@ -176,10 +218,7 @@ fun PaymentQRScreen(
                         label = "Số tài khoản",
                         value = accountNumber,
                         hasCopy = true,
-                        onCopy = {
-                            clipboardManager.setText(AnnotatedString(accountNumber))
-                            scope.launch { snackbarHostState.showSnackbar("Đã chép số tài khoản: $accountNumber") }
-                        }
+                        onCopy = { onCopyAccountNumber(accountNumber) }
                     )
 
                     PaymentInfoRow(
@@ -196,10 +235,7 @@ fun PaymentQRScreen(
                         label = "Nội dung chuyển khoản",
                         value = transferContent,
                         hasCopy = true,
-                        onCopy = {
-                            clipboardManager.setText(AnnotatedString(transferContent))
-                            scope.launch { snackbarHostState.showSnackbar("Đã chép nội dung: $transferContent") }
-                        }
+                        onCopy = { onCopyTransferContent(transferContent) }
                     )
                 }
             }
@@ -222,15 +258,7 @@ fun PaymentQRScreen(
 
             // 5. Prominent Action Button with explicit White Text
             Button(
-                onClick = {
-                    if (!isSubmitting) {
-                        isSubmitting = true
-                        scope.launch {
-                            onPaymentConfirmed()
-                            isSubmitting = false
-                        }
-                    }
-                },
+                onClick = onPaymentConfirmed,
                 enabled = !isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -303,5 +331,42 @@ private fun PaymentInfoRow(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PaymentQRScreenPreview() {
+    val sampleContract = Contract(
+        id = "CON123456",
+        roomId = "ROOM1",
+        roomName = "Phòng trọ cao cấp Quận 1",
+        renterName = "Nguyễn Văn A",
+        renterPhone = "0123456789",
+        startDate = "01/01/2024",
+        endDate = "01/01/2025",
+        depositAmount = 5000000L,
+        dateCreated = "01/12/2023"
+    )
+
+    val samplePaymentDetails = PaymentResponse(
+        success = true,
+        accountNumber = "1234567890",
+        accountName = "EZROOM ESCROW PAYOS",
+        bankName = "MBBank (PayOS)"
+    )
+
+    EzRoomTheme {
+        PaymentQRContent(
+            contract = sampleContract,
+            paymentDetails = samplePaymentDetails,
+            isLoading = false,
+            isSubmitting = false,
+            onPaymentConfirmed = {},
+            onNavigateBack = {},
+            onCopyAccountNumber = {},
+            onCopyTransferContent = {},
+            snackbarHostState = remember { SnackbarHostState() }
+        )
     }
 }

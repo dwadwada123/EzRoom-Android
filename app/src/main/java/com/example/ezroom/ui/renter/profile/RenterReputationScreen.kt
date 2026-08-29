@@ -37,6 +37,18 @@ fun RenterReputationScreen(
         getReviews(targetUserId).collect { reviews = it }
     }
 
+    RenterReputationContent(
+        reviews = reviews,
+        onBack = onBack
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RenterReputationContent(
+    reviews: List<RenterReview>,
+    onBack: () -> Unit
+) {
     val averageRating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average()
 
     var selectedFilter by remember { mutableStateOf("Tất cả") }
@@ -142,6 +154,43 @@ fun EmptyStatePlaceholder() {
             Spacer(modifier = Modifier.height(16.dp))
             Text("Không tìm thấy kết quả phù hợp", color = Neutral500)
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun RenterReputationScreenPreview() {
+    val sampleReviews = listOf(
+        RenterReview(
+            id = "1",
+            hostName = "Nguyễn Văn A",
+            rating = 5,
+            comment = "Người thuê rất lịch sự, giữ gìn phòng sạch sẽ và thanh toán đúng hạn.",
+            date = "20/10/2023",
+            tags = listOf("Sạch sẽ", "Đúng hạn")
+        ),
+        RenterReview(
+            id = "2",
+            hostName = "Trần Thị B",
+            rating = 4,
+            comment = "Khá tốt, tuy nhiên đôi khi trả phòng hơi trễ một chút.",
+            date = "15/09/2023",
+            tags = listOf("Thân thiện")
+        ),
+        RenterReview(
+            id = "3",
+            hostName = "Lê Văn C",
+            rating = 3,
+            comment = "Thanh toán tiền điện nước thường xuyên bị nhắc nhở.",
+            date = "10/08/2023",
+            tags = listOf("Ồn ào")
+        )
+    )
+    EzRoomTheme {
+        RenterReputationContent(
+            reviews = sampleReviews,
+            onBack = {}
+        )
     }
 }
 

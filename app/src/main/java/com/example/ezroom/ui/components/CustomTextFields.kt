@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ezroom.ui.theme.EzRoomTheme
 import com.example.ezroom.ui.theme.Neutral500
 
 @Composable
@@ -114,4 +116,17 @@ fun PasswordTextField(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CustomTextFieldPreview() {
+    EzRoomTheme {
+        CustomTextField(
+            value = "Sample Text",
+            onValueChange = {},
+            label = "Full Name",
+            placeholder = "Enter your full name"
+        )
+    }
 }

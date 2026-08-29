@@ -7,11 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.ezroom.ui.theme.EzRoomTheme
 import com.example.ezroom.ui.theme.Neutral500
 
 @Composable
@@ -73,5 +74,29 @@ fun EmptyState(
                 Text(text = actionText, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EmptyStatePreview() {
+    EzRoomTheme {
+        EmptyState(
+            title = "Không có thông báo nào",
+            description = "Khi bạn có thông báo mới, chúng sẽ xuất hiện ở đây."
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EmptyStateWithActionPreview() {
+    EzRoomTheme {
+        EmptyState(
+            title = "Chưa có phòng yêu thích",
+            description = "Hãy khám phá và lưu lại những căn phòng bạn ưng ý nhất.",
+            actionText = "Khám phá ngay",
+            onAction = {}
+        )
     }
 }

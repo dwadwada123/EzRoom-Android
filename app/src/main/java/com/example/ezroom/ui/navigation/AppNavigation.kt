@@ -55,6 +55,8 @@ import com.example.ezroom.ui.host.invoice.CreateInvoiceScreen
 import com.example.ezroom.ui.host.invoice.HostInvoiceDetailScreen
 import com.example.ezroom.ui.renter.discovery.AdvancedFilterScreen
 import com.example.ezroom.ui.host.room.PropertyFormScreen
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.ezroom.ui.theme.EzRoomTheme
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
@@ -1113,5 +1115,13 @@ fun AppNavigation() {
                 }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppNavigationPreview() {
+    EzRoomTheme {
+        AppNavigation()
     }
 }

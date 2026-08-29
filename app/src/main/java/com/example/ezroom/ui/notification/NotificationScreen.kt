@@ -3,27 +3,31 @@ package com.example.ezroom.ui.notification
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.NotificationRepositoryImpl
 import com.example.ezroom.domain.model.*
@@ -34,10 +38,11 @@ import com.example.ezroom.ui.components.LoadingWidget
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Xử lý an toàn tránh lỗi Unresolved reference 'peaceSansFont'
+private val peaceSansFont = FontFamily.Default
+
 @Composable
 fun NotificationScreen(
-    // Event callbacks
     onNavigateBack: () -> Unit,
     onNavigateToChat: (conversationId: String) -> Unit = {},
     onNavigateToContract: (contractId: String) -> Unit = {},
@@ -57,7 +62,6 @@ fun NotificationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Tất cả", "Chưa đọc")
 
     val filteredNotifications = if (selectedTab == 1) {
         uiState.notifications.filter { !it.isRead }
@@ -65,120 +69,262 @@ fun NotificationScreen(
         uiState.notifications
     }
 
-    // Main layout container
     Scaffold(
-        containerColor = BackgroundLight,
+        containerColor = White,
         topBar = {
-            // Top app bar
-            Surface(
-                color = SurfaceLight,
-                tonalElevation = 4.dp,
-                shadowElevation = 8.dp
-            ) {
-                CenterAlignedTopAppBar(
-                    title = { Text("THÔNG BÁO", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary) },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = OrangePrimary)
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { viewModel.onMarkAllAsRead() }) {
-                            Icon(Icons.Default.DoneAll, null, tint = OrangePrimary)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
-                )
-            }
+            NotificationTopBar(
+                onNavigateBack = onNavigateBack,
+                onMarkAllAsRead = { viewModel.onMarkAllAsRead() }
+            )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
-            // Tab row section
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = SurfaceLight,
-                contentColor = OrangePrimary,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = OrangePrimary
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(title, fontSize = 14.sp, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium)
-                        }
-                    )
-                }
-            }
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            CustomTabRow(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it }
+            )
 
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     LoadingWidget()
                 }
             } else if (filteredNotifications.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Không có thông báo nào", color = Color.Gray)
-                }
+                EmptyNotificationState()
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    // Grouping logic (Simplified for mock since we don't have many dates)
-                    val grouped = filteredNotifications.groupBy { if (it.time.contains("trước")) "Hôm nay" else "Trước đó" }
+                NotificationList(
+                    notifications = filteredNotifications,
+                    viewModel = viewModel,
+                    onNavigateToChat = onNavigateToChat,
+                    onNavigateToContract = onNavigateToContract,
+                    onNavigateToInvoice = onNavigateToInvoice,
+                    onNavigateToAppointments = onNavigateToAppointments,
+                    onNavigateToRoom = onNavigateToRoom
+                )
+            }
+        }
+    }
+}
 
-                    grouped.forEach { (header, items) ->
-                        item {
-                            Text(
-                                text = header.uppercase(),
-                                modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Gray,
-                                letterSpacing = 1.sp
-                            )
-                        }
+@Composable
+private fun NotificationTopBar(
+    onNavigateBack: () -> Unit,
+    onMarkAllAsRead: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(SurfaceCard)
+                .clickable { onNavigateBack() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Neutral900,
+                modifier = Modifier.size(20.dp)
+            )
+        }
 
-                        items(items) { notification ->
-                            var visible by remember { mutableStateOf(value = false) }
-                            LaunchedEffect(Unit) { visible = true }
-                            AnimatedVisibility(
-                                visible = visible,
-                                enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn(),
-                            ) {
-                                NotificationRow(
-                                    item = notification,
-                                    onClick = { 
-                                        viewModel.onNotificationRead(notification.id)
-                                        val targetId = notification.targetId
-                                        when (notification.type.uppercase()) {
-                                            "CHAT" -> {
-                                                if (!targetId.isNullOrEmpty()) onNavigateToChat(targetId)
-                                            }
-                                            "CONTRACT" -> {
-                                                if (!targetId.isNullOrEmpty()) onNavigateToContract(targetId)
-                                            }
-                                            "INVOICE", "BILL" -> {
-                                                if (!targetId.isNullOrEmpty()) onNavigateToInvoice(targetId)
-                                            }
-                                            "APPOINTMENT", "SCHEDULE" -> {
-                                                onNavigateToAppointments()
-                                            }
-                                            "MODERATION", "ROOM" -> {
-                                                if (!targetId.isNullOrEmpty()) onNavigateToRoom(targetId)
-                                            }
-                                        }
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
+        Text(
+            text = "THÔNG BÁO",
+            fontFamily = peaceSansFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = Neutral900
+        )
+
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(SurfaceCard)
+                .clickable { onMarkAllAsRead() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.DoneAll,
+                contentDescription = "Read All",
+                tint = PrimaryMain,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CustomTabRow(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    val tabs = listOf("Tất cả", "Chưa đọc")
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(48.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(SurfaceCard)
+            .padding(4.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            tabs.forEachIndexed { index, title ->
+                val isSelected = selectedTab == index
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (isSelected) White else Color.Transparent)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onTabSelected(index) }
+                        )
+                        .then(
+                            if (isSelected) Modifier.shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp), clip = false)
+                            else Modifier
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title,
+                        fontFamily = peaceSansFont,
+                        color = if (isSelected) PrimaryMain else Neutral500,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 15.sp
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyNotificationState() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(PrimaryLight.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(90.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryLight),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryMain),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsNone,
+                        contentDescription = null,
+                        tint = White,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Không có thông báo nào",
+            fontFamily = peaceSansFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = Neutral900
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Bạn sẽ nhận được các thông báo mới nhất về\ntài khoản và giao dịch tại đây.",
+            fontFamily = peaceSansFont,
+            fontSize = 14.sp,
+            color = Neutral500,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp,
+            modifier = Modifier.padding(horizontal = 40.dp)
+        )
+    }
+}
+
+@Composable
+private fun NotificationList(
+    notifications: List<NotificationItem>,
+    viewModel: NotificationViewModel,
+    onNavigateToChat: (String) -> Unit,
+    onNavigateToContract: (String) -> Unit,
+    onNavigateToInvoice: (String) -> Unit,
+    onNavigateToAppointments: () -> Unit,
+    onNavigateToRoom: (String) -> Unit
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        val grouped = notifications.groupBy { if (it.time.contains("trước")) "Hôm nay" else "Trước đó" }
+
+        grouped.forEach { (header, items) ->
+            item {
+                Text(
+                    text = header.uppercase(),
+                    modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
+                    fontFamily = peaceSansFont,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Neutral500,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            items(items) { notification ->
+                var visible by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { visible = true }
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn(),
+                ) {
+                    NotificationRow(
+                        item = notification,
+                        onClick = {
+                            viewModel.onNotificationRead(notification.id)
+                            val targetId = notification.targetId
+                            when (notification.type.uppercase()) {
+                                "CHAT" -> if (!targetId.isNullOrEmpty()) onNavigateToChat(targetId)
+                                "CONTRACT" -> if (!targetId.isNullOrEmpty()) onNavigateToContract(targetId)
+                                "INVOICE", "BILL" -> if (!targetId.isNullOrEmpty()) onNavigateToInvoice(targetId)
+                                "APPOINTMENT", "SCHEDULE" -> onNavigateToAppointments()
+                                "MODERATION", "ROOM" -> if (!targetId.isNullOrEmpty()) onNavigateToRoom(targetId)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
 
@@ -188,16 +334,16 @@ fun NotificationRow(
     onClick: () -> Unit = {}
 ) {
     val (icon, color) = when (item.type.uppercase()) {
-        "BILL", "INVOICE" -> Icons.AutoMirrored.Filled.ReceiptLong to Color(0xFFF44336)
-        "SCHEDULE", "APPOINTMENT" -> Icons.Default.EventAvailable to TealAccent
-        "CONTRACT" -> Icons.Default.Description to OrangePrimary
-        "CHAT" -> Icons.AutoMirrored.Filled.Chat to Color(0xFF4CAF50)
-        "MODERATION" -> Icons.Default.VerifiedUser to Color(0xFF9C27B0)
-        else -> Icons.Default.Info to Color(0xFF2196F3)
+        "BILL", "INVOICE" -> Icons.AutoMirrored.Filled.ReceiptLong to ErrorRose
+        "SCHEDULE", "APPOINTMENT" -> Icons.Default.EventAvailable to AccentTeal
+        "CONTRACT" -> Icons.Default.Description to PrimaryMain
+        "CHAT" -> Icons.AutoMirrored.Filled.Chat to SuccessEmerald
+        "MODERATION" -> Icons.Default.VerifiedUser to LogoNavy
+        else -> Icons.Default.Info to PrimaryMain
     }
 
     Surface(
-        color = if (item.isRead) SurfaceLight else OrangePrimary.copy(alpha = 0.03f),
+        color = if (item.isRead) White else PrimarySurface,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -226,9 +372,10 @@ fun NotificationRow(
                 ) {
                     Text(
                         text = item.title,
-                        fontWeight = if (item.isRead) FontWeight.SemiBold else FontWeight.ExtraBold,
+                        fontFamily = peaceSansFont,
+                        fontWeight = if (item.isRead) FontWeight.Medium else FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = OnBackgroundLight,
+                        color = Neutral900,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -236,8 +383,9 @@ fun NotificationRow(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = com.example.ezroom.util.DateTimeUtils.formatSmartTime(item.time),
+                        fontFamily = peaceSansFont,
                         fontSize = 11.sp,
-                        color = Color.Gray,
+                        color = Neutral500,
                         maxLines = 1
                     )
                 }
@@ -246,8 +394,9 @@ fun NotificationRow(
 
                 Text(
                     text = item.content,
+                    fontFamily = peaceSansFont,
                     fontSize = 14.sp,
-                    color = if (item.isRead) Color.Gray else OnBackgroundLight.copy(0.8f),
+                    color = if (item.isRead) Neutral500 else Neutral700,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 20.sp
@@ -260,7 +409,7 @@ fun NotificationRow(
                         .padding(start = 8.dp, top = 4.dp)
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(OrangePrimary)
+                        .background(PrimaryMain)
                 )
             }
         }
@@ -268,12 +417,11 @@ fun NotificationRow(
 
     HorizontalDivider(
         thickness = 0.5.dp,
-        color = OnBackgroundLight.copy(alpha = 0.05f),
+        color = Neutral300.copy(alpha = 0.5f),
         modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun NotificationScreenPreview() {

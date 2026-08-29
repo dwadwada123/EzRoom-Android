@@ -10,7 +10,11 @@ import com.google.gson.reflect.TypeToken
 object MockData {
     private const val PREFS_NAME = "EzRoomLocalPrefs"
     private val prefs by lazy {
-        EzRoomApplication.getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        try {
+            EzRoomApplication.getContext().getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        } catch (e: Exception) {
+            null
+        }
     }
     private val gson = Gson()
 
@@ -48,8 +52,9 @@ object MockData {
     }
 
     private fun loadAll() {
+        val p = prefs ?: return
         // Load Favorite Room IDs
-        val favJson = prefs.getString("favoriteRoomIds", null)
+        val favJson = p.getString("favoriteRoomIds", null)
         if (favJson != null) {
             val type = object : TypeToken<List<String>>() {}.type
             val list = gson.fromJson<List<String>>(favJson, type) ?: emptyList()
@@ -58,7 +63,7 @@ object MockData {
         }
 
         // Load Appointments
-        val apptsJson = prefs.getString("appointments", null)
+        val apptsJson = p.getString("appointments", null)
         if (apptsJson != null) {
             val type = object : TypeToken<List<Appointment>>() {}.type
             val list = gson.fromJson<List<Appointment>>(apptsJson, type) ?: emptyList()
@@ -67,7 +72,7 @@ object MockData {
         }
 
         // Load Renter Reviews
-        val reviewsJson = prefs.getString("renterReviews", null)
+        val reviewsJson = p.getString("renterReviews", null)
         if (reviewsJson != null) {
             val type = object : TypeToken<List<RenterReview>>() {}.type
             val list = gson.fromJson<List<RenterReview>>(reviewsJson, type) ?: emptyList()
@@ -76,7 +81,7 @@ object MockData {
         }
 
         // Load Conversations
-        val convsJson = prefs.getString("conversations", null)
+        val convsJson = p.getString("conversations", null)
         if (convsJson != null) {
             val type = object : TypeToken<List<Conversation>>() {}.type
             val list = gson.fromJson<List<Conversation>>(convsJson, type) ?: emptyList()
@@ -85,7 +90,7 @@ object MockData {
         }
 
         // Load Messages
-        val msgsJson = prefs.getString("messages", null)
+        val msgsJson = p.getString("messages", null)
         if (msgsJson != null) {
             val type = object : TypeToken<List<Message>>() {}.type
             val list = gson.fromJson<List<Message>>(msgsJson, type) ?: emptyList()
@@ -94,7 +99,7 @@ object MockData {
         }
 
         // Load Notifications
-        val notifsJson = prefs.getString("notifications", null)
+        val notifsJson = p.getString("notifications", null)
         if (notifsJson != null) {
             val type = object : TypeToken<List<NotificationItem>>() {}.type
             val list = gson.fromJson<List<NotificationItem>>(notifsJson, type) ?: emptyList()
@@ -103,7 +108,7 @@ object MockData {
         }
 
         // Load Payment Accounts
-        val payJson = prefs.getString("paymentAccounts", null)
+        val payJson = p.getString("paymentAccounts", null)
         if (payJson != null) {
             val type = object : TypeToken<List<PaymentAccount>>() {}.type
             val list = gson.fromJson<List<PaymentAccount>>(payJson, type) ?: emptyList()
@@ -114,30 +119,30 @@ object MockData {
 
     // Save triggers
     fun saveAppointments() {
-        prefs.edit().putString("appointments", gson.toJson(appointments.toList())).apply()
+        prefs?.edit()?.putString("appointments", gson.toJson(appointments.toList()))?.apply()
     }
 
     fun saveReviews() {
-        prefs.edit().putString("renterReviews", gson.toJson(renterReviews.toList())).apply()
+        prefs?.edit()?.putString("renterReviews", gson.toJson(renterReviews.toList()))?.apply()
     }
 
     fun saveConversations() {
-        prefs.edit().putString("conversations", gson.toJson(conversations.toList())).apply()
+        prefs?.edit()?.putString("conversations", gson.toJson(conversations.toList()))?.apply()
     }
 
     fun saveMessages() {
-        prefs.edit().putString("messages", gson.toJson(messages.toList())).apply()
+        prefs?.edit()?.putString("messages", gson.toJson(messages.toList()))?.apply()
     }
 
     fun saveNotifications() {
-        prefs.edit().putString("notifications", gson.toJson(notifications.toList())).apply()
+        prefs?.edit()?.putString("notifications", gson.toJson(notifications.toList()))?.apply()
     }
 
     fun savePaymentAccounts() {
-        prefs.edit().putString("paymentAccounts", gson.toJson(paymentAccounts.toList())).apply()
+        prefs?.edit()?.putString("paymentAccounts", gson.toJson(paymentAccounts.toList()))?.apply()
     }
 
     fun saveFavoriteRoomIds() {
-        prefs.edit().putString("favoriteRoomIds", gson.toJson(favoriteRoomIds.toList())).apply()
+        prefs?.edit()?.putString("favoriteRoomIds", gson.toJson(favoriteRoomIds.toList()))?.apply()
     }
 }

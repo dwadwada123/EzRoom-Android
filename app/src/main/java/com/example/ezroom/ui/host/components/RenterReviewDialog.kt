@@ -12,8 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.ui.theme.AccentAmber
+import com.example.ezroom.ui.theme.EzRoomTheme
 import com.example.ezroom.ui.theme.ErrorRose
 import com.example.ezroom.ui.theme.Neutral300
 
@@ -154,4 +156,33 @@ fun RenterReviewDialog(
         },
         containerColor = Color.White
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RenterReviewDialogPreview() {
+    EzRoomTheme {
+        RenterReviewDialog(
+            renterName = "Nguyễn Văn A",
+            onDismiss = {},
+            onSubmit = { _, _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RenterReviewDialogEditPreview() {
+    EzRoomTheme {
+        RenterReviewDialog(
+            renterName = "Nguyễn Văn A",
+            isEditMode = true,
+            initialRating = 4,
+            initialComment = "Khách thuê rất tốt, giữ gìn vệ sinh sạch sẽ.",
+            initialTags = listOf("Thanh toán đúng hạn", "Giữ gìn vệ sinh"),
+            onDismiss = {},
+            onSubmit = { _, _, _ -> },
+            onDelete = {}
+        )
+    }
 }

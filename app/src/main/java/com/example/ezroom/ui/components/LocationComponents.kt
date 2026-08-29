@@ -6,8 +6,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ezroom.data.remote.LocationSuggestion
+import com.example.ezroom.ui.theme.EzRoomTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,6 +124,25 @@ fun AddressSuggestionField(
                     }
                 )
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LocationDropdownPreview() {
+    EzRoomTheme {
+        var selectedItem by remember { mutableStateOf("Hà Nội") }
+        val items = listOf("Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Cần Thơ")
+        
+        Box(modifier = Modifier.padding(16.dp)) {
+            LocationDropdown(
+                label = "Tỉnh/Thành phố",
+                items = items,
+                selectedItemName = selectedItem,
+                onItemSelected = { selectedItem = it },
+                getItemName = { it }
+            )
         }
     }
 }

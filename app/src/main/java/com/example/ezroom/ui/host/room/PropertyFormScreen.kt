@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.domain.model.*
@@ -66,16 +67,10 @@ fun PropertyFormScreen(
     // State Management: UI State from ViewModel
     val uiState by viewModel.uiState.collectAsState()
     
-    var showDiscardDialog by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
     // State Management: Location states
     val provinces by locationViewModel.provinces.collectAsState()
     val wards by locationViewModel.wards.collectAsState()
     val isLocationLoading by locationViewModel.isLoading.collectAsState()
-
-    var selectedProvince by remember { mutableStateOf<Province?>(null) }
-    var selectedWard by remember { mutableStateOf<Ward?>(null) }
 
     // Initialization: Load property data if editing
     LaunchedEffect(propertyId) {
@@ -96,7 +91,46 @@ fun PropertyFormScreen(
         }
     }
 
+    PropertyFormContent(
+        uiState = uiState,
+        provinces = provinces,
+        wards = wards,
+        isLocationLoading = isLocationLoading,
+        propertyId = propertyId,
+        onBack = onBack,
+        onNameChange = viewModel::onNameChange,
+        onDetailedAddressChange = viewModel::onDetailedAddressChange,
+        onDescriptionChange = viewModel::onDescriptionChange,
+        onToggleAmenity = viewModel::onToggleAmenity,
+        onSave = viewModel::onSave,
+        onSelectProvince = locationViewModel::selectProvince
+    )
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PropertyFormContent(
+    uiState: PropertyFormUiState,
+    provinces: List<Province>,
+    wards: List<Ward>,
+    isLocationLoading: Boolean,
+    propertyId: String? = null,
+    onBack: () -> Unit = {},
+    onNameChange: (String) -> Unit = {},
+    onDetailedAddressChange: (String) -> Unit = {},
+    onDescriptionChange: (String) -> Unit = {},
+    onToggleAmenity: (Int) -> Unit = {},
+    onSave: (String?, String?, String?, Double, Double) -> Unit = { _, _, _, _, _ -> },
+    onSelectProvince: (String) -> Unit = {}
+) {
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // State Management: Location states
+    var selectedProvince by remember { mutableStateOf<Province?>(null) }
+    var selectedWard by remember { mutableStateOf<Ward?>(null) }
+
+    val isEditMode = propertyId != null && propertyId != "{propertyId}"
 
     val isFormValid = uiState.name.isNotEmpty() && 
                       (isEditMode || (selectedProvince != null && selectedWard != null)) && 
@@ -132,7 +166,7 @@ fun PropertyFormScreen(
                 // UI Component: Property Name
                 CustomTextField(
                     value = uiState.name,
-                    onValueChange = { viewModel.onNameChange(it) },
+                    onValueChange = onNameChange,
                     label = "Tên dãy trọ (VD: EzHome Quận 7)",
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -146,7 +180,7 @@ fun PropertyFormScreen(
                         onItemSelected = { 
                             selectedProvince = it
                             selectedWard = null
-                            locationViewModel.selectProvince(it.code)
+                            onSelectProvince(it.code)
                         },
                         getItemName = { it.name },
                         isLoading = isLocationLoading && provinces.isEmpty()
@@ -221,11 +255,11 @@ fun PropertyFormScreen(
                 // UI Component: Detailed Address
                 AddressSuggestionField(
                     value = uiState.detailedAddress,
-                    onValueChange = { viewModel.onDetailedAddressChange(it) },
+                    onValueChange = onDetailedAddressChange,
                     label = "Địa chỉ chi tiết",
                     suggestions = suggestions,
                     onSuggestionSelected = { suggestion ->
-                        viewModel.onDetailedAddressChange(suggestion.displayName)
+                        onDetailedAddressChange(suggestion.displayName)
                         val newLatLng = LatLng(suggestion.lat, suggestion.lon)
                         markerState.position = newLatLng
                         scope.launch {
@@ -249,7 +283,7 @@ fun PropertyFormScreen(
                                 val index = uiState.commonAmenities.indexOf(item)
                                 FilterChip(
                                     selected = item.isChecked,
-                                    onClick = { if (index != -1) viewModel.onToggleAmenity(index) },
+                                    onClick = { if (index != -1) onToggleAmenity(index) },
                                     label = { Text(item.name, style = MaterialTheme.typography.labelSmall) },
                                     leadingIcon = if (item.isChecked) {
                                         { Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp)) }
@@ -288,7 +322,7 @@ fun PropertyFormScreen(
                 // UI Component: Property Description
                 CustomTextField(
                     value = uiState.description,
-                    onValueChange = { viewModel.onDescriptionChange(it) },
+                    onValueChange = onDescriptionChange,
                     label = "Mô tả chung cho cả dãy trọ",
                     modifier = Modifier.fillMaxWidth().height(100.dp),
                     singleLine = false
@@ -300,7 +334,7 @@ fun PropertyFormScreen(
                 PrimaryButton(
                     text = if (!isEditMode) "TIẾP THEO: THÊM PHÒNG ĐẦU TIÊN" else "HOÀN TẤT CHỈNH SỬA",
                     onClick = {
-                        viewModel.onSave(
+                        onSave(
                             propertyId, 
                             selectedProvince?.name, 
                             selectedWard?.name, 
@@ -345,5 +379,33 @@ fun PropertyFormScreen(
 
             if (uiState.isLoading) LoadingWidget()
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PropertyFormScreenPreview() {
+    EzRoomTheme {
+        PropertyFormContent(
+            uiState = PropertyFormUiState(
+                name = "EzHome Quận 7",
+                detailedAddress = "123 Nguyễn Văn Linh",
+                commonAmenities = listOf(
+                    CommonAmenityItem("Bảo vệ 24/7", true),
+                    CommonAmenityItem("Camera an ninh", true),
+                    CommonAmenityItem("Thang máy", false),
+                    CommonAmenityItem("Nhà xe chung", true)
+                )
+            ),
+            provinces = listOf(
+                Province("Hồ Chí Minh", "79"),
+                Province("Hà Nội", "01")
+            ),
+            wards = listOf(
+                Ward("Tân Phong", "27493"),
+                Ward("Tân Kiểng", "27499")
+            ),
+            isLocationLoading = false
+        )
     }
 }

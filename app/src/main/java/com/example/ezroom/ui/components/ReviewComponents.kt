@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ezroom.domain.model.RenterReview
@@ -224,4 +225,22 @@ fun ReviewReportDialog(
         },
         containerColor = Color.White
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RenterReviewItemPreview() {
+    val sampleReview = RenterReview(
+        id = "1",
+        hostName = "Nguyễn Văn A",
+        rating = 5,
+        tags = listOf("Thân thiện", "Sạch sẽ", "Hỗ trợ nhiệt tình"),
+        comment = "Người thuê rất lịch sự, giữ gìn vệ sinh phòng ốc sạch sẽ và đóng tiền đúng hạn. Rất mong được tiếp tục cho bạn thuê.",
+        date = "20/10/2023"
+    )
+    EzRoomTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            RenterReviewItem(review = sampleReview)
+        }
+    }
 }

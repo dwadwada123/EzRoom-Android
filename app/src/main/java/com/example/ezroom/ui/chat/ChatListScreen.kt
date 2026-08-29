@@ -2,12 +2,16 @@ package com.example.ezroom.ui.chat
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -34,6 +40,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+val ChatLogoNavy = Color(0xFF0A3366)
+val ChatLogoCyan = Color(0xFF00AEEF)
+val peaceSansFont = FontFamily.SansSerif
 
 fun formatChatListTimestamp(rawTimestamp: String?): String {
     if (rawTimestamp.isNullOrBlank()) return ""
@@ -87,70 +97,187 @@ fun ChatListScreen(
 ) {
     val uiState by viewModel.listState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableStateOf(0) }
 
-    Column(modifier = Modifier.fillMaxSize().background(Neutral50)) {
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Floating Search Bar
-        Surface(
-            modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 8.dp)
-                .fillMaxWidth()
-                .height(56.dp)
-                .shadow(12.dp, CircleShape),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+        containerColor = Color.White,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { /* New Chat */ },
+                containerColor = ChatLogoCyan,
+                contentColor = Color.White,
+                shape = CircleShape
             ) {
-                Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                TextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { 
-                        Text("Tìm kiếm liên hệ...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) 
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    singleLine = true
-                )
+                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "New Message")
             }
         }
-
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                LoadingWidget()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.White)
+        ) {
+            // Header: Title and Segmented Control
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                itemsIndexed(uiState.conversations, key = { _, it -> it.id }) { index, chat ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInVertically(initialOffsetY = { 40 * (index + 1) }) + fadeIn(),
+                Text(
+                    text = "Tin nhắn",
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = peaceSansFont,
+                    color = ChatLogoNavy
+                )
+
+                // Simple Segmented Control (All / Scheduled)
+                Surface(
+                    color = Color(0xFFF1F5F9),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        TabItem(
+                            text = "Tất cả",
+                            isSelected = selectedTab == 0,
+                            onClick = { selectedTab = 0 }
+                        )
+                        TabItem(
+                            text = "Lịch hẹn",
+                            isSelected = selectedTab == 1,
+                            onClick = { selectedTab = 1 }
+                        )
+                    }
+                }
+            }
+
+            // Search Bar
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFF1F5F9)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = peaceSansFont,
+                            color = Color.Black
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    "Tìm kiếm tin nhắn hoặc người dùng",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = peaceSansFont,
+                                    color = Color.Gray
+                                )
+                            }
+                            innerTextField()
+                        },
+                        singleLine = true
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    LoadingWidget()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    itemsIndexed(uiState.conversations, key = { _, it -> it.id }) { index, chat ->
                         ConversationListItem(
                             chat = chat, 
                             onClick = { 
                                 onConversationClick(chat.id, chat.otherPartyName ?: "Người dùng", chat.otherPartyPhone ?: "0000000000") 
                             },
                         )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 96.dp, end = 24.dp),
+                            color = Color(0xFFF1F5F9),
+                            thickness = 1.dp
+                        )
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "LƯU TRỮ",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = peaceSansFont,
+                                color = Color.Gray,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TabItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = if (isSelected) Color.White else Color.Transparent,
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = if (isSelected) 2.dp else 0.dp,
+        modifier = Modifier.width(80.dp).fillMaxHeight()
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontFamily = peaceSansFont,
+                color = if (isSelected) Color.Black else Color.Gray
+            )
         }
     }
 }
@@ -160,58 +287,36 @@ private fun ConversationListItem(
     chat: Conversation,
     onClick: () -> Unit
 ) {
-    // Styling: pulse online status logic can be added here
-    val isOnline = chat.unreadCount > 0 // Mocking online status if there are unread messages for visual variety
+    val isUnread = chat.unreadCount > 0
     
     Surface(
         onClick = onClick,
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
-        shadowElevation = 2.dp
+        color = Color.White,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar
-            Box(contentAlignment = Alignment.BottomEnd) {
-                Surface(
-                    modifier = Modifier.size(64.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = chat.otherPartyName?.take(1) ?: "U",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-
-                if (isOnline) {
-                    Surface(
-                        modifier = Modifier.size(18.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.background,
-                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.background)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(2.dp)
-                                .clip(CircleShape)
-                                .background(SuccessEmerald)
-                        )
-                    }
+            Surface(
+                modifier = Modifier.size(56.dp),
+                shape = CircleShape,
+                color = ChatLogoCyan.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = chat.otherPartyName?.take(1) ?: "U",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = peaceSansFont,
+                        color = ChatLogoCyan
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -221,46 +326,52 @@ private fun ConversationListItem(
                 ) {
                     Text(
                         text = chat.otherPartyName ?: "Người dùng",
-                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontFamily = peaceSansFont,
+                        color = Color.Black
                     )
                     Text(
                         text = formatChatListTimestamp(chat.timestamp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.primary else Neutral500,
-                        fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Normal
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        fontFamily = peaceSansFont
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Double checkmarks for "read" (mocked)
+                    Icon(
+                        imageVector = Icons.Default.DoneAll,
+                        contentDescription = null,
+                        tint = if (isUnread) Color.Gray else ChatLogoCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
                     Text(
                         text = chat.lastMessage ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.onSurface else Neutral500,
-                        fontWeight = if (chat.unreadCount > 0) FontWeight.SemiBold else FontWeight.Normal,
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontFamily = peaceSansFont,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
 
-                    if (chat.unreadCount > 0) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = chat.unreadCount.toString(),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Icon(
+                        imageVector = if (isUnread) Icons.Default.Star else Icons.Default.StarOutline,
+                        contentDescription = null,
+                        tint = if (isUnread) Color(0xFFF59E0B) else Color.LightGray,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
