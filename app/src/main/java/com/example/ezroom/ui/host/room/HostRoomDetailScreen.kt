@@ -171,7 +171,7 @@ fun HostRoomDetailScreen(
                             // Create new review in MongoDB
                             val targetRenterId = renterPhoneToReview.ifBlank { renterIdToReview }
                             val newReview = com.example.ezroom.domain.model.RenterReview(
-                                id = java.util.UUID.randomUUID().toString(),
+                                id = "",
                                 renterId = targetRenterId,
                                 hostName = currentHostName,
                                 rating = ratingScore,

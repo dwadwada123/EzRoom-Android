@@ -962,7 +962,7 @@ fun AppNavigation() {
                             scope.launch {
                                 if (appointment == null) {
                                     val newAppt = com.example.ezroom.domain.model.Appointment(
-                                        id = java.util.UUID.randomUUID().toString(),
+                                        id = "",
                                         roomId = roomId ?: "",
                                         roomName = room?.title ?: "Phòng trọ",
                                         renterName = currentUser?.name ?: "Người thuê",

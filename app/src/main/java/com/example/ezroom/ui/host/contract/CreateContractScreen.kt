@@ -123,7 +123,7 @@ fun CreateContractScreen(
         val currentHostName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
 
         val contract = Contract(
-            id = UUID.randomUUID().toString(),
+            id = "",
             roomId = selectedRoomId,
             roomName = selectedRoomName,
             renterName = renterName,

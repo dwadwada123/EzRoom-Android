@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 // State Management: UI State for Property Form
 data class PropertyFormUiState(
@@ -110,7 +109,7 @@ class PropertyFormViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            val newId = if (isEditMode) propertyId!! else UUID.randomUUID().toString()
+            val newId = if (isEditMode) propertyId!! else ""
             val currentUser = com.example.ezroom.util.TokenManager.getUser()
             val property = Property(
                 id = newId,

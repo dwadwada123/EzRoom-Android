@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class RoomFormUiState(
     val title: String = "",
@@ -190,7 +189,7 @@ class RoomFormViewModel(
             val finalCapacity = state.capacity.toIntOrNull() ?: 0
 
             val room = Room(
-                id = if (state.isEditMode) state.cloneFromRoomId!! else UUID.randomUUID().toString(),
+                id = if (state.isEditMode) state.cloneFromRoomId!! else "",
                 propertyId = propertyId ?: state.belongsToProperty?.id,
                 title = state.title,
                 price = finalPrice,

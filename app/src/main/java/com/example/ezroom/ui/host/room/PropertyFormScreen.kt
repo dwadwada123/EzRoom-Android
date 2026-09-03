@@ -38,7 +38,6 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.UUID
 import com.example.ezroom.data.remote.NetworkClient
 import com.example.ezroom.data.remote.LocationApi
 import com.example.ezroom.data.remote.LocationSuggestion

@@ -7,7 +7,6 @@ import com.example.ezroom.domain.model.PaymentAccount
 import com.example.ezroom.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 // State Management: UI State for Payment Account Management
 data class PaymentAccountUiState(
@@ -89,7 +88,7 @@ class PaymentAccountViewModel(
     fun onAddAccount(bank: Bank, number: String, owner: String) {
         viewModelScope.launch {
             val newAccount = PaymentAccount(
-                id = UUID.randomUUID().toString(),
+                id = "",
                 bank = bank,
                 accountNumber = number,
                 accountOwner = owner

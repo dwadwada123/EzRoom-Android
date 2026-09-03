@@ -43,7 +43,6 @@ import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -361,7 +360,7 @@ fun CreateInvoiceScreen(
                                 
                                 // Simulate saving to MockData
                                 val newInvoice = Invoice(
-                                    id = "INV-${UUID.randomUUID().toString().take(6).uppercase()}",
+                                    id = "",
                                     roomId = selectedRoom?.id ?: "",
                                     roomName = selectedRoom?.title ?: "Phòng trọ",
                                     period = SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date()),

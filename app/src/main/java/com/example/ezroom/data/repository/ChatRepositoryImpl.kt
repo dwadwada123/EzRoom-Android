@@ -48,7 +48,6 @@ class ChatRepositoryImpl(
             val hostId = if (parts.size == 3) parts[2] else if (user.role == "HOST") user.id else ""
 
             val request = com.example.ezroom.data.remote.SendMessageRequest(
-                id = UUID.randomUUID().toString(),
                 conversationId = conversationId,
                 senderId = user.id,
                 content = text,

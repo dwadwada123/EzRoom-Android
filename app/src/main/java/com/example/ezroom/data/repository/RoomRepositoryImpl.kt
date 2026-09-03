@@ -203,7 +203,7 @@ class RoomRepositoryImpl : RoomRepository {
     override suspend fun saveProperty(property: Property) {
         try {
             val request = PropertyRequest(
-                id = property.id,
+                id = property.id.takeIf { it.isNotBlank() },
                 name = property.name,
                 type = property.type.name,
                 address = property.address,
@@ -256,7 +256,7 @@ class RoomRepositoryImpl : RoomRepository {
     override suspend fun saveRoom(room: Room) {
         try {
             val request = RoomRequest(
-                id = room.id,
+                id = room.id.takeIf { it.isNotBlank() },
                 propertyId = room.propertyId,
                 title = room.title,
                 price = room.price,

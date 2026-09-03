@@ -123,7 +123,7 @@ interface AuthApi {
 // DTO for creating a property: serializes commonAmenities as List<String>
 // to match the backend schema expectation instead of List<Amenity> objects.
 data class PropertyRequest(
-    val id: String,
+    val id: String? = null,
     val name: String,
     val type: String,
     val address: String,
@@ -173,7 +173,7 @@ interface PropertyApi {
 
 // DTO for sending a room to the backend - only backend-relevant fields, no UI-only properties.
 data class RoomRequest(
-    val id: String,
+    val id: String? = null,
     val propertyId: String?,
     val title: String,
     val price: Long,
@@ -458,7 +458,7 @@ interface UserProfileApi {
 }
 
 data class SendMessageRequest(
-    val id: String,
+    val id: String? = null,
     val conversationId: String,
     val senderId: String,
     val content: String,
