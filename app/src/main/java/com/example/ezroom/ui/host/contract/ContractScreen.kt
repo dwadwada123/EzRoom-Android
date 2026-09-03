@@ -55,11 +55,11 @@ fun HostContractScreen(
     )
 ) {
     val formatter = remember { DecimalFormat("#,### đ") }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         containerColor = Neutral50,
         topBar = {
-            val context = androidx.compose.ui.platform.LocalContext.current
             CenterAlignedTopAppBar(
                 title = { Text("Quản lý hợp đồng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -70,7 +70,7 @@ fun HostContractScreen(
                 actions = {
                     IconButton(onClick = { com.example.ezroom.util.PdfExporter.exportContractPdf(context, contract) }) {
                         Icon(
-                            imageVector = Icons.Default.Download,
+                            imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = "Xuất PDF Hợp đồng",
                             tint = PrimaryMain
                         )
@@ -228,7 +228,6 @@ fun HostContractScreen(
             }
         }
     ) { paddingValues ->
-        val context = androidx.compose.ui.platform.LocalContext.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -287,7 +286,7 @@ fun HostContractScreen(
                         color = PrimaryMain
                     )
                     Text(
-                        text = "(Mã hợp đồng: ${contract.id.ifBlank { "HD-EZROOM-2026" }})",
+                        text = "(Số: ${contract.id.ifBlank { "HD-EZROOM-2026" }})",
                         fontSize = 11.sp,
                         color = Neutral500,
                         textAlign = TextAlign.Center,
@@ -299,7 +298,7 @@ fun HostContractScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("CĂN CỨ PHÁP LÝ GIAO KẾT", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
                         Text(
-                            text = "• Căn cứ Bộ luật Dân sự số 91/2015/QH13;\n• Căn cứ Luật Giao dịch điện tử số 20/2023/QH15;\n• Căn cứ Luật Nhà ở số 27/2023/QH15 & Luật Kinh doanh BĐS số 29/2023/QH15;\n• Căn cứ Nghị định 52/2013/NĐ-CP & Nghị định 85/2021/NĐ-CP về TMĐT;\n• Thông qua nền tảng công nghệ quản lý và thuê trọ trực tuyến EzRoom.",
+                            text = "• Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;\n• Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 ngày 22/06/2023;\n• Căn cứ Luật Nhà ở số 27/2023/QH15 ngày 27/11/2023;\n• Căn cứ Luật Kinh doanh bất động sản số 29/2023/QH15 ngày 28/11/2023;\n• Căn cứ Luật Thương mại số 36/2005/QH11 ngày 14/06/2005;\n• Căn cứ Nghị định số 52/2013/NĐ-CP & Nghị định số 85/2021/NĐ-CP về TMĐT;\n• Thông qua nền tảng công nghệ quản lý và thuê trọ trực tuyến EzRoom.",
                             fontSize = 12.sp, lineHeight = 18.sp, color = Neutral700
                         )
                     }
@@ -341,7 +340,7 @@ fun HostContractScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text("BÊN TRUNG GIAN NỀN TẢNG (BÊN C):", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
-                                Text("• Tên đơn vị: Nền tảng Công nghệ EzRoom", fontSize = 12.sp)
+                                Text("• Tên đơn vị: Nền tảng Công nghệ EzRoom Escrow", fontSize = 12.sp)
                                 Text("• MST: 0123456789 | Đại diện: Trần Vũ Phong", fontSize = 11.sp, color = Neutral500)
                             }
                         }
@@ -354,15 +353,15 @@ fun HostContractScreen(
                         val displayRoomName = contract.roomName.takeIf { !it.isNullOrBlank() } ?: "Phòng trọ"
                         val displayAddress = contract.address?.takeIf { it.isNotBlank() } ?: "Theo bài đăng phòng trọ"
                         Text(
-                            text = "• Phòng trọ: $displayRoomName\n• Địa chỉ: $displayAddress\n• Mục đích thuê: Dùng để ở, sinh hoạt văn minh\n• Thời hạn thuê: Từ ngày ${contract.startDate} đến ngày ${contract.endDate}",
+                            text = "• Phòng trọ số: $displayRoomName\n• Địa chỉ: $displayAddress\n• Mục đích thuê: Dùng để ở, sinh hoạt văn minh\n• Thời hạn thuê: Từ ngày ${contract.startDate} đến ngày ${contract.endDate}",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("ĐIỀU 2: GIÁ THUÊ & TIỀN CỌC KÝ QUỸ", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
+                        Text("ĐIỀU 2: GIÁ THUÊ, TIỀN CỌC VÀ PHƯƠNG THỨC THANH TOÁN", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
                         Text(
-                            text = "• Tiền đặt cọc bảo hộ (Escrow): ${formatter.format(contract.depositAmount)}\n• Cơ chế bảo vệ: Tiền cọc được phong tỏa an toàn trên EzRoom Escrow và giải ngân cho Chủ nhà khi hợp đồng có hiệu lực.\n• Thanh toán tiền phòng: Vào ngày 05 hàng tháng qua hệ thống ứng dụng EzRoom.",
+                            text = "1. Tiền đặt cọc bảo hộ (Escrow): ${formatter.format(contract.depositAmount)}\n2. Cơ chế bảo vệ: Tiền cọc được phong tỏa an toàn trên EzRoom Escrow và giải ngân cho Chủ nhà khi hợp đồng có hiệu lực.\n3. Thanh toán tiền phòng: Vào ngày 05 hàng tháng qua hệ thống ứng dụng EzRoom.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -370,7 +369,7 @@ fun HostContractScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("ĐIỀU 3: PHÍ DỊCH VỤ NỀN TẢNG", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
                         Text(
-                            text = "• Phí kết nối giao dịch thành công: 5% theo quy chế hoạt động nền tảng EzRoom.\n• Khấu trừ tự động qua hệ thống khi thanh toán tiền phòng. Bên C có nghĩa vụ xuất hóa đơn điện tử hợp pháp theo quy định pháp luật.",
+                            text = "1. Phí kết nối giao dịch thành công: 5% theo quy chế hoạt động nền tảng EzRoom.\n2. Khấu trừ tự động qua hệ thống khi thanh toán tiền phòng. Bên C có nghĩa vụ xuất hóa đơn điện tử hợp pháp theo quy định pháp luật.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -378,7 +377,7 @@ fun HostContractScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("ĐIỀU 4: QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
                         Text(
-                            text = "1. Quyền và nghĩa vụ Bên A:\n• Giao phòng và tài sản đúng tình trạng thỏa thuận.\n• Tôn trọng quyền riêng tư của Bên B: Tuyệt đối KHÔNG tự ý vào phòng thuê khi chưa báo trước ít nhất 24 giờ và chưa được Bên B đồng ý (trừ trường hợp khẩn cấp như hỏa hoạn, sự cố nguy hiểm).\n• Có trách nhiệm hỗ trợ làm thủ tục đăng ký tạm trú cho Bên B.\n\n2. Quyền và nghĩa vụ Bên B:\n• Trả tiền phòng và chi phí sinh hoạt đúng thời hạn.\n• Sử dụng đúng mục đích, giữ gìn trật tự và vệ sinh chung; không tự ý sửa đổi kết cấu khi chưa được Bên A đồng ý.\n\n3. Quyền và nghĩa vụ Bên C (EzRoom):\n• Đảm bảo vận hành nền tảng, bảo mật dữ liệu hợp đồng điện tử.\n• Giữ vai trò trung gian đối soát và bảo đảm tiền cọc minh bạch.",
+                            text = "1. Quyền và nghĩa vụ Bên A:\n• Giao phòng và tài sản đúng tình trạng thỏa thuận.\n• Tôn trọng quyền riêng tư của Bên B: Tuyệt đối KHÔNG tự ý vào phòng thuê khi chưa báo trước ít nhất 24 giờ và chưa được Bên B đồng ý (trừ trường hợp khẩn cấp như hỏa hoạn, sự cố nguy hiểm).\n• Có trách nhiệm hỗ trợ làm thủ tục đăng ký tạm trú cho Bên B.\n\n2. Quyền và nghĩa vụ Bên B:\n• Trả tiền phòng và chi phí sinh hoạt đúng thời hạn.\n• Sử dụng đúng mục đích, giữ gìn trật tự và vệ sinh chung; không tự ý sửa đổi kết cấu khi chưa được Bên A đồng ý.\n\n3. Quyền và nghĩa vụ Bên C (EzRoom):\n• Đảm bảo vận hành nền tảng, bảo mật dữ liệu hợp đồng điện tử.\n• Giữ vai trò trung gian đối soát và bảo đảm tiền cọc minh bạch qua EzRoom Escrow.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -386,7 +385,15 @@ fun HostContractScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("ĐIỀU 5: CHẤM DỨT HỢP ĐỒNG & GIẢI QUYẾT TRANH CHẤP", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
                         Text(
-                            text = "• Đơn phương chấm dứt: Báo trước ít nhất 30 ngày qua ứng dụng. Xử lý vi phạm theo quy định đặt cọc bảo hộ EzRoom Escrow.\n• Giải quyết tranh chấp: Ưu tiên thương lượng hòa bình thông qua hỗ trợ đối soát dữ liệu từ Bên C. Trường hợp vi phạm pháp luật sẽ trình báo cơ quan Công an có thẩm quyền.",
+                            text = "1. Đơn phương chấm dứt: Báo trước ít nhất 30 ngày qua ứng dụng. Xử lý vi phạm theo quy định đặt cọc bảo hộ EzRoom Escrow.\n2. Giải quyết tranh chấp: Ưu tiên thương lượng hòa bình thông qua hỗ trợ đối soát dữ liệu từ Bên C. Trường hợp vi phạm pháp luật sẽ trình báo cơ quan Công an có thẩm quyền.",
+                            fontSize = 12.sp, lineHeight = 19.sp
+                        )
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("ĐIỀU 6: CÁC THỎA THUẬN KHÁC", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
+                        Text(
+                            text = "Các bên thống nhất thực hiện đúng các cam kết ghi nhận trên ứng dụng EzRoom. Hợp đồng có hiệu lực kể từ thời điểm Bên B hoàn tất ký số điện tử và đặt cọc thành công.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -394,7 +401,7 @@ fun HostContractScreen(
                     HorizontalDivider(color = Neutral100)
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("XÁC NHẬN VÀ CHỮ KÝ ĐIỆN TỬ", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
+                        Text("XÁC NHẬN VÀ CHỮ KÝ ĐIỆN TỬ 3 BÊN", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = PrimaryMain)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -491,22 +498,6 @@ private fun FintechStatusBanner(contract: Contract) {
             Spacer(modifier = Modifier.width(12.dp))
             Text(text = text, style = MaterialTheme.typography.bodySmall, color = color, fontWeight = FontWeight.Bold)
         }
-    }
-}
-
-@Composable
-private fun ContractPartyItem(label: String, name: String) {
-    Column {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Neutral500)
-        Text(text = name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun ContractDetailRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = Neutral500)
-        Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }
 
