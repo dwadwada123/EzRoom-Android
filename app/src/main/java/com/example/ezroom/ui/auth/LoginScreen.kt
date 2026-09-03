@@ -155,7 +155,7 @@ fun LoginScreen(
                     PasswordTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = "••••••••",
+                        label = "",
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
