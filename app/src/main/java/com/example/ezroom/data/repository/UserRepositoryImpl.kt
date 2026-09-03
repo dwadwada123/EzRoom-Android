@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import java.util.UUID
 
 import com.example.ezroom.data.remote.ForgotPasswordRequest
 import com.example.ezroom.data.remote.ResetPasswordRequest
@@ -150,7 +149,6 @@ class UserRepositoryImpl : UserRepository {
     override suspend fun register(name: String, email: String, phone: String, password: String, role: String): Boolean {
         return try {
             val response = authApi.register(RegisterRequest(
-                id = UUID.randomUUID().toString(),
                 name = name,
                 email = email,
                 phone = phone,

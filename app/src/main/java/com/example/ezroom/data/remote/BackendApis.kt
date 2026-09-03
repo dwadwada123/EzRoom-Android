@@ -39,7 +39,6 @@ data class AmenityDto(
 )
 
 data class RegisterRequest(
-    val id: String,
     val name: String,
     val email: String,
     val phone: String,
