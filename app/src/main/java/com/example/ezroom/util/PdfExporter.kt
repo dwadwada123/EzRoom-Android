@@ -345,7 +345,7 @@ object PdfExporter {
             // Điều 3
             canvas1.drawText("ĐIỀU 3: PHÍ DỊCH VỤ NỀN TẢNG", leftX, y1, sectionHeaderPaint)
             y1 += 14f
-            val d3Text = "1. Phí kết nối giao dịch thành công bằng 5% tiền thuê được tự động khấu trừ qua hệ thống ứng dụng EzRoom.\n2. Bên C có nghĩa vụ xuất hóa đơn điện tử hợp pháp cho Bên thanh toán theo quy định pháp luật."
+            val d3Text = "1. Hàng tháng Bên A phải thanh toán phí tiện ích cho Bên C với số tiền bằng 1.5% giá thuê phòng/tháng(đã bao gồm thuế GTGT).\n2. Mọi chi phí sẽ được khấu trừ tự động qua hệ thống khi thanh toán tiền phòng. Bên C có nghĩa vụ xuất hóa đơn điện tử hợp pháp theo quy định pháp luật."
             for (p in d3Text.split("\n")) {
                 y1 = drawWrapped(canvas1, p, leftX + 10f, y1, textPaint, printWidth - 10f, 12f)
             }
@@ -405,7 +405,7 @@ object PdfExporter {
 
             y2 += 10f
             // Điều 6
-            canvas2.drawText("ĐIỀU 6: CÁC THỎA THUẬN KHÁC", leftX, y2, sectionHeaderPaint)
+            canvas2.drawText("ĐIỀU 6: CAM KẾT VÀ HIỆU LỰC HỢP ĐỒNG", leftX, y2, sectionHeaderPaint)
             y2 += 14f
             val d6Text = "Các bên thống nhất thực hiện đúng các cam kết ghi nhận trên hệ thống ứng dụng EzRoom. Hợp đồng có hiệu lực kể từ thời điểm Bên B hoàn tất ký số điện tử và đặt cọc thành công."
             y2 = drawWrapped(canvas2, d6Text, leftX + 10f, y2, textPaint, printWidth - 10f, 12.5f)
