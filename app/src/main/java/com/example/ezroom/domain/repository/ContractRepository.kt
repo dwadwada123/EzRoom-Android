@@ -11,7 +11,7 @@ interface ContractRepository {
     suspend fun getContractById(contractId: String): Contract?
     suspend fun updateContractStatus(contractId: String, status: ContractStatus)
     suspend fun signContract(contractId: String)
-    suspend fun createContract(contract: Contract)
+    suspend fun createContract(contract: Contract): Contract
     
     // Fintech Actions
     suspend fun markDepositPaid(contractId: String) // Simulate webhook
