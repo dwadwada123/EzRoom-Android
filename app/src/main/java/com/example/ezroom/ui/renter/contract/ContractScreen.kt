@@ -319,7 +319,7 @@ fun ContractScreen(
                     // Điều 3
                     ContractSectionItem(title = "ĐIỀU 3: PHÍ DỊCH VỤ NỀN TẢNG") {
                         Text(
-                            text = "1. Phí kết nối giao dịch thành công: 5% theo quy chế hoạt động nền tảng EzRoom.\n2. Khấu trừ tự động qua hệ thống khi thanh toán tiền phòng. Bên C có nghĩa vụ xuất hóa đơn điện tử hợp pháp theo quy định pháp luật.",
+                            text = "1. Hàng tháng Bên A phải thanh toán phí tiện ích cho Bên C với số tiền bằng 1.5% giá thuê phòng/tháng(đã bao gồm thuế GTGT).\n2. Mọi chi phí sẽ được khấu trừ tự động qua hệ thống khi thanh toán tiền phòng. Bên C có nghĩa vụ xuất hóa đơn điện tử hợp pháp theo quy định pháp luật.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -341,7 +341,7 @@ fun ContractScreen(
                     }
 
                     // Điều 6
-                    ContractSectionItem(title = "ĐIỀU 6: CÁC THỎA THUẬN KHÁC") {
+                    ContractSectionItem(title = "ĐIỀU 6: CAM KẾT VÀ HIỆU LỰC HỢP ĐỒNG") {
                         Text(
                             text = "Các bên thống nhất thực hiện đúng các cam kết ghi nhận trên ứng dụng EzRoom. Hợp đồng có hiệu lực kể từ thời điểm Bên B hoàn tất ký số điện tử và đặt cọc thành công.",
                             fontSize = 12.sp, lineHeight = 19.sp
