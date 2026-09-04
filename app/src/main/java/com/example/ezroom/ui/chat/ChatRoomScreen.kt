@@ -22,13 +22,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.text.style.TextAlign
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezroom.data.repository.ChatRepositoryImpl
@@ -38,7 +35,6 @@ import com.example.ezroom.domain.usecase.GetMessagesUseCase
 import com.example.ezroom.domain.usecase.SendMessageUseCase
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
-import com.example.ezroom.ui.components.SecondaryButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +60,7 @@ fun ChatRoomScreen(
     var messageText by remember { mutableStateOf("") }
     var showAttachmentMenu by remember { mutableStateOf(value = false) }
     val sheetState = rememberModalBottomSheetState()
-    
+
     val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -73,9 +69,7 @@ fun ChatRoomScreen(
             val bytes = inputStream?.readBytes()
             inputStream?.close()
             if (bytes != null) {
-                // Determine mime type
                 val mimeType = context.contentResolver.getType(it) ?: "image/jpeg"
-                // Generate a random file name
                 val fileName = "img_${System.currentTimeMillis()}.jpg"
                 viewModel.uploadImageAndSend(conversationId, bytes, fileName, mimeType)
             }
@@ -100,7 +94,6 @@ fun ChatRoomScreen(
                 if (location != null) {
                     viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = location.latitude, lng = location.longitude)
                 } else {
-                    // Try last location if current location fails
                     fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
                         if (lastLoc != null) {
                             viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = lastLoc.latitude, lng = lastLoc.longitude)
@@ -132,7 +125,7 @@ fun ChatRoomScreen(
             onDismissRequest = { showAttachmentMenu = false },
             sheetState = sheetState,
             dragHandle = { BottomSheetDefaults.DragHandle() },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = Color.White,
         ) {
             AttachmentMenuContent(
                 onOptionClick = { option ->
@@ -160,41 +153,54 @@ fun ChatRoomScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFFF8F9FE), // Light background like in image
+        containerColor = Neutral50,
         topBar = {
             Surface(
                 color = Color.White,
-                tonalElevation = 2.dp,
-                shadowElevation = 2.dp
+                shadowElevation = 2.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300.copy(alpha = 0.5f))
             ) {
                 CenterAlignedTopAppBar(
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ChatLogoNavy)
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Neutral100)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Trở về",
+                                tint = PrimaryMain
+                            )
                         }
                     },
                     title = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = uiState.otherPartyName.ifBlank { "Người dùng" },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = peaceSansFont,
-                                color = ChatLogoNavy
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF10B981))
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.size(40.dp),
+                                shape = CircleShape,
+                                color = PrimaryLight,
+                                border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = uiState.otherPartyName.take(1).ifEmpty { "C" },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = PrimaryMain
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
                                 Text(
-                                    text = "Đang hoạt động",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.Gray,
-                                    fontFamily = peaceSansFont
+                                    text = uiState.otherPartyName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Neutral900
                                 )
                             }
                         }
@@ -202,16 +208,19 @@ fun ChatRoomScreen(
                     actions = {
                         IconButton(
                             onClick = {
-                                val dialPhone = phoneNumber.ifBlank { "0898990543" }
+                                val dialPhone = if (phoneNumber.isNotBlank()) phoneNumber else "0898990543"
                                 val intent = Intent(Intent.ACTION_DIAL, "tel:$dialPhone".toUri())
                                 context.startActivity(intent)
-                            }
+                            },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(PrimarySurface)
                         ) {
-                            Icon(Icons.Default.Call, null, tint = ChatLogoCyan)
+                            Icon(Icons.Default.Call, contentDescription = "Gọi điện", tint = PrimaryMain)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.White
+                        containerColor = Color.Transparent
                     )
                 )
             }
@@ -220,76 +229,76 @@ fun ChatRoomScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-                    .navigationBarsPadding(),
+                    .shadow(4.dp, RectangleShape),
                 color = Color.White,
-                shape = RoundedCornerShape(32.dp),
-                shadowElevation = 8.dp
+                border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300.copy(alpha = 0.5f))
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Camera Icon
-                    IconButton(onClick = { /* Camera feature if available */ }) {
-                        Icon(Icons.Default.PhotoCamera, null, tint = Color.LightGray)
-                    }
-                    
-                    // Gallery/Attachment Icon
-                    IconButton(onClick = { showAttachmentMenu = true }) {
-                        Icon(Icons.Default.Image, null, tint = Color.LightGray)
+                    IconButton(
+                        onClick = { showAttachmentMenu = true },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(PrimarySurface)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Thêm tệp", tint = PrimaryMain)
                     }
 
-                    // Input Field
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .background(Color(0xFFF1F5F9), RoundedCornerShape(24.dp))
-                            .padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.CenterStart
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Neutral100,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Neutral300.copy(alpha = 0.5f))
                     ) {
-                        BasicTextField(
+                        TextField(
                             value = messageText,
                             onValueChange = { messageText = it },
+                            placeholder = {
+                                Text(
+                                    "Gửi tin nhắn...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Neutral500
+                                )
+                            },
                             modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = peaceSansFont,
-                                color = Color.Black
-                            ),
-                            decorationBox = { innerTextField ->
-                                if (messageText.isEmpty()) {
-                                    Text(
-                                        "Nhập tin nhắn...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontFamily = peaceSansFont,
-                                        color = Color.Gray
-                                    )
-                                }
-                                innerTextField()
-                            }
+                            maxLines = 4,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                cursorColor = PrimaryMain,
+                                focusedTextColor = Neutral900,
+                                unfocusedTextColor = Neutral900
+                            )
                         )
                     }
 
-                    // Send Button
                     IconButton(
-                        onClick = { 
+                        onClick = {
                             if (messageText.isNotBlank()) {
                                 viewModel.onSendMessage(conversationId, messageText)
-                                messageText = "" 
+                                messageText = ""
                             }
                         },
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(if (messageText.isNotBlank()) ChatLogoCyan else Color(0xFFE2E8F0))
+                            .background(if (messageText.isNotBlank()) PrimaryMain else PrimaryMain.copy(alpha = 0.4f))
                     ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.Send, 
-                            null, 
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Gửi",
                             tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -304,17 +313,6 @@ fun ChatRoomScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Text(
-                    text = "Hôm nay",
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.Gray,
-                    fontFamily = peaceSansFont
-                )
-            }
-            
             items(
                 items = uiState.messages,
                 key = { it.id }
@@ -336,9 +334,10 @@ fun AttachmentMenuContent(onOptionClick: (String) -> Unit) {
         Text(
             text = "Chia sẻ nội dung",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.Bold,
+            color = Neutral900
         )
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -346,14 +345,14 @@ fun AttachmentMenuContent(onOptionClick: (String) -> Unit) {
             AttachmentOption(
                 icon = Icons.Default.Image,
                 label = "Hình ảnh",
-                color = Color(0xFF10B981),
+                color = SuccessEmerald,
                 onClick = { onOptionClick("image") },
                 modifier = Modifier.weight(1f),
             )
             AttachmentOption(
                 icon = Icons.Default.LocationOn,
                 label = "Vị trí",
-                color = Color(0xFFEF4444),
+                color = ErrorRose,
                 onClick = { onOptionClick("location") },
                 modifier = Modifier.weight(1f),
             )
@@ -394,45 +393,22 @@ fun ChatBubble(message: Message) {
     val context = LocalContext.current
     val isMe = message.isFromMe
     val alignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
-    
-    val bubbleColor = if (isMe) ChatLogoCyan else Color(0xFFFCE7F3) // Light pinkish/purple for others
-    val textColor = if (isMe) Color.White else ChatLogoNavy
+    val bubbleColor = if (isMe) PrimaryMain else Color.White
+    val textColor = if (isMe) Color.White else Neutral900
 
     val shape = if (isMe)
         RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp)
     else
         RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Top
-    ) {
-        if (!isMe) {
-            // Other Party Avatar
-            Surface(
-                modifier = Modifier.size(36.dp),
-                shape = CircleShape,
-                color = ChatLogoCyan.copy(alpha = 0.2f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "G", // Simulated initial like in image
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = ChatLogoCyan
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
         Column(horizontalAlignment = if (isMe) Alignment.End else Alignment.Start) {
             Surface(
                 color = bubbleColor,
                 shape = shape,
                 shadowElevation = if (isMe) 2.dp else 1.dp,
-                modifier = Modifier.widthIn(max = 260.dp)
+                modifier = Modifier.widthIn(max = 280.dp),
+                border = if (!isMe) androidx.compose.foundation.BorderStroke(1.dp, Neutral300.copy(alpha = 0.6f)) else null
             ) {
                 Column {
                     if (message.imageUrl != null) {
@@ -442,40 +418,46 @@ fun ChatBubble(message: Message) {
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp)
+                                .height(160.dp)
                                 .clip(shape)
                         )
                     }
-                    
+
                     if (message.latitude != null && message.longitude != null) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isMe) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.5f),
+                            color = Neutral50,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .padding(8.dp)
                         ) {
                             Column(
                                 modifier = Modifier.padding(12.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Icon(
-                                    Icons.Default.LocationOn, 
-                                    contentDescription = null, 
-                                    tint = if (isMe) Color.White else ErrorRose,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(ErrorRose.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = ErrorRose,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    "Vị trí đã chia sẻ", 
-                                    style = MaterialTheme.typography.bodyMedium, 
+                                    "Đã chia sẻ vị trí",
+                                    style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = peaceSansFont,
-                                    color = if (isMe) Color.White else ChatLogoNavy
+                                    color = Neutral900
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                SecondaryButton(
-                                    text = "Chỉ đường",
+                                OutlinedButton(
                                     onClick = {
                                         val uri = android.net.Uri.parse("google.navigation:q=${message.latitude},${message.longitude}")
                                         val intent = Intent(Intent.ACTION_VIEW, uri)
@@ -487,8 +469,16 @@ fun ChatBubble(message: Message) {
                                             context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
                                         }
                                     },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = PrimarySurface,
+                                        contentColor = PrimaryMain
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryMain)
+                                ) {
+                                    Text("Chỉ đường", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
                             }
                         }
                     }
@@ -499,25 +489,17 @@ fun ChatBubble(message: Message) {
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             color = textColor,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = peaceSansFont,
                             lineHeight = 20.sp
                         )
                     }
                 }
             }
-            
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp))
-                Text(
-                    text = if (isMe) "$time - Đã gửi" else "$time - Đã xem",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                    fontFamily = peaceSansFont
-                )
-            }
+            Text(
+                text = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp)),
+                style = MaterialTheme.typography.labelSmall,
+                color = Neutral500,
+                modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+            )
         }
     }
 }
@@ -529,3 +511,5 @@ fun ChatRoomPreview() {
         ChatRoomScreen(onNavigateBack = {})
     }
 }
+
+

@@ -106,7 +106,8 @@ fun ChatListScreen(
                 onClick = { /* New Chat */ },
                 containerColor = ChatLogoCyan,
                 contentColor = Color.White,
-                shape = CircleShape
+                shape = CircleShape,
+                modifier = Modifier.padding(bottom = 8.dp) // Thêm chút khoảng cách cho FAB
             ) {
                 Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "New Message")
             }
@@ -115,17 +116,18 @@ fun ChatListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(Color.White)
         ) {
             // Header: Title and Segmented Control
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding() // Tránh tràn lên status bar
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+
                 Text(
                     text = "Tin nhắn",
                     fontSize = 34.sp,
@@ -178,7 +180,7 @@ fun ChatListScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    
+
                     BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -211,14 +213,18 @@ fun ChatListScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        bottom = paddingValues.calculateBottomPadding() + 80.dp
+                    )
                 ) {
                     itemsIndexed(uiState.conversations, key = { _, it -> it.id }) { index, chat ->
                         ConversationListItem(
-                            chat = chat, 
-                            onClick = { 
-                                onConversationClick(chat.id, chat.otherPartyName ?: "Người dùng", chat.otherPartyPhone ?: "0000000000") 
+                            chat = chat,
+                            onClick = {
+                                onConversationClick(chat.id, chat.otherPartyName ?: "Người dùng", chat.otherPartyPhone ?: "0000000000")
                             },
                         )
                         HorizontalDivider(
@@ -288,7 +294,7 @@ private fun ConversationListItem(
     onClick: () -> Unit
 ) {
     val isUnread = chat.unreadCount > 0
-    
+
     Surface(
         onClick = onClick,
         color = Color.White,
@@ -353,7 +359,7 @@ private fun ConversationListItem(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    
+
                     Text(
                         text = chat.lastMessage ?: "",
                         fontSize = 14.sp,
@@ -365,7 +371,7 @@ private fun ConversationListItem(
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     Icon(
                         imageVector = if (isUnread) Icons.Default.Star else Icons.Default.StarOutline,
                         contentDescription = null,
@@ -387,5 +393,3 @@ fun PreviewChatListScreen() {
         )
     }
 }
-
-

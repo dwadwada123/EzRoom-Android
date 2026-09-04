@@ -150,16 +150,16 @@ fun LoginScreen(
                         color = Color.Black,
                         modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                     )
-                    
-                    // Sử dụng PasswordTextField có sẵn nhma bọc lại để giống style
+
+                    // Sử dụng PasswordTextField với placeholder thay vì label để tránh đẩy text
                     PasswordTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = "••••••••",
+                        placeholder = "..........",
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
-                    
+
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Quên mật khẩu?",
