@@ -417,7 +417,7 @@ interface RenterReviewApi {
 
 interface AppointmentApi {
     @POST("api/appointments")
-    suspend fun createAppointment(@Body appointment: Appointment): GenericResponse
+    suspend fun createAppointment(@Body appointment: CreateAppointment): GenericResponse
 
     @GET("api/appointments")
     suspend fun getAppointments(
