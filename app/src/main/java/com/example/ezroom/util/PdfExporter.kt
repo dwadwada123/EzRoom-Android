@@ -144,18 +144,19 @@ object PdfExporter {
 
             // Open PDF Viewer
             try {
-                val uri =
-                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, "application/pdf")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                context.startActivity(
-                    Intent.createChooser(intent, "Mở hóa đơn PDF (EzRoom)")
-                        .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                val chooser = Intent.createChooser(intent, "Mở hóa đơn PDF (EzRoom)").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(chooser)
             } catch (ex: Exception) {
-                // Ignore fallback
+                android.util.Log.e("PdfExporter", "Lỗi mở PDF hóa đơn", ex)
             }
         } catch (e: Exception) {
             Toast.makeText(context, "Lỗi tạo tệp PDF: ${e.message}", Toast.LENGTH_LONG).show()
@@ -523,18 +524,20 @@ object PdfExporter {
 
             // Open PDF
             try {
-                val uri =
-                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, "application/pdf")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                context.startActivity(
-                    Intent.createChooser(intent, "Mở Hợp đồng PDF (EzRoom)")
-                        .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                val chooser = Intent.createChooser(intent, "Mở Hợp đồng PDF (EzRoom)").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(chooser)
             } catch (ex: Exception) {
-                // Ignore fallback
+                android.util.Log.e("PdfExporter", "Lỗi mở PDF hợp đồng", ex)
+            }
             }
         } catch (e: Exception) {
             Toast.makeText(context, "Lỗi tạo tệp PDF Hợp đồng: ${e.message}", Toast.LENGTH_LONG)

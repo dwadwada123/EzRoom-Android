@@ -312,12 +312,70 @@ interface RoomReviewApi {
 }
 
 
+data class ContractResponse(
+    @com.google.gson.annotations.SerializedName("_id") val _id: String? = null,
+    val id: String? = null,
+    val roomId: String? = null,
+    val roomName: String? = null,
+    val address: String? = null,
+    val renterId: String? = null,
+    val renterName: String? = null,
+    val renterPhone: String? = null,
+    val hostId: String? = null,
+    val hostName: String? = null,
+    val startDate: String? = null,
+    val endDate: String? = null,
+    val depositAmount: Long? = null,
+    val depositStatus: String? = null,
+    val status: String? = null,
+    val dateCreated: String? = null,
+    val dateSigned: String? = null,
+    val cancelReason: String? = null,
+    val cancelBy: String? = null,
+    val disburseDate: String? = null,
+    val isProtected: Boolean? = null
+) {
+    val resolvedId: String get() = id?.takeIf { it.isNotBlank() } ?: _id ?: ""
+
+    fun toDomain(): Contract {
+        return Contract(
+            id = resolvedId,
+            roomId = roomId ?: "",
+            roomName = roomName ?: "",
+            address = address,
+            renterName = renterName ?: "",
+            renterPhone = renterPhone ?: "",
+            hostName = hostName,
+            startDate = startDate ?: "",
+            endDate = endDate ?: "",
+            depositAmount = depositAmount ?: 0L,
+            depositStatus = try { com.example.ezroom.domain.model.DepositStatus.valueOf(depositStatus ?: "UNPAID") } catch (e: Exception) { com.example.ezroom.domain.model.DepositStatus.UNPAID },
+            status = try { com.example.ezroom.domain.model.ContractStatus.valueOf(status ?: "WAITING_SIGN") } catch (e: Exception) { com.example.ezroom.domain.model.ContractStatus.WAITING_SIGN },
+            dateCreated = dateCreated ?: "",
+            dateSigned = dateSigned,
+            cancelReason = cancelReason,
+            cancelBy = cancelBy,
+            disburseDate = disburseDate,
+            isProtected = isProtected ?: false,
+            hostId = hostId,
+            renterId = renterId
+        )
+    }
+}
+
+data class CreateContractResponse(
+    val success: Boolean,
+    val contract: ContractResponse? = null,
+    val message: String? = null,
+    val error: String? = null
+)
+
 interface ContractApi {
     @GET("api/contracts")
     suspend fun getContracts(): List<Contract>
 
     @POST("api/contracts")
-    suspend fun createContract(@Body contract: Contract): GenericResponse
+    suspend fun createContract(@Body contract: Contract): CreateContractResponse
 
     @POST("api/contracts/{id}/sign")
     suspend fun signContract(@Path("id") id: String): GenericResponse

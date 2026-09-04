@@ -146,9 +146,12 @@ fun HostContractScreen(
                                         isSending = true
                                         try {
                                             val isZeroDeposit = contract.depositAmount == 0L
-                                            val currentHostName = contract.hostName ?: com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+                                            val currentHost = com.example.ezroom.util.TokenManager.getUser()
+                                            val currentHostName = contract.hostName ?: currentHost?.name ?: "Chủ nhà"
+                                            val currentHostId = contract.hostId ?: currentHost?.id ?: ""
                                             val finalContract = contract.copy(
                                                 hostName = currentHostName,
+                                                hostId = currentHostId,
                                                 status = ContractStatus.WAITING_SIGN,
                                                 depositStatus = if (isZeroDeposit) DepositStatus.FROZEN else contract.depositStatus
                                             )

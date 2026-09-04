@@ -16,9 +16,11 @@ class ContractRepositoryImpl : ContractRepository {
     override fun getContracts(): Flow<List<Contract>> = flow {
         try {
             val list = contractApi.getContracts()
+            MockData.contracts.clear()
+            MockData.contracts.addAll(list)
             emit(list)
         } catch (e: Exception) {
-            emit(emptyList())
+            emit(MockData.contracts.toList())
         }
     }
 
@@ -57,13 +59,24 @@ class ContractRepositoryImpl : ContractRepository {
         }
     }
 
-    override suspend fun createContract(contract: Contract) {
+    override suspend fun createContract(contract: Contract): Contract {
         try {
-            contractApi.createContract(contract)
+            val response = contractApi.createContract(contract)
+            if (response.success && response.contract != null) {
+                val created = response.contract.toDomain()
+                val index = MockData.contracts.indexOfFirst { it.id == created.id }
+                if (index != -1) {
+                    MockData.contracts[index] = created
+                } else {
+                    MockData.contracts.add(created)
+                }
+                return created
+            }
         } catch (e: Exception) {
-            // Ignored, proceed to local update
+            android.util.Log.e("ContractRepo", "createContract API error: ${e.message}")
         }
         MockData.contracts.add(contract)
+        return contract
     }
 
     suspend fun getPaymentQR(contractId: String): com.example.ezroom.data.remote.PaymentResponse {

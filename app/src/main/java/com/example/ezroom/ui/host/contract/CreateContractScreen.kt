@@ -120,7 +120,9 @@ fun CreateContractScreen(
         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         val parsedDeposit = depositAmount.toLongOrNull() ?: 0L
         val initialDepositStatus = if (parsedDeposit == 0L || selectedStatus == "Đã đóng") DepositStatus.FROZEN else DepositStatus.UNPAID
-        val currentHostName = com.example.ezroom.util.TokenManager.getUser()?.name ?: "Chủ nhà"
+        val currentUser = com.example.ezroom.util.TokenManager.getUser()
+        val currentHostName = currentUser?.name ?: "Chủ nhà"
+        val currentHostId = currentUser?.id ?: ""
 
         val contract = Contract(
             id = "",
@@ -134,10 +136,21 @@ fun CreateContractScreen(
             depositAmount = parsedDeposit,
             depositStatus = initialDepositStatus,
             status = ContractStatus.WAITING_SIGN,
-            dateCreated = sdf.format(Date())
+            dateCreated = sdf.format(Date()),
+            hostId = currentHostId,
+            renterId = foundRenterId
         )
-        viewModel.createContract(contract)
-        onProceedToTerms(contract)
+        scope.launch {
+            isLoading = true
+            try {
+                val createdContract = viewModel.createContract(contract)
+                isLoading = false
+                onProceedToTerms(createdContract)
+            } catch (e: Exception) {
+                isLoading = false
+                onProceedToTerms(contract)
+            }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(White)) {
@@ -257,10 +270,12 @@ fun CreateContractScreen(
                                 isLoading = true
                                 try {
                                     val res = authApi.checkPhone(renterPhone.trim())
-                                    isLoading = false
                                     if (res.success && res.exists && res.user != null) {
                                         proceedWithContractCreation(res.user.id)
-                                    } else showUnregisteredDialog = true
+                                    } else {
+                                        isLoading = false
+                                        showUnregisteredDialog = true
+                                    }
                                 } catch (e: Exception) {
                                     isLoading = false
                                     showUnregisteredDialog = true

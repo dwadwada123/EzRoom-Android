@@ -61,11 +61,10 @@ class ContractViewModel(
         }
     }
 
-    fun createContract(contract: Contract) {
-        viewModelScope.launch {
-            repository.createContract(contract)
-            loadContracts()
-        }
+    suspend fun createContract(contract: Contract): Contract {
+        val created = repository.createContract(contract)
+        loadContracts()
+        return created
     }
 
     fun signContract(contractId: String, onComplete: () -> Unit = {}) {

@@ -219,7 +219,6 @@ fun InvoiceDetailScreen(
                         showQRModal = true
                     } else {
                         com.example.ezroom.util.PdfExporter.exportInvoicePdf(context, displayInvoice)
-                        onPaymentConfirm(displayInvoice.id, selectedPaymentMethod, displayInvoice.type) 
                     }
                 },
                 modifier = Modifier.fillMaxWidth()

@@ -24,7 +24,9 @@ data class Contract(
     
     // Fintech: Disbursement Info
     val disburseDate: String? = null,
-    val isProtected: Boolean = false
+    val isProtected: Boolean = false,
+    val hostId: String? = null,
+    val renterId: String? = null
 )
 
 // Data Model: Information for manual refund to renter
