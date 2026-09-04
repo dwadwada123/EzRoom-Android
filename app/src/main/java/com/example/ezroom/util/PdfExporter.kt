@@ -319,7 +319,7 @@ object PdfExporter {
             // Bên C
             canvas1.drawText("BÊN TRUNG GIAN CUNG CẤP NỀN TẢNG (BÊN C):", leftX, y1, sectionHeaderPaint)
             y1 += 13f
-            canvas1.drawText("• Tên ứng dụng/Công ty: EzRoom Escrow Platform", leftX + 10f, y1, textPaint)
+            canvas1.drawText("• Tên ứng dụng/Công ty: EzRoom", leftX + 10f, y1, textPaint)
             canvas1.drawText("• MST: 0123456789 | Đại diện: Trần Vũ Phong", 300f, y1, textPaint)
 
             y1 += 18f
@@ -336,7 +336,7 @@ object PdfExporter {
             // Điều 2
             canvas1.drawText("ĐIỀU 2: GIÁ THUÊ, TIỀN CỌC VÀ PHƯƠNG THỨC THANH TOÁN", leftX, y1, sectionHeaderPaint)
             y1 += 14f
-            val d2Text1 = "1. Tiền đặt cọc bảo hộ (Escrow Deposit): Bên B đặt cọc số tiền ${formatter.format(contract.depositAmount)} qua cổng thanh toán bảo hộ EzRoom. Số tiền được đóng băng an toàn và giải ngân cho Bên A khi hợp đồng có hiệu lực."
+            val d2Text1 = "1. Tiền đặt cọc bảo hộ (Escrow Deposit): Bên B đặt cọc số tiền ${formatter.format(contract.depositAmount)} qua cổng thanh toán bảo hộ EzRoom. Số tiền được đóng băng an toàn và giải ngân cho Bên A trong vòng 24 giờ sau khi hợp đồng có hiệu lực."
             y1 = drawWrapped(canvas1, d2Text1, leftX + 10f, y1, textPaint, printWidth - 10f, 12f)
             val d2Text2 = "2. Thanh toán tiền phòng: Bên B thanh toán tiền thuê phòng vào ngày 05 hàng tháng qua ứng dụng EzRoom."
             y1 = drawWrapped(canvas1, d2Text2, leftX + 10f, y1, textPaint, printWidth - 10f, 12f)
@@ -380,14 +380,14 @@ object PdfExporter {
             }
 
             y2 += 4f
-            val d4Text2 = "2. Quyền và nghĩa vụ của Bên B:\n- Trả tiền thuê phòng và chi phí sinh hoạt đúng hạn.\n- Sử dụng phòng đúng mục đích, giữ gìn an ninh trật tự và vệ sinh chung.\n- Không được tự ý sửa chữa kết cấu phòng hoặc cho thuê lại nếu chưa có sự đồng ý bằng văn bản của Bên A."
+            val d4Text2 = "2. Quyền và nghĩa vụ của Bên B:\n- Trả tiền thuê phòng và chi phí sinh hoạt đúng hạn.\n- Sử dụng phòng đúng mục đích, giữ gìn an ninh trật tự, vệ sinh chung và tuân thủ các quy định mà chủ trọ đã đưa ra (nếu có).\n- Không được tự ý sửa chữa kết cấu phòng hoặc cho thuê lại nếu chưa có sự đồng ý bằng văn bản của Bên A."
             for (p in d4Text2.split("\n")) {
                 y2 = drawWrapped(canvas2, p, leftX + 10f, y2, textPaint, printWidth - 10f, 12.5f)
                 y2 += 1f
             }
 
             y2 += 4f
-            val d4Text3 = "3. Quyền và nghĩa vụ của Bên C (EzRoom):\n- Cung cấp nền tảng ứng dụng vận hành ổn định để Bên A và Bên B tạo lập, ký kết hợp đồng và lưu trữ dữ liệu an toàn.\n- Đóng vai trò trung gian đối soát tài chính, bảo vệ khoản tiền cọc minh bạch qua EzRoom Escrow.\n- Hỗ trợ trích xuất dữ liệu khi có tranh chấp hoặc theo yêu cầu từ cơ quan Nhà nước có thẩm quyền."
+            val d4Text3 = "3. Quyền và nghĩa vụ của Bên C (EzRoom):\n- Cung cấp nền tảng ứng dụng vận hành ổn định để Bên A và Bên B tạo lập, ký kết hợp đồng và lưu trữ dữ liệu an toàn.\n- Đóng vai trò trung gian đối soát tài chính, bảo vệ khoản tiền cọc minh bạch qua EzRoom Escrow.\n- Hỗ trợ trích xuất dữ liệu khi có tranh chấp hoặc theo yêu cầu từ cơ quan Nhà nước có thẩm quyền. \n- Bên C hoạt động với tư cách là bên trung gian cung cấp nền tảng kết nối. Bên C không chịu trách nhiệm đối với quyền sở hữu hợp pháp của phòng trọ từ Bên A, chất lượng thực tế của phòng, cũng như các hành vi vi phạm nghĩa vụ thanh toán hoặc vi phạm pháp luật cá nhân phát sinh giữa Bên A và Bên B trong suốt thời gian thuê trọ."
             for (p in d4Text3.split("\n")) {
                 y2 = drawWrapped(canvas2, p, leftX + 10f, y2, textPaint, printWidth - 10f, 12.5f)
                 y2 += 1f
@@ -397,7 +397,7 @@ object PdfExporter {
             // Điều 5
             canvas2.drawText("ĐIỀU 5: CHẤM DỨT HỢP ĐỒNG VÀ GIẢI QUYẾT TRANH CHẤP", leftX, y2, sectionHeaderPaint)
             y2 += 14f
-            val d5Text = "1. Đơn phương chấm dứt: Bên muốn chấm dứt hợp đồng trước hạn phải thông báo trước ít nhất 30 ngày qua ứng dụng. Tiền cọc sẽ xử lý theo quy chế EzRoom Escrow.\n2. Giải quyết tranh chấp: Các bên ưu tiên thương lượng hòa bình. Trường hợp xuất hiện hành vi bạo lực hoặc vi phạm pháp luật, Bên C có quyền trích xuất hồ sơ và trình báo cơ quan Công an xử lý theo quy định."
+            val d5Text = "1. Đơn phương chấm dứt: Bên muốn chấm dứt hợp đồng trước hạn phải thông báo trước ít nhất 30 ngày qua ứng dụng. Nếu Bên B đơn phương dọn đi trước thời hạn hợp đồng mà không thông báo trước đủ 30 ngày (hoặc tự ý bỏ đi không bàn giao), Bên B sẽ bị mất 100% số tiền đặt cọc. Số tiền này sẽ thuộc về Bên A. Ngược lại Nếu Bên A đơn phương lấy lại phòng trước hạn mà không thông báo trước đủ 30 ngày hoặc vi phạm nghiêm trọng cam kết (như tăng giá sai thỏa thuận, cắt điện nước ép khách dọn đi), Bên A phải hoàn trả 100% tiền cọc, đồng thời phải bồi thường thêm cho Bên B một khoản tiền bằng đúng với số tiền đã đặt cọc.\n2. Giải quyết tranh chấp: Các bên ưu tiên thương lượng hòa bình. Trường hợp xuất hiện hành vi bạo lực hoặc vi phạm pháp luật, Bên C có quyền trích xuất hồ sơ và trình báo cơ quan Công an xử lý theo quy định."
             for (p in d5Text.split("\n")) {
                 y2 = drawWrapped(canvas2, p, leftX + 10f, y2, textPaint, printWidth - 10f, 12.5f)
                 y2 += 1f
@@ -407,7 +407,7 @@ object PdfExporter {
             // Điều 6
             canvas2.drawText("ĐIỀU 6: CAM KẾT VÀ HIỆU LỰC HỢP ĐỒNG", leftX, y2, sectionHeaderPaint)
             y2 += 14f
-            val d6Text = "Các bên thống nhất thực hiện đúng các cam kết ghi nhận trên hệ thống ứng dụng EzRoom. Hợp đồng có hiệu lực kể từ thời điểm Bên B hoàn tất ký số điện tử và đặt cọc thành công."
+            val d6Text = "Các bên cam kết hành vi xác nhận thông qua tài khoản cá nhân trên ứng dụng EzRoom là ý chí tự nguyện, đích danh và có giá trị pháp lý ràng buộc tương đương với việc kí tên trực tiếp trên giấy. Các bên sẽ từ bỏ quyền khiếu nại và phủ nhận hiệu lực của Hợp đồng với lý do Hợp đồng được giao kết thông qua hình thức dữ liệu số này. Hợp đồng này có hiệu lực kể từ thời điểm Bên B thao tác xác nhận ký và hoàn tất đặt cọc thành công trên hệ thống EzRoom."
             y2 = drawWrapped(canvas2, d6Text, leftX + 10f, y2, textPaint, printWidth - 10f, 12.5f)
 
             y2 += 20f
