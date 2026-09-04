@@ -19,6 +19,7 @@ import com.example.ezroom.data.remote.ForgotPasswordRequest
 import com.example.ezroom.data.remote.ResetPasswordRequest
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -67,26 +68,72 @@ class UserRepositoryImpl : UserRepository {
 
     private suspend fun uploadEkycImage(uri: Uri, context: Context): String? {
         return try {
-            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-            val bytes = inputStream?.readBytes() ?: return null
-            val mediaType = context.contentResolver.getType(uri)?.toMediaTypeOrNull() ?: "image/jpeg".toMediaTypeOrNull()
+//            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+//            val bytes = inputStream?.readBytes() ?: return null
+//            val mediaType = context.contentResolver.getType(uri)?.toMediaTypeOrNull() ?: "image/jpeg".toMediaTypeOrNull()
+//            val requestBody = bytes.toRequestBody(mediaType)
+//            val body = MultipartBody.Part.createFormData("image", "ekyc_img_${System.currentTimeMillis()}.jpg", requestBody)
+//
+//            val response = authApi.uploadEkycImage(body)
+//            if (response.success) response.url else null
+            Log.d("EKYC", "URI input = $uri")
+
+            val inputStream = context.contentResolver.openInputStream(uri)
+
+            if (inputStream == null) {
+                Log.e("EKYC", "Cannot open InputStream")
+                return null
+            }
+
+            val bytes = inputStream.readBytes()
+
+            Log.d("EKYC", "Image size = ${bytes.size} bytes")
+
+            val mimeType = context.contentResolver.getType(uri)
+                ?: "image/jpeg"
+
+            Log.d("EKYC", "Mime type = $mimeType")
+
+            val mediaType = mimeType.toMediaTypeOrNull()
+
             val requestBody = bytes.toRequestBody(mediaType)
-            val body = MultipartBody.Part.createFormData("image", "ekyc_img_${System.currentTimeMillis()}.jpg", requestBody)
-            
+
+            val body = MultipartBody.Part.createFormData(
+                "image",
+                "ekyc_img_${System.currentTimeMillis()}.jpg",
+                requestBody
+            )
+
+            Log.d("EKYC", "Starting upload...")
+
             val response = authApi.uploadEkycImage(body)
-            if (response.success) response.url else null
+
+            Log.d("EKYC", "Upload success = ${response.success}")
+            Log.d("EKYC", "Upload url = ${response.url}")
+
+            if (response.success) {
+                response.url
+            } else {
+                Log.e("EKYC", "Upload failed: $response")
+                null
+            }
+
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
+
     }
 
     override suspend fun verifyEkyc(idCardNumber: String, frontUri: Uri, backUri: Uri, selfieUri: Uri, context: Context): Result<Unit> {
         val currentUser = _user.value ?: return Result.failure(Exception("User not found locally"))
         return try {
+            Log.d("check-truoc", "frontUri: $frontUri, backUri: $backUri, selfieUri: $selfieUri")
             val frontUrl = uploadEkycImage(frontUri, context)
             val backUrl = uploadEkycImage(backUri, context)
             val selfieUrl = uploadEkycImage(selfieUri, context)
+
+            Log.d("check", "frontUrl: $frontUrl, backUrl: $backUrl, selfieUrl: $selfieUrl")
 
             if (frontUrl == null || backUrl == null || selfieUrl == null) {
                 return Result.failure(Exception("Không thể tải ảnh lên. Vui lòng thử lại."))

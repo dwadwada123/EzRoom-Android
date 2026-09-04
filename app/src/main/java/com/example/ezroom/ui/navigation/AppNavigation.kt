@@ -56,9 +56,11 @@ import com.example.ezroom.ui.host.invoice.HostInvoiceDetailScreen
 import com.example.ezroom.ui.renter.discovery.AdvancedFilterScreen
 import com.example.ezroom.ui.host.room.PropertyFormScreen
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.ezroom.domain.model.AppointmentStatus
 import com.example.ezroom.ui.theme.EzRoomTheme
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
+import kotlin.String
 
 // State Management: Global Snackbar Provider
 val LocalSnackbarProvider = staticCompositionLocalOf<(String) -> Unit> { { } }
@@ -961,13 +963,10 @@ fun AppNavigation() {
                         onSubmitBooking = { date, time, note -> 
                             scope.launch {
                                 if (appointment == null) {
-                                    val newAppt = com.example.ezroom.domain.model.Appointment(
-                                        id = "",
+                                    val newAppt = com.example.ezroom.domain.model.CreateAppointment(
                                         roomId = roomId ?: "",
-                                        roomName = room?.title ?: "Phòng trọ",
-                                        renterName = currentUser?.name ?: "Người thuê",
-                                        renterPhone = currentUser?.phone ?: "",
-                                        hostName = room?.hostName ?: "Chủ nhà",
+                                        renterId = currentUser?.id ?: "",
+                                        hostId = room?.hostId ?: "",
                                         date = date,
                                         time = time,
                                         note = note,

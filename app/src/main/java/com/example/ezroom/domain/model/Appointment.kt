@@ -13,3 +13,13 @@ data class Appointment(
     val note: String,
     val status: AppointmentStatus
 )
+
+data class CreateAppointment (
+    val roomId: String,
+    val renterId: String? = null,
+    val hostId: String,
+    val date: String,
+    val time: String,
+    val note: String,
+    val status: AppointmentStatus
+)
