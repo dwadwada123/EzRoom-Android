@@ -59,10 +59,12 @@ fun RegisterScreen(
                       password.length >= 6
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         containerColor = Color(0xFFF8FAFC),
         topBar = {
             Box(
                 modifier = Modifier
+                    .statusBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -93,6 +95,7 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
                 .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally

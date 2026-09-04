@@ -60,11 +60,13 @@ fun ForgotPasswordScreen(
     val scrollState = rememberScrollState()
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         containerColor = Color.White,
         topBar = {
             // Nút quay lại được đưa lên trên cùng (TopBar)
             Box(
                 modifier = Modifier
+                    .statusBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -95,7 +97,8 @@ fun ForgotPasswordScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .imePadding(),
             contentAlignment = Alignment.TopCenter // Thay đổi từ Center sang TopCenter
         ) {
             Column(
