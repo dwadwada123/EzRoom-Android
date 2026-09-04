@@ -68,14 +68,6 @@ class UserRepositoryImpl : UserRepository {
 
     private suspend fun uploadEkycImage(uri: Uri, context: Context): String? {
         return try {
-//            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-//            val bytes = inputStream?.readBytes() ?: return null
-//            val mediaType = context.contentResolver.getType(uri)?.toMediaTypeOrNull() ?: "image/jpeg".toMediaTypeOrNull()
-//            val requestBody = bytes.toRequestBody(mediaType)
-//            val body = MultipartBody.Part.createFormData("image", "ekyc_img_${System.currentTimeMillis()}.jpg", requestBody)
-//
-//            val response = authApi.uploadEkycImage(body)
-//            if (response.success) response.url else null
             Log.d("EKYC", "URI input = $uri")
 
             val inputStream = context.contentResolver.openInputStream(uri)
@@ -117,23 +109,18 @@ class UserRepositoryImpl : UserRepository {
                 Log.e("EKYC", "Upload failed: $response")
                 null
             }
-
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
-
     }
 
     override suspend fun verifyEkyc(idCardNumber: String, frontUri: Uri, backUri: Uri, selfieUri: Uri, context: Context): Result<Unit> {
         val currentUser = _user.value ?: return Result.failure(Exception("User not found locally"))
         return try {
-            Log.d("check-truoc", "frontUri: $frontUri, backUri: $backUri, selfieUri: $selfieUri")
             val frontUrl = uploadEkycImage(frontUri, context)
             val backUrl = uploadEkycImage(backUri, context)
             val selfieUrl = uploadEkycImage(selfieUri, context)
-
-            Log.d("check", "frontUrl: $frontUrl, backUrl: $backUrl, selfieUrl: $selfieUrl")
 
             if (frontUrl == null || backUrl == null || selfieUrl == null) {
                 return Result.failure(Exception("Không thể tải ảnh lên. Vui lòng thử lại."))
