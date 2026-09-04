@@ -2,6 +2,7 @@ package com.example.ezroom.ui.host.profile
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -179,7 +180,7 @@ fun EkycScreen(
                                 tempSelfieUri = createImageUri(context)
                                 tempSelfieUri?.let { selfieCameraLauncher.launch(it) }
                             },
-                            onCompleteClick = { 
+                            onCompleteClick = {
                                 if (frontIdUri != null && backIdUri != null && selfieUri != null) {
                                     viewModel.onVerifyEkyc(idCardNumber, frontIdUri!!, backIdUri!!, selfieUri!!, context)
                                 }

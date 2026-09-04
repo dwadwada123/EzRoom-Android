@@ -4,7 +4,8 @@ import android.os.Build
 
 object ApiConfig {
     // Base URL configuration for emulator and physical device
-    private const val BASE_URL_DEVICE = "http://192.168.1.85:3000/"
+    private const val BASE_URL_DEVICE = "http://192.168.10.137:3000/"
+
     private const val BASE_URL_EMULATOR = "http://10.0.2.2:3000/"
 
     // Check if running on emulator

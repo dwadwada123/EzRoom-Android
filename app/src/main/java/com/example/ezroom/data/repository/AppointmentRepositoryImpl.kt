@@ -2,6 +2,7 @@ package com.example.ezroom.data.repository
 
 import com.example.ezroom.domain.model.Appointment
 import com.example.ezroom.domain.model.AppointmentStatus
+import com.example.ezroom.domain.model.CreateAppointment
 import com.example.ezroom.domain.repository.AppointmentRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -32,7 +33,7 @@ class AppointmentRepositoryImpl(
         }
     }
 
-    override suspend fun createAppointment(appointment: Appointment) {
+    override suspend fun createAppointment(appointment: CreateAppointment) {
         try {
             api.createAppointment(appointment)
         } catch (e: java.lang.Exception) {
