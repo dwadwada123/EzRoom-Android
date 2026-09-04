@@ -335,7 +335,7 @@ fun ContractScreen(
                     // Điều 4
                     ContractSectionItem(title = "ĐIỀU 4: QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN") {
                         Text(
-                            text = "1. Quyền và nghĩa vụ Bên A:\n• Giao phòng và tài sản đúng tình trạng thỏa thuận.\n• Tôn trọng quyền riêng tư của Bên B: Tuyệt đối KHÔNG tự ý vào phòng thuê khi chưa báo trước ít nhất 24 giờ và chưa được Bên B đồng ý (trừ trường hợp khẩn cấp như hỏa hoạn, sự cố nguy hiểm).\n• Có trách nhiệm hỗ trợ làm thủ tục đăng ký tạm trú cho Bên B.\n\n2. Quyền và nghĩa vụ Bên B:\n• Trả tiền phòng và chi phí sinh hoạt đúng thời hạn.\n• Sử dụng đúng mục đích, giữ gìn trật tự và vệ sinh chung; không tự ý sửa đổi kết cấu khi chưa được Bên A đồng ý.\n\n3. Quyền và nghĩa vụ Bên C (EzRoom):\n• Đảm bảo vận hành nền tảng, bảo mật dữ liệu hợp đồng điện tử.\n• Giữ vai trò trung gian đối soát và bảo đảm tiền cọc minh bạch qua EzRoom Escrow.",
+                            text = "1. Quyền và nghĩa vụ Bên A:\n• Giao phòng và trang thiết bị đúng tình trạng đã thỏa thuận.\n• Đảm bảo quyền sử dụng riêng tư trọn vẹn của Bên B. Bên A không được tự ý vào phòng thuê khi chưa thông báo trước ít nhất 24 giờ và chưa được sự đồng ý của Bên B (trừ các trường hợp khẩn cấp nguy hiểm đến tính mạng/tài sản).\n• Chịu trách nhiệm làm thủ tục đăng ký tạm trú cho Bên B sau khi nhận đủ giấy tờ tùy thân.\n\n2. Quyền và nghĩa vụ Bên B:\n• Trả tiền thuê phòng và chi phí sinh hoạt đúng hạn.\n• Sử dụng phòng đúng mục đích, giữ gìn an ninh trật tự, vệ sinh chung và tuân thủ các quy định mà chủ trọ đã đưa ra (nếu có).\n• Không được tự ý sửa chữa kết cấu phòng hoặc cho thuê lại nếu chưa có sự đồng ý bằng văn bản của Bên A.\n\n3. Quyền và nghĩa vụ Bên C (EzRoom):\n• Cung cấp nền tảng ứng dụng vận hành ổn định để Bên A và Bên B tạo lập, ký kết hợp đồng và lưu trữ dữ liệu an toàn.\n• Đóng vai trò trung gian đối soát tài chính, bảo vệ khoản tiền cọc minh bạch qua EzRoom Escrow.\n• Hỗ trợ trích xuất dữ liệu khi có tranh chấp hoặc theo yêu cầu từ cơ quan Nhà nước có thẩm quyền.\n• Bên C hoạt động với tư cách là bên trung gian cung cấp nền tảng kết nối. Bên C không chịu trách nhiệm đối với quyền sở hữu hợp pháp của phòng trọ từ Bên A, chất lượng thực tế của phòng, cũng như các hành vi vi phạm nghĩa vụ thanh toán hoặc vi phạm pháp luật cá nhân phát sinh giữa Bên A và Bên B trong suốt thời gian thuê trọ.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -343,7 +343,7 @@ fun ContractScreen(
                     // Điều 5
                     ContractSectionItem(title = "ĐIỀU 5: CHẤM DỨT HỢP ĐỒNG & GIẢI QUYẾT TRANH CHẤP") {
                         Text(
-                            text = "1. Đơn phương chấm dứt: Báo trước ít nhất 30 ngày qua ứng dụng. Xử lý vi phạm theo quy định đặt cọc bảo hộ EzRoom Escrow.\n2. Giải quyết tranh chấp: Ưu tiên thương lượng hòa bình thông qua hỗ trợ đối soát dữ liệu từ Bên C. Trường hợp vi phạm pháp luật sẽ trình báo cơ quan Công an có thẩm quyền.",
+                            text = "1. Đơn phương chấm dứt: Bên muốn chấm dứt hợp đồng trước hạn phải thông báo trước ít nhất 30 ngày qua ứng dụng. Nếu Bên B đơn phương dọn đi trước thời hạn hợp đồng mà không thông báo trước đủ 30 ngày (hoặc tự ý bỏ đi không bàn giao), Bên B sẽ bị mất 100% số tiền đặt cọc. Số tiền này sẽ thuộc về Bên A. Ngược lại Nếu Bên A đơn phương lấy lại phòng trước hạn mà không thông báo trước đủ 30 ngày hoặc vi phạm nghiêm trọng cam kết (như tăng giá sai thỏa thuận, cắt điện nước ép khách dọn đi), Bên A phải hoàn trả 100% tiền cọc, đồng thời phải bồi thường thêm cho Bên B một khoản tiền bằng đúng với số tiền đã đặt cọc.\n2. Giải quyết tranh chấp: Các bên ưu tiên thương lượng hòa bình. Trường hợp xuất hiện hành vi bạo lực hoặc vi phạm pháp luật, Bên C có quyền trích xuất hồ sơ và trình báo cơ quan Công an xử lý theo quy định.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
@@ -351,7 +351,7 @@ fun ContractScreen(
                     // Điều 6
                     ContractSectionItem(title = "ĐIỀU 6: CAM KẾT VÀ HIỆU LỰC HỢP ĐỒNG") {
                         Text(
-                            text = "Các bên thống nhất thực hiện đúng các cam kết ghi nhận trên ứng dụng EzRoom. Hợp đồng có hiệu lực kể từ thời điểm Bên B hoàn tất ký số điện tử và đặt cọc thành công.",
+                            text = "Các bên cam kết hành vi xác nhận thông qua tài khoản cá nhân trên ứng dụng EzRoom là ý chí tự nguyện, đích danh và có giá trị pháp lý ràng buộc tương đương với việc kí tên trực tiếp trên giấy. Các bên sẽ từ bỏ quyền khiếu nại và phủ nhận hiệu lực của Hợp đồng với lý do Hợp đồng được giao kết thông qua hình thức dữ liệu số này. Hợp đồng này có hiệu lực kể từ thời điểm Bên B thao tác xác nhận ký và hoàn tất đặt cọc thành công trên hệ thống EzRoom.",
                             fontSize = 12.sp, lineHeight = 19.sp
                         )
                     }
