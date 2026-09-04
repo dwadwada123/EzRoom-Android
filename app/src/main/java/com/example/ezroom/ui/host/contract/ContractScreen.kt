@@ -85,6 +85,7 @@ fun HostContractScreen(
             var showTerminateDialog by remember { mutableStateOf(false) }
             var terminateReason by remember { mutableStateOf("") }
             var isTerminating by remember { mutableStateOf(false) }
+            var isAgreed by remember { mutableStateOf(false) }
 
             if (showTerminateDialog) {
                 AlertDialog(
@@ -137,18 +138,36 @@ fun HostContractScreen(
             // UI Component: Contextual Host Actions
             Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 16.dp, color = Color.White) {
                 Column(modifier = Modifier.padding(24.dp)) {
-                    when (contract.status) {
-                        ContractStatus.DRAFT -> {
+                    val isDraft = contract.status == ContractStatus.DRAFT || contract.id.isBlank()
+                    when {
+                        isDraft -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { if (!isSending) isAgreed = !isAgreed }
+                                    .padding(bottom = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = isAgreed,
+                                    onCheckedChange = { if (!isSending) isAgreed = it }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Tôi (Bên A - Chủ nhà) đã kiểm tra kỹ và đồng ý với toàn bộ điều khoản hợp đồng",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                             PrimaryButton(
-                                text = if (isSending) "ĐANG GỬI HỢP ĐỒNG..." else "GỬI HỢP ĐỒNG CHO NGƯỜI THUÊ",
+                                text = if (isSending) "ĐANG GỬI HỢP ĐỒNG..." else "KÝ & GỬI HỢP ĐỒNG CHO NGƯỜI THUÊ",
                                 onClick = {
                                     scope.launch {
                                         isSending = true
                                         try {
                                             val isZeroDeposit = contract.depositAmount == 0L
                                             val currentHost = com.example.ezroom.util.TokenManager.getUser()
-                                            val currentHostName = contract.hostName ?: currentHost?.name ?: "Chủ nhà"
-                                            val currentHostId = contract.hostId ?: currentHost?.id ?: ""
+                                            val currentHostName = contract.hostName?.takeIf { it.isNotBlank() } ?: currentHost?.name ?: "Chủ nhà"
+                                            val currentHostId = contract.hostId?.takeIf { it.isNotBlank() } ?: currentHost?.id ?: ""
                                             val finalContract = contract.copy(
                                                 hostName = currentHostName,
                                                 hostId = currentHostId,
@@ -156,18 +175,19 @@ fun HostContractScreen(
                                                 depositStatus = if (isZeroDeposit) DepositStatus.FROZEN else contract.depositStatus
                                             )
                                             ContractRepositoryImpl().createContract(finalContract)
+                                            isSending = false
+                                            onSignContract(TransactionType.DEPOSIT)
                                         } catch (e: Exception) {
-                                            // Handle fallback
+                                            isSending = false
+                                            android.widget.Toast.makeText(context, "Lỗi gửi hợp đồng: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                                         }
-                                        isSending = false
-                                        onSignContract(TransactionType.DEPOSIT)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = !isSending
+                                enabled = isAgreed && !isSending
                             )
                         }
-                        ContractStatus.WAITING_SIGN -> {
+                        contract.status == ContractStatus.WAITING_SIGN -> {
                             Surface(
                                 color = AccentAmber.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(12.dp),
@@ -183,7 +203,7 @@ fun HostContractScreen(
                                 )
                             }
                         }
-                        ContractStatus.WAITING_DEPOSIT -> {
+                        contract.status == ContractStatus.WAITING_DEPOSIT -> {
                             Surface(
                                 color = PrimaryMain.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(12.dp),
@@ -199,7 +219,7 @@ fun HostContractScreen(
                                 )
                             }
                         }
-                        ContractStatus.ACTIVE -> {
+                        contract.status == ContractStatus.ACTIVE -> {
                             OutlinedButton(
                                 onClick = { showTerminateDialog = true },
                                 modifier = Modifier.fillMaxWidth(),
@@ -209,7 +229,7 @@ fun HostContractScreen(
                                 Text("CHẤM DỨT HỢP ĐỒNG SỚM", fontWeight = FontWeight.Bold)
                             }
                         }
-                        ContractStatus.TERMINATED, ContractStatus.CANCELLED -> {
+                        contract.status == ContractStatus.TERMINATED || contract.status == ContractStatus.CANCELLED -> {
                             Surface(
                                 color = ErrorRose.copy(alpha = 0.08f),
                                 shape = RoundedCornerShape(12.dp),
@@ -479,6 +499,8 @@ private fun isDateArrivedOrPast(dateStr: String?): Boolean {
 private fun FintechStatusBanner(contract: Contract) {
     val isArrived = isDateArrivedOrPast(contract.disburseDate)
     val (color, icon, text) = when {
+        contract.status == ContractStatus.DRAFT || contract.id.isBlank() ->
+            Triple(PrimaryMain, Icons.Default.Info, "Bản thảo hợp đồng - Vui lòng kiểm tra kỹ trước khi ký và gửi cho người thuê.")
         contract.depositStatus == DepositStatus.FROZEN && isArrived -> 
             Triple(SuccessEmerald, Icons.Default.CheckCircle, "Tiền cọc đã đủ điều kiện giải ngân và được chuyển vào tài khoản của bạn.")
         contract.depositStatus == DepositStatus.FROZEN && !isArrived -> 

@@ -46,6 +46,19 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 private val peaceSansFont = FontFamily.Default
+private val contractDateFormat = java.text.SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+
+private fun parseContractDate(dateStr: String): Date? {
+    return try {
+        if (dateStr.isBlank()) null else contractDateFormat.parse(dateStr.trim())
+    } catch (e: Exception) {
+        null
+    }
+}
+
+private fun formatContractDate(dayOfMonth: Int, month: Int, year: Int): String {
+    return String.format(Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,18 +116,47 @@ fun CreateContractScreen(
         if (!initialRenterName.isNullOrBlank() && renterName.isEmpty()) renterName = initialRenterName
     }
 
-    val calendar = Calendar.getInstance()
-    val showDatePicker = { onDateSelected: (String) -> Unit ->
-        DatePickerDialog(
+    val showDatePicker = { minDate: Long?, initialDate: Date?, onDateSelected: (String) -> Unit ->
+        val cal = Calendar.getInstance()
+        if (initialDate != null) {
+            if (minDate != null && initialDate.time < minDate) {
+                cal.timeInMillis = minDate
+            } else {
+                cal.time = initialDate
+            }
+        } else if (minDate != null && cal.timeInMillis < minDate) {
+            cal.timeInMillis = minDate
+        }
+
+        val dialog = DatePickerDialog(
             context,
-            { _, year, month, dayOfMonth -> onDateSelected("$dayOfMonth/${month + 1}/$year") },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+            { _, year, month, dayOfMonth ->
+                val formatted = formatContractDate(dayOfMonth, month, year)
+                onDateSelected(formatted)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        if (minDate != null) {
+            dialog.datePicker.minDate = minDate
+        }
+        dialog.show()
     }
 
-    val isFormValid = selectedRoomId.isNotEmpty() && renterName.isNotBlank() && renterPhone.isNotBlank() && startDate.isNotBlank() && depositAmount.isNotBlank()
+    val isDatesValid = remember(startDate, endDate) {
+        val s = parseContractDate(startDate)
+        val e = parseContractDate(endDate)
+        s != null && e != null && e.after(s)
+    }
+
+    val isFormValid = selectedRoomId.isNotEmpty() &&
+            renterName.isNotBlank() &&
+            renterPhone.isNotBlank() &&
+            startDate.isNotBlank() &&
+            endDate.isNotBlank() &&
+            isDatesValid &&
+            depositAmount.isNotBlank()
 
     fun proceedWithContractCreation(foundRenterId: String) {
         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -135,22 +177,13 @@ fun CreateContractScreen(
             endDate = endDate,
             depositAmount = parsedDeposit,
             depositStatus = initialDepositStatus,
-            status = ContractStatus.WAITING_SIGN,
+            status = ContractStatus.DRAFT,
             dateCreated = sdf.format(Date()),
             hostId = currentHostId,
             renterId = foundRenterId
         )
-        scope.launch {
-            isLoading = true
-            try {
-                val createdContract = viewModel.createContract(contract)
-                isLoading = false
-                onProceedToTerms(createdContract)
-            } catch (e: Exception) {
-                isLoading = false
-                onProceedToTerms(contract)
-            }
-        }
+        isLoading = false
+        onProceedToTerms(contract)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(White)) {
@@ -226,8 +259,75 @@ fun CreateContractScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionTitle("THỜI HẠN THUÊ")
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ContractInputField(label = "Ngày bắt đầu", value = startDate, placeholder = "DD/MM/YYYY", leadingIcon = Icons.Outlined.CalendarToday, readOnly = true, enabled = !isLoading, onClick = { showDatePicker { startDate = it } }, modifier = Modifier.weight(1f))
-                        ContractInputField(label = "Ngày kết thúc (Dự kiến)", value = endDate, placeholder = "DD/MM/YYYY", leadingIcon = Icons.Outlined.CalendarToday, readOnly = true, enabled = !isLoading, onClick = { showDatePicker { endDate = it } }, modifier = Modifier.weight(1f))
+                        ContractInputField(
+                            label = "Ngày bắt đầu",
+                            value = startDate,
+                            placeholder = "DD/MM/YYYY",
+                            leadingIcon = Icons.Outlined.CalendarToday,
+                            readOnly = true,
+                            enabled = !isLoading,
+                            onClick = {
+                                val currentStart = parseContractDate(startDate)
+                                showDatePicker(null, currentStart) { newStartDateStr ->
+                                    val newStart = parseContractDate(newStartDateStr)
+                                    val currentEnd = parseContractDate(endDate)
+                                    if (newStart != null && currentEnd != null && !newStart.before(currentEnd)) {
+                                        endDate = ""
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Ngày bắt đầu mới sau ngày kết thúc cũ, vui lòng chọn lại ngày kết thúc",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                    startDate = newStartDateStr
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ContractInputField(
+                            label = "Ngày kết thúc (Dự kiến)",
+                            value = endDate,
+                            placeholder = "DD/MM/YYYY",
+                            leadingIcon = Icons.Outlined.CalendarToday,
+                            readOnly = true,
+                            enabled = !isLoading,
+                            onClick = {
+                                if (startDate.isBlank()) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Vui lòng chọn ngày bắt đầu hợp đồng trước",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    val startParsed = parseContractDate(startDate)
+                                    val minDate = if (startParsed != null) startParsed.time + 86400000L else null
+                                    val currentEndParsed = parseContractDate(endDate)
+                                    val initialDate = currentEndParsed ?: (if (startParsed != null) Date(startParsed.time + 86400000L) else null)
+                                    showDatePicker(minDate, initialDate) { newEndDateStr ->
+                                        val endParsed = parseContractDate(newEndDateStr)
+                                        if (startParsed != null && endParsed != null && !endParsed.after(startParsed)) {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Ngày kết thúc hợp đồng phải sau ngày bắt đầu",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        } else {
+                                            endDate = newEndDateStr
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (startDate.isNotBlank() && endDate.isNotBlank() && !isDatesValid) {
+                        Text(
+                            text = "Ngày kết thúc hợp đồng phải sau ngày bắt đầu",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            fontFamily = peaceSansFont,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
                     }
                 }
 
@@ -265,6 +365,20 @@ fun CreateContractScreen(
 
                 Button(
                     onClick = {
+                        if (startDate.isBlank()) {
+                            android.widget.Toast.makeText(context, "Vui lòng chọn ngày bắt đầu hợp đồng", android.widget.Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (endDate.isBlank()) {
+                            android.widget.Toast.makeText(context, "Vui lòng chọn ngày kết thúc hợp đồng", android.widget.Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        val start = parseContractDate(startDate)
+                        val end = parseContractDate(endDate)
+                        if (start == null || end == null || !end.after(start)) {
+                            android.widget.Toast.makeText(context, "Ngày kết thúc hợp đồng phải sau ngày bắt đầu", android.widget.Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         if (isFormValid) {
                             scope.launch {
                                 isLoading = true

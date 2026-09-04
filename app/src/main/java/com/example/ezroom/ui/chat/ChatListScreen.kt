@@ -97,73 +97,32 @@ fun ChatListScreen(
 ) {
     val uiState by viewModel.listState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableStateOf(0) }
 
-    Scaffold(
-        containerColor = Color.White,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* New Chat */ },
-                containerColor = ChatLogoCyan,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.padding(bottom = 8.dp) // Thêm chút khoảng cách cho FAB
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "New Message")
+    val filteredConversations = remember(uiState.conversations, searchQuery) {
+        if (searchQuery.isBlank()) {
+            uiState.conversations
+        } else {
+            uiState.conversations.filter {
+                (it.otherPartyName ?: "").contains(searchQuery, ignoreCase = true) ||
+                (it.lastMessage ?: "").contains(searchQuery, ignoreCase = true) ||
+                (it.otherPartyPhone ?: "").contains(searchQuery)
             }
         }
+    }
+
+    Scaffold(
+        containerColor = Color.White
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding())
                 .background(Color.White)
         ) {
-            // Header: Title and Segmented Control
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding() // Tránh tràn lên status bar
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-
-                Text(
-                    text = "Tin nhắn",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = peaceSansFont,
-                    color = ChatLogoNavy
-                )
-
-                // Simple Segmented Control (All / Scheduled)
-                Surface(
-                    color = Color(0xFFF1F5F9),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TabItem(
-                            text = "Tất cả",
-                            isSelected = selectedTab == 0,
-                            onClick = { selectedTab = 0 }
-                        )
-                        TabItem(
-                            text = "Lịch hẹn",
-                            isSelected = selectedTab == 1,
-                            onClick = { selectedTab = 1 }
-                        )
-                    }
-                }
-            }
-
             // Search Bar
             Surface(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = RoundedCornerShape(12.dp),
@@ -205,11 +164,33 @@ fun ChatListScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             if (uiState.isLoading) {
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     LoadingWidget()
+                }
+            } else if (filteredConversations.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(bottom = paddingValues.calculateBottomPadding() + 80.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = null,
+                            tint = Color.LightGray,
+                            modifier = Modifier.size(56.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "Không tìm thấy cuộc trò chuyện" else "Chưa có tin nhắn nào",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = peaceSansFont,
+                            color = Color.Gray
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -220,7 +201,7 @@ fun ChatListScreen(
                         bottom = paddingValues.calculateBottomPadding() + 80.dp
                     )
                 ) {
-                    itemsIndexed(uiState.conversations, key = { _, it -> it.id }) { index, chat ->
+                    itemsIndexed(filteredConversations, key = { _, it -> it.id }) { index, chat ->
                         ConversationListItem(
                             chat = chat,
                             onClick = {
@@ -233,57 +214,8 @@ fun ChatListScreen(
                             thickness = 1.dp
                         )
                     }
-
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = Color.Gray
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = "LƯU TRỮ",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = peaceSansFont,
-                                color = Color.Gray,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun TabItem(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        color = if (isSelected) Color.White else Color.Transparent,
-        shape = RoundedCornerShape(8.dp),
-        shadowElevation = if (isSelected) 2.dp else 0.dp,
-        modifier = Modifier.width(80.dp).fillMaxHeight()
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = text,
-                fontSize = 13.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                fontFamily = peaceSansFont,
-                color = if (isSelected) Color.Black else Color.Gray
-            )
         }
     }
 }

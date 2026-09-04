@@ -8,6 +8,7 @@ import android.net.Uri
 
 interface UserRepository {
     fun getCurrentUser(): Flow<User?>
+    suspend fun fetchFreshProfile(): User?
     suspend fun updateProfile(name: String, phone: String)
     suspend fun verifyEkyc(idCardNumber: String, frontUri: Uri, backUri: Uri, selfieUri: Uri, context: Context): Result<Unit>
     suspend fun changePassword(current: String, new: String): Boolean

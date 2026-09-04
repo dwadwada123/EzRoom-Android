@@ -15,12 +15,11 @@ class InvoiceRepositoryImpl : InvoiceRepository {
     override fun getInvoices(): Flow<List<Invoice>> = flow {
         try {
             val list = invoiceApi.getInvoices()
-            if (list.isNotEmpty()) {
-                MockData.invoices.clear()
-                MockData.invoices.addAll(list)
-            }
+            MockData.invoices.clear()
+            MockData.invoices.addAll(list)
             emit(list)
         } catch (e: Exception) {
+            android.util.Log.e("InvoiceRepo", "getInvoices error", e)
             emit(MockData.invoices)
         }
     }
@@ -36,10 +35,23 @@ class InvoiceRepositoryImpl : InvoiceRepository {
 
     override suspend fun createInvoice(invoice: Invoice) {
         try {
-            invoiceApi.createInvoice(invoice)
-            MockData.invoices.add(0, invoice)
+            val res = invoiceApi.createInvoice(invoice)
+            if (!res.success) {
+                val errorMsg = res.error ?: res.message ?: "Không thể tạo hóa đơn"
+                android.util.Log.e("InvoiceRepo", "createInvoice failed: $errorMsg")
+                throw Exception(errorMsg)
+            }
+            android.util.Log.d("InvoiceRepo", "createInvoice success")
+            try {
+                val updatedList = invoiceApi.getInvoices()
+                MockData.invoices.clear()
+                MockData.invoices.addAll(updatedList)
+            } catch (e: Exception) {
+                MockData.invoices.add(0, invoice)
+            }
         } catch (e: Exception) {
-            // Error handling
+            android.util.Log.e("InvoiceRepo", "createInvoice exception", e)
+            throw e
         }
     }
 

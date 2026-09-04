@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import android.content.Context
 import android.net.Uri
 
+import com.example.ezroom.util.TokenManager
+
 data class ProfileUiState(
     val user: User? = null,
     val isLoading: Boolean = false,
@@ -25,21 +27,44 @@ class ProfileViewModel(
     private val verifyEkyc: VerifyEkycUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ProfileUiState())
+    private val _uiState = MutableStateFlow(ProfileUiState(user = TokenManager.getUser()))
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
         loadProfile()
     }
 
-    private fun loadProfile() {
+    fun loadProfile() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            val cached = TokenManager.getUser()
+            if (cached != null && cached.id.isNotBlank()) {
+                _uiState.update { it.copy(user = cached) }
+            }
             getCurrentUser()
                 .onEach { user ->
-                    _uiState.update { it.copy(user = user, isLoading = false) }
+                    if (user != null) {
+                        _uiState.update { it.copy(user = user, isLoading = false) }
+                    }
                 }
                 .collect()
+        }
+        refreshProfile()
+    }
+
+    fun refreshProfile() {
+        viewModelScope.launch {
+            val cached = TokenManager.getUser()
+            if (cached != null && cached.id.isNotBlank()) {
+                _uiState.update { it.copy(user = cached) }
+            }
+            try {
+                val fresh = getCurrentUser.refresh()
+                if (fresh != null) {
+                    _uiState.update { it.copy(user = fresh) }
+                }
+            } catch (e: Exception) {
+                // Ignore network error on silent refresh
+            }
         }
     }
 

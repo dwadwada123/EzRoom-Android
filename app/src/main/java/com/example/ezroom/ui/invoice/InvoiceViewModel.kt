@@ -62,17 +62,22 @@ class InvoiceViewModel(
         loadInvoices()
     }
 
-    fun createInvoice(invoice: Invoice, onComplete: () -> Unit = {}) {
+    fun createInvoice(
+        invoice: Invoice,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 repository.createInvoice(invoice)
                 loadInvoices()
                 _uiState.update { it.copy(isLoading = false) }
-                onComplete()
+                onSuccess()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
-                onComplete()
+                val errorMsg = e.message ?: "Không thể tạo hóa đơn"
+                _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                onError(errorMsg)
             }
         }
     }

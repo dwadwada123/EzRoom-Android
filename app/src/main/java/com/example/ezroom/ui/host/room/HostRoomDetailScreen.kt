@@ -48,6 +48,7 @@ fun HostRoomDetailScreen(
     onEditClick: (Room) -> Unit = {},
     onDeleteClick: (String) -> Unit = {},
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -55,28 +56,43 @@ fun HostRoomDetailScreen(
     val displayRoom = remember(room) { room ?: mockRoomWithRenters() }
     val reviews = remember { mutableStateListOf<RoomReview>() }
 
-    // Fetch room reviews left by renters
-    LaunchedEffect(displayRoom.id) {
-        reviews.clear()
-        reviews.addAll(displayRoom.reviews)
+    suspend fun fetchRoomReviews() {
         try {
             val roomReviewApi = com.example.ezroom.data.remote.RoomReviewApi.create()
             val remoteReviews: List<com.example.ezroom.data.remote.RoomReviewResponse> = roomReviewApi.getRoomReviews(displayRoom.id)
-            if (remoteReviews.isNotEmpty()) {
-                val mapped = remoteReviews.map { res: com.example.ezroom.data.remote.RoomReviewResponse ->
-                    RoomReview(
-                        id = res.id,
-                        userName = res.reviewerName,
-                        rating = res.rating,
-                        comment = res.comment,
-                        date = res.createdAt.take(10)
-                    )
-                }
-                reviews.clear()
-                reviews.addAll(mapped)
+            val mapped = remoteReviews.map { res: com.example.ezroom.data.remote.RoomReviewResponse ->
+                RoomReview(
+                    id = res.id,
+                    userName = res.reviewerName,
+                    rating = res.rating,
+                    comment = res.comment,
+                    date = res.createdAt.take(10)
+                )
             }
+            reviews.clear()
+            reviews.addAll(mapped)
         } catch (e: Exception) {
             android.util.Log.e("HostRoomDetail", "Failed to fetch room reviews", e)
+        }
+    }
+
+    // Fetch room reviews left by renters
+    LaunchedEffect(displayRoom.id) {
+        fetchRoomReviews()
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, displayRoom.id) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    fetchRoomReviews()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -167,6 +183,7 @@ fun HostRoomDetailScreen(
                                 if (renterPhoneToReview.isNotBlank()) put(renterPhoneToReview, updated)
                                 if (renterIdToReview.isNotBlank()) put(renterIdToReview, updated)
                             }
+                            android.widget.Toast.makeText(context, "Đã cập nhật đánh giá!", android.widget.Toast.LENGTH_SHORT).show()
                         } else {
                             // Create new review in MongoDB
                             val targetRenterId = renterPhoneToReview.ifBlank { renterIdToReview }
@@ -181,13 +198,16 @@ fun HostRoomDetailScreen(
                             )
                             val res = api.createRenterReview(newReview)
                             android.util.Log.d("HostRoomDetail", "Create review res: $res")
+                            val savedReview = res.review ?: newReview
                             existingReviewsMap = existingReviewsMap.toMutableMap().apply {
-                                if (renterPhoneToReview.isNotBlank()) put(renterPhoneToReview, newReview)
-                                if (renterIdToReview.isNotBlank()) put(renterIdToReview, newReview)
+                                if (renterPhoneToReview.isNotBlank()) put(renterPhoneToReview, savedReview)
+                                if (renterIdToReview.isNotBlank()) put(renterIdToReview, savedReview)
                             }
+                            android.widget.Toast.makeText(context, "Đã lưu đánh giá người thuê thành công!", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("HostRoomDetail", "Error saving renter review", e)
+                        android.widget.Toast.makeText(context, "Có lỗi xảy ra khi lưu đánh giá", android.widget.Toast.LENGTH_SHORT).show()
                     }
                     showRenterReview = false
                 }
@@ -202,9 +222,11 @@ fun HostRoomDetailScreen(
                                 if (renterPhoneToReview.isNotBlank()) remove(renterPhoneToReview)
                                 if (renterIdToReview.isNotBlank()) remove(renterIdToReview)
                             }
+                            android.widget.Toast.makeText(context, "Đã xóa đánh giá", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("HostRoomDetail", "Error deleting review", e)
+                        android.widget.Toast.makeText(context, "Có lỗi xảy ra khi xóa đánh giá", android.widget.Toast.LENGTH_SHORT).show()
                     }
                     showRenterReview = false
                 }

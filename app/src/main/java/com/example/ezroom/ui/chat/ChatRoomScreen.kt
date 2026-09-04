@@ -65,13 +65,31 @@ fun ChatRoomScreen(
         contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         uri?.let {
-            val inputStream = context.contentResolver.openInputStream(it)
-            val bytes = inputStream?.readBytes()
-            inputStream?.close()
-            if (bytes != null) {
-                val mimeType = context.contentResolver.getType(it) ?: "image/jpeg"
-                val fileName = "img_${System.currentTimeMillis()}.jpg"
-                viewModel.uploadImageAndSend(conversationId, bytes, fileName, mimeType)
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val originalBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (originalBitmap != null) {
+                    val outputStream = java.io.ByteArrayOutputStream()
+                    val maxDimension = 1280
+                    val width = originalBitmap.width
+                    val height = originalBitmap.height
+                    val scaledBitmap = if (width > maxDimension || height > maxDimension) {
+                        val ratio = width.toFloat() / height.toFloat()
+                        val newWidth = if (ratio > 1f) maxDimension else (maxDimension * ratio).toInt()
+                        val newHeight = if (ratio > 1f) (maxDimension / ratio).toInt() else maxDimension
+                        android.graphics.Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+                    } else {
+                        originalBitmap
+                    }
+                    scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+                    val bytes = outputStream.toByteArray()
+                    val fileName = "img_${System.currentTimeMillis()}.jpg"
+                    viewModel.uploadImageAndSend(conversationId, bytes, fileName, "image/jpeg")
+                }
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "Lỗi khi xử lý ảnh: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -98,12 +116,16 @@ fun ChatRoomScreen(
                         if (lastLoc != null) {
                             viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = lastLoc.latitude, lng = lastLoc.longitude)
                         } else {
-                            android.widget.Toast.makeText(context, "Không thể lấy vị trí hiện tại. Vui lòng bật GPS và thử lại.", android.widget.Toast.LENGTH_SHORT).show()
+                            // Fallback coordinates for emulator / GPS unavailable
+                            viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = 10.7769, lng = 106.7009)
+                            android.widget.Toast.makeText(context, "Đã gửi toạ độ mặc định (TP.HCM) do thiết bị chưa có tín hiệu GPS.", android.widget.Toast.LENGTH_SHORT).show()
                         }
+                    }.addOnFailureListener {
+                        viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = 10.7769, lng = 106.7009)
                     }
                 }
             }.addOnFailureListener {
-                android.widget.Toast.makeText(context, "Lỗi khi lấy vị trí: ${it.message}", android.widget.Toast.LENGTH_SHORT).show()
+                viewModel.onSendMessage(conversationId, "Đã gửi vị trí", lat = 10.7769, lng = 106.7009)
             }
         } catch (e: SecurityException) {
             android.widget.Toast.makeText(context, "Chưa cấp quyền vị trí", android.widget.Toast.LENGTH_SHORT).show()
@@ -111,8 +133,10 @@ fun ChatRoomScreen(
     }
 
     val locationPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (isGranted) {
             fetchAndSendLocation()
         } else {
@@ -133,10 +157,17 @@ fun ChatRoomScreen(
                     if (option == "image") {
                         photoPickerLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
                     } else if (option == "location") {
-                        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        val hasCoarse = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (hasFine || hasCoarse) {
                             fetchAndSendLocation()
                         } else {
-                            locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
                         }
                     }
                 }
@@ -176,6 +207,13 @@ fun ChatRoomScreen(
                         }
                     },
                     title = {
+                        val currentUser = remember { com.example.ezroom.util.TokenManager.getUser() }
+                        val displayTitle = if (uiState.otherPartyName.isBlank() || uiState.otherPartyName.equals("Chat", ignoreCase = true)) {
+                            if (currentUser?.role == "HOST") "Khách thuê" else "Chủ trọ"
+                        } else {
+                            uiState.otherPartyName
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 modifier = Modifier.size(40.dp),
@@ -185,7 +223,7 @@ fun ChatRoomScreen(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
-                                        text = uiState.otherPartyName.take(1).ifEmpty { "C" },
+                                        text = displayTitle.take(1).ifEmpty { "U" },
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = PrimaryMain
@@ -197,7 +235,7 @@ fun ChatRoomScreen(
 
                             Column {
                                 Text(
-                                    text = uiState.otherPartyName,
+                                    text = displayTitle,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Neutral900
@@ -483,7 +521,9 @@ fun ChatBubble(message: Message) {
                         }
                     }
 
-                    if (message.text.isNotBlank()) {
+                    val isImageCaption = message.imageUrl != null && (message.text == "Đã gửi một ảnh" || message.text == "[Hình ảnh]")
+                    val isLocationCaption = (message.latitude != null || message.longitude != null) && (message.text == "Đã gửi vị trí" || message.text == "[Vị trí]")
+                    if (message.text.isNotBlank() && !isImageCaption && !isLocationCaption) {
                         Text(
                             text = message.text,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

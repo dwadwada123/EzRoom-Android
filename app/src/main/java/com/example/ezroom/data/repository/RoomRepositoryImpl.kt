@@ -176,6 +176,11 @@ class RoomRepositoryImpl : RoomRepository {
     }
 
     override suspend fun deleteProperty(propertyId: String) {
+        try {
+            propertyApi.deleteProperty(propertyId)
+        } catch (e: Exception) {
+            android.util.Log.e("RoomRepo", "deleteProperty error: ${e.message}")
+        }
         val index = MockData.properties.indexOfFirst { it.id == propertyId }
         if (index != -1) {
             MockData.properties.removeAt(index)
@@ -215,7 +220,15 @@ class RoomRepositoryImpl : RoomRepository {
                 longitude = property.longitude,
                 hostId = property.hostId
             )
-            val response = propertyApi.createProperty(request)
+            val response = if (!property.id.isNullOrBlank()) {
+                try {
+                    propertyApi.updateProperty(property.id, request)
+                } catch (e: Exception) {
+                    propertyApi.createProperty(request)
+                }
+            } else {
+                propertyApi.createProperty(request)
+            }
             finalProperty = mapPropertyResponseToDomain(response)
         } catch (e: Exception) {
             android.util.Log.e("RoomRepo", "saveProperty API error: ${e.message}")
@@ -268,7 +281,8 @@ class RoomRepositoryImpl : RoomRepository {
         }
     }
 
-    override suspend fun saveRoom(room: Room) {
+    override suspend fun saveRoom(room: Room): Room {
+        var finalRoom = room
         try {
             val request = RoomRequest(
                 id = room.id.takeIf { it.isNotBlank() },
@@ -293,21 +307,41 @@ class RoomRepositoryImpl : RoomRepository {
                 longitude = room.longitude,
                 status = room.status.name
             )
-            roomApi.createRoom(request)
+            val response = roomApi.createRoom(request)
+            if (response.success && response.room != null) {
+                finalRoom = mapRoomResponseToDomain(response.room)
+            }
         } catch (e: Exception) {
             android.util.Log.e("RoomRepo", "saveRoom API error: ${e.message}")
         }
-        val index = MockData.rooms.indexOfFirst { it.id == room.id }
-        if (index != -1) {
-            MockData.rooms[index] = room
-        } else {
-            MockData.rooms.add(room)
+
+        if (finalRoom.id.isBlank()) {
+            finalRoom = finalRoom.copy(id = java.util.UUID.randomUUID().toString())
         }
+
+        val index = MockData.rooms.indexOfFirst { it.id == finalRoom.id }
+        if (index != -1) {
+            MockData.rooms[index] = finalRoom
+        } else {
+            MockData.rooms.add(finalRoom)
+        }
+        return finalRoom
     }
 
     override suspend fun getRoomById(roomId: String): Room? {
-        // Fallback to mock data if API is not available
-        return MockData.rooms.find { it.id == roomId }
+        val cached = MockData.rooms.find { it.id == roomId }
+        if (cached != null) return cached
+        return try {
+            val responseList = roomApi.getHostRooms()
+            val domainList = responseList.map { mapRoomResponseToDomain(it) }
+            domainList.forEach { r ->
+                val idx = MockData.rooms.indexOfFirst { it.id == r.id }
+                if (idx != -1) MockData.rooms[idx] = r else MockData.rooms.add(r)
+            }
+            domainList.find { it.id == roomId }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private val reviewApi = NetworkClient.createService<com.example.ezroom.data.remote.RoomReviewApi>()

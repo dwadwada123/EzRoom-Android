@@ -10,7 +10,7 @@ data class User(
     val isEkycVerified: Boolean = false,
     val ekycStatus: String? = null,
     val ekycRejectReason: String? = null,
-    val creditScore: Float = 0f,
+    val creditScore: Float = 5.0f,
     val favoriteRoomIds: List<String> = emptyList(),
     val paymentAccounts: List<PaymentAccount> = emptyList(),
     val password: String? = null

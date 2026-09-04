@@ -308,8 +308,10 @@ fun AppNavigation() {
 
                     NotificationScreen(
                         onNavigateBack = { navController.popBackStack() },
-                        onNavigateToChat = { conversationId ->
-                            navController.navigate("chat_room/$conversationId/Chat?phoneNumber=")
+                        onNavigateToChat = { conversationId, senderName ->
+                            val displayName = if (senderName.isNotBlank()) senderName else (if (isHost) "Khách thuê" else "Chủ trọ")
+                            val encodedName = android.net.Uri.encode(displayName)
+                            navController.navigate("chat_room/$conversationId/$encodedName?phoneNumber=")
                         },
                         onNavigateToContract = { contractId ->
                             val route = if (isHost) "host_contract/$contractId" else "renter_contract/$contractId"
@@ -367,9 +369,12 @@ fun AppNavigation() {
                         },
                         onProfileClick = { navController.navigate(Screen.HOST_PROFILE) },
                         onNotificationClick = { navController.navigate(Screen.NOTIFICATION) },
+                        onEditPropertyClick = { propertyId ->
+                            navController.navigate("property_form?propertyId=$propertyId")
+                        },
                         onCloneRoomClick = { room ->
-                            val ekycStatusClone = com.example.ezroom.util.TokenManager.getUser()?.ekycStatus
-                            if (ekycStatusClone == "VERIFIED") {
+                            val userClone = com.example.ezroom.util.TokenManager.getUser()
+                            if (userClone?.ekycStatus == "VERIFIED" || userClone?.isEkycVerified == true) {
                                 val route = if (room.propertyId != null) "room_form/false?cloneFromId=${room.id}&propertyId=${room.propertyId}" else "room_form/false?cloneFromId=${room.id}"
                                 navController.navigate(route)
                             } else {
@@ -378,8 +383,8 @@ fun AppNavigation() {
                             }
                         },
                         onAddRoomToProperty = { propertyId ->
-                            val ekycStatusAddRoom = com.example.ezroom.util.TokenManager.getUser()?.ekycStatus
-                            if (ekycStatusAddRoom == "VERIFIED") {
+                            val userAddRoom = com.example.ezroom.util.TokenManager.getUser()
+                            if (userAddRoom?.ekycStatus == "VERIFIED" || userAddRoom?.isEkycVerified == true) {
                                 navController.navigate("room_form/false?propertyId=$propertyId")
                             } else {
                                 showSnackbar("Bạn cần xác thực danh tính (eKYC) trước khi đăng phòng. Vui lòng vào Trang cá nhân để xác thực.")
@@ -387,8 +392,8 @@ fun AppNavigation() {
                             }
                         },
                         onAddPropertyClick = {
-                            val ekycStatusProp = com.example.ezroom.util.TokenManager.getUser()?.ekycStatus
-                            if (ekycStatusProp == "VERIFIED") {
+                            val userProp = com.example.ezroom.util.TokenManager.getUser()
+                            if (userProp?.ekycStatus == "VERIFIED" || userProp?.isEkycVerified == true) {
                                 navController.navigate("property_form")
                             } else {
                                 showSnackbar("Bạn cần xác thực danh tính (eKYC) trước khi đăng phòng. Vui lòng vào Trang cá nhân để xác thực.")
@@ -396,8 +401,8 @@ fun AppNavigation() {
                             }
                         },
                         onAddStandaloneRoomClick = {
-                            val ekycStatusStandalone = com.example.ezroom.util.TokenManager.getUser()?.ekycStatus
-                            if (ekycStatusStandalone == "VERIFIED") {
+                            val userStandalone = com.example.ezroom.util.TokenManager.getUser()
+                            if (userStandalone?.ekycStatus == "VERIFIED" || userStandalone?.isEkycVerified == true) {
                                 navController.navigate("room_form/false")
                             } else {
                                 showSnackbar("Bạn cần xác thực danh tính (eKYC) trước khi đăng phòng. Vui lòng vào Trang cá nhân để xác thực.")
@@ -598,7 +603,7 @@ fun AppNavigation() {
                             contract = contract!!,
                             onNavigateBack = { navController.popBackStack() },
                             onSignSuccess = {
-                                if (contract!!.depositAmount > 0L && contract!!.depositStatus == com.example.ezroom.domain.model.DepositStatus.UNPAID) {
+                                if (contract!!.depositAmount > 0L && contract!!.depositStatus != com.example.ezroom.domain.model.DepositStatus.FROZEN) {
                                     navController.navigate("payment_qr/${contract!!.id}") {
                                         popUpTo(Screen.RENTER_CONTRACT) { inclusive = true }
                                     }
@@ -923,9 +928,17 @@ fun AppNavigation() {
                     arguments = listOf(navArgument("roomId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
-                    val room = MockData.rooms.find { it.id == roomId }
+                    val repo = remember { com.example.ezroom.data.repository.RoomRepositoryImpl() }
+                    var room by remember { mutableStateOf(MockData.rooms.find { it.id == roomId }) }
+                    LaunchedEffect(roomId) {
+                        if (roomId.isNotBlank()) {
+                            val fetched = repo.getRoomById(roomId)
+                            if (fetched != null) {
+                                room = fetched
+                            }
+                        }
+                    }
                     val scope = rememberCoroutineScope()
-                    val repo = com.example.ezroom.data.repository.RoomRepositoryImpl()
                     
                     WriteReviewScreen(
                         roomTitle = room?.title ?: "Thông tin phòng trọ",

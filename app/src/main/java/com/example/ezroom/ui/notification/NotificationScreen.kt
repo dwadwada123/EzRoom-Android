@@ -44,7 +44,7 @@ private val peaceSansFont = FontFamily.Default
 @Composable
 fun NotificationScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToChat: (conversationId: String) -> Unit = {},
+    onNavigateToChat: (conversationId: String, senderName: String) -> Unit = { _, _ -> },
     onNavigateToContract: (contractId: String) -> Unit = {},
     onNavigateToInvoice: (invoiceId: String) -> Unit = {},
     onNavigateToAppointments: () -> Unit = {},
@@ -114,51 +114,57 @@ private fun NotificationTopBar(
     onNavigateBack: () -> Unit,
     onMarkAllAsRead: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        color = White,
+        shadowElevation = 2.dp
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(SurfaceCard)
-                .clickable { onNavigateBack() },
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Neutral900,
-                modifier = Modifier.size(20.dp)
-            )
-        }
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceCard)
+                    .clickable { onNavigateBack() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Neutral900,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
 
-        Text(
-            text = "THÔNG BÁO",
-            fontFamily = peaceSansFont,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = Neutral900
-        )
-
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(SurfaceCard)
-                .clickable { onMarkAllAsRead() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.DoneAll,
-                contentDescription = "Read All",
-                tint = PrimaryMain,
-                modifier = Modifier.size(20.dp)
+            Text(
+                text = "THÔNG BÁO",
+                fontFamily = peaceSansFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Neutral900
             )
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceCard)
+                    .clickable { onMarkAllAsRead() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DoneAll,
+                    contentDescription = "Read All",
+                    tint = PrimaryMain,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
@@ -278,7 +284,7 @@ private fun EmptyNotificationState() {
 private fun NotificationList(
     notifications: List<NotificationItem>,
     viewModel: NotificationViewModel,
-    onNavigateToChat: (String) -> Unit,
+    onNavigateToChat: (conversationId: String, senderName: String) -> Unit,
     onNavigateToContract: (String) -> Unit,
     onNavigateToInvoice: (String) -> Unit,
     onNavigateToAppointments: () -> Unit,
@@ -313,7 +319,14 @@ private fun NotificationList(
                             viewModel.onNotificationRead(notification.id)
                             val targetId = notification.targetId
                             when (notification.type.uppercase()) {
-                                "CHAT" -> if (!targetId.isNullOrEmpty()) onNavigateToChat(targetId)
+                                "CHAT" -> if (!targetId.isNullOrEmpty()) {
+                                    val senderName = if (notification.content.contains(":")) {
+                                        notification.content.substringBefore(":").trim()
+                                    } else {
+                                        ""
+                                    }
+                                    onNavigateToChat(targetId, senderName)
+                                }
                                 "CONTRACT" -> if (!targetId.isNullOrEmpty()) onNavigateToContract(targetId)
                                 "INVOICE", "BILL" -> if (!targetId.isNullOrEmpty()) onNavigateToInvoice(targetId)
                                 "APPOINTMENT", "SCHEDULE" -> onNavigateToAppointments()

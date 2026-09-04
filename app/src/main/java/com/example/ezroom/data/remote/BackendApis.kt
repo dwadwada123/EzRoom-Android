@@ -167,8 +167,14 @@ interface PropertyApi {
     @POST("api/properties")
     suspend fun createProperty(@Body property: PropertyRequest): PropertyResponse
 
+    @PUT("api/properties/{id}")
+    suspend fun updateProperty(@Path("id") id: String, @Body property: PropertyRequest): PropertyResponse
+
     @PATCH("api/properties/{id}/visibility")
     suspend fun togglePropertyVisibility(@Path("id") id: String): GenericResponse
+
+    @DELETE("api/properties/{id}")
+    suspend fun deleteProperty(@Path("id") id: String): GenericResponse
 }
 
 // DTO for sending a room to the backend - only backend-relevant fields, no UI-only properties.
@@ -241,6 +247,13 @@ data class AppealRequest(
     val images: List<String> = emptyList()
 )
 
+data class CreateRoomResponse(
+    val success: Boolean,
+    val room: RoomResponse? = null,
+    val message: String? = null,
+    val error: String? = null
+)
+
 interface RoomApi {
     @GET("api/rooms")
     suspend fun getRooms(): List<RoomResponse>
@@ -249,7 +262,7 @@ interface RoomApi {
     suspend fun getHostRooms(): List<RoomResponse>
 
     @POST("api/rooms")
-    suspend fun createRoom(@Body room: RoomRequest): GenericResponse
+    suspend fun createRoom(@Body room: RoomRequest): CreateRoomResponse
 
     @POST("api/rooms/{id}/report")
     suspend fun reportRoom(@Path("id") id: String, @Body body: Map<String, String>): GenericResponse
@@ -452,12 +465,19 @@ data class UpdateAppointmentStatusRequest(
 data class FavoriteResponse(val success: Boolean, val favoriteRoomIds: List<String>)
 data class PaymentAccountsResponse(val success: Boolean, val paymentAccounts: List<PaymentAccount>)
 
+data class CreateRenterReviewResponse(
+    val success: Boolean = false,
+    val review: RenterReview? = null,
+    val message: String? = null,
+    val error: String? = null
+)
+
 interface RenterReviewApi {
     @GET("api/renter-reviews/renter/{renterId}")
     suspend fun getRenterReviews(@Path("renterId") renterId: String): List<RenterReview>
 
     @POST("api/renter-reviews")
-    suspend fun createRenterReview(@Body review: RenterReview): GenericResponse
+    suspend fun createRenterReview(@Body review: RenterReview): CreateRenterReviewResponse
 
     @PUT("api/renter-reviews/{id}")
     suspend fun updateRenterReview(@Path("id") id: String, @Body review: RenterReview): GenericResponse

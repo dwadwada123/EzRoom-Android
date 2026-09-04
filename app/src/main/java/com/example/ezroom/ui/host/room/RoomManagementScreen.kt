@@ -463,20 +463,20 @@ fun PropertyManagementCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
                             onClick = onToggleVisibility, 
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(32.dp),
                         ) {
                             Icon(
                                 imageVector = if (property.isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility, 
                                 contentDescription = "Ẩn/Hiện dãy", 
                                 tint = Neutral500, 
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(18.dp),
                             )
                         }
-                        IconButton(onClick = { onEditProperty(property) }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Edit, "Sửa dãy", tint = PrimaryMain, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = { onEditProperty(property) }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Edit, "Sửa dãy", tint = PrimaryMain, modifier = Modifier.size(18.dp))
                         }
-                        IconButton(onClick = { onDeleteProperty(property) }, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Delete, "Xóa dãy", tint = ErrorRose, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = { onDeleteProperty(property) }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Delete, "Xóa dãy", tint = ErrorRose, modifier = Modifier.size(18.dp))
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))

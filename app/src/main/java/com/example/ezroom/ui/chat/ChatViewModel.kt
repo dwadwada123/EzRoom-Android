@@ -58,7 +58,27 @@ class ChatViewModel(
 
     fun loadMessages(conversationId: String, otherPartyName: String) {
         viewModelScope.launch {
-            _roomState.update { it.copy(isLoading = true, otherPartyName = otherPartyName, error = null) }
+            val initialName = if (otherPartyName.equals("Chat", ignoreCase = true) || otherPartyName.isBlank()) {
+                val cached = _listState.value.conversations.firstOrNull { it.id == conversationId }?.otherPartyName
+                if (!cached.isNullOrBlank()) cached else "Người dùng"
+            } else {
+                otherPartyName
+            }
+            _roomState.update { it.copy(isLoading = true, otherPartyName = initialName, error = null) }
+
+            if (initialName.isBlank() || initialName.equals("Chat", ignoreCase = true) || initialName.equals("User", ignoreCase = true) || initialName == "Người dùng") {
+                launch {
+                    getConversations().firstOrNull()?.let { res ->
+                        if (res is Try.Success) {
+                            val match = res.value.firstOrNull { it.id == conversationId }
+                            if (match != null && !match.otherPartyName.isNullOrBlank()) {
+                                _roomState.update { it.copy(otherPartyName = match.otherPartyName) }
+                            }
+                        }
+                    }
+                }
+            }
+
             getMessages(conversationId)
                 .onEach { result ->
                     when (result) {

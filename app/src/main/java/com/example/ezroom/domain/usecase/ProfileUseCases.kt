@@ -8,6 +8,7 @@ import android.net.Uri
 
 class GetCurrentUserUseCase(private val repository: UserRepository) {
     operator fun invoke(): Flow<User?> = repository.getCurrentUser()
+    suspend fun refresh(): User? = repository.fetchFreshProfile()
 }
 
 class UpdateProfileUseCase(private val repository: UserRepository) {

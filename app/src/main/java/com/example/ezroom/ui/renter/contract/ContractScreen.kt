@@ -96,10 +96,18 @@ fun ContractScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(checked = isAgreed, onCheckedChange = { if (!isSigning) isAgreed = it })
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("Tôi đã đọc kỹ và đồng ý với toàn bộ điều khoản hợp đồng", style = MaterialTheme.typography.bodySmall)
                             }
+                            val buttonText = if (isSigning) {
+                                "ĐANG XỬ LÝ..."
+                            } else if (contract.depositAmount > 0L) {
+                                "KÝ HỢP ĐỒNG & CHUYỂN TIỀN CỌC (${formatter.format(contract.depositAmount)})"
+                            } else {
+                                "KÝ HỢP ĐỒNG ĐIỆN TỬ"
+                            }
                             PrimaryButton(
-                                text = if (isSigning) "ĐANG XỬ LÝ..." else "KÝ HỢP ĐỒNG ĐIỆN TỬ",
+                                text = buttonText,
                                 onClick = { 
                                     if (isSigning) return@PrimaryButton
                                     isSigning = true

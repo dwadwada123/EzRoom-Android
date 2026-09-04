@@ -1,24 +1,27 @@
 package com.example.ezroom.domain.model
 
+import com.google.gson.annotations.SerializedName
+
 data class OtherCostItem(
     val reason: String,
     val amount: Long
 )
 
 data class Invoice(
-    val id: String,
-    val roomId: String,
-    val roomName: String,
-    val period: String,
-    val roomPrice: Long,
-    val oldElectricity: Int,
-    val newElectricity: Int,
-    val oldWater: Int,
-    val newWater: Int,
+    @SerializedName(value = "id", alternate = ["_id"])
+    val id: String = "",
+    val roomId: String = "",
+    val roomName: String = "",
+    val period: String = "",
+    val roomPrice: Long = 0L,
+    val oldElectricity: Int = 0,
+    val newElectricity: Int = 0,
+    val oldWater: Int = 0,
+    val newWater: Int = 0,
     val otherCosts: List<OtherCostItem> = emptyList(),
-    val status: InvoiceStatus,
+    val status: InvoiceStatus = InvoiceStatus.UNPAID,
     val type: TransactionType = TransactionType.RENT,
-    val dateCreated: String,
+    val dateCreated: String = "",
     val paymentMethod: String? = null,
     val electricityPrice: Long = 3500L,
     val waterPrice: Long = 15000L,
@@ -27,7 +30,7 @@ data class Invoice(
     val totalAmount: Long = 0L
 ) {
     val totalOtherCosts: Long
-        get() = otherCosts.sumOf { it.amount }
+        get() = (otherCosts ?: emptyList()).sumOf { it.amount }
 
     val calculatedTotalAmount: Long
         get() {

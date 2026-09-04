@@ -61,7 +61,7 @@ class SubmitAppealUseCase(private val repository: RoomRepository) {
 
 // Business Logic: Save Room
 class SaveRoomUseCase(private val repository: RoomRepository) {
-    suspend operator fun invoke(room: Room) = repository.saveRoom(room)
+    suspend operator fun invoke(room: Room): Room = repository.saveRoom(room)
 }
 
 // Business Logic: Get Room By ID

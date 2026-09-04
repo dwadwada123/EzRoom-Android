@@ -38,6 +38,7 @@ import com.example.ezroom.domain.usecase.GetRenterReviewsUseCase
 import com.example.ezroom.ui.components.RenterReviewItem
 import com.example.ezroom.ui.profile.ProfileViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
+import kotlinx.coroutines.launch
 import com.example.ezroom.ui.theme.*
 
 /**
@@ -71,12 +72,31 @@ fun RenterProfileScreen(
     val user = uiState.user ?: return
     if (user.id.isBlank()) return
 
+    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var reviews by remember { mutableStateOf(emptyList<com.example.ezroom.domain.model.RenterReview>()) }
     val getReviewsUseCase = remember { GetRenterReviewsUseCase() }
     LaunchedEffect(user.id) {
         if (user.id.isNotBlank()) {
             getReviewsUseCase(user.id).collect { reviews = it }
+        }
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, user.id) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshProfile()
+                if (user.id.isNotBlank()) {
+                    scope.launch {
+                        getReviewsUseCase(user.id).collect { reviews = it }
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -97,7 +117,7 @@ fun RenterProfileScreen(
             ) {
                 if (!isEditing) {
                     // Credit Score Bento - Clickable to separate screen
-                    ReputationScoreBento(reviews, onNavigateToReputation)
+                    ReputationScoreBento(reviews, user.creditScore.toDouble(), onNavigateToReputation)
 
                     Spacer(modifier = Modifier.height(24.dp))
                     
@@ -222,8 +242,16 @@ fun HeaderSection(avatarUrl: String, name: String, email: String, onBackClick: (
 }
 
 @Composable
-fun ReputationScoreBento(reviews: List<RenterReview>, onClick: () -> Unit) {
-    val averageRating = if (reviews.isEmpty()) 0.0 else reviews.asSequence().map { it.rating }.average()
+fun ReputationScoreBento(
+    reviews: List<RenterReview>,
+    userScore: Double? = null,
+    onClick: () -> Unit
+) {
+    val averageRating = if (reviews.isEmpty()) {
+        if (userScore != null && userScore > 0.0) userScore else 5.0
+    } else {
+        reviews.asSequence().map { it.rating }.average()
+    }
     
     Surface(
         onClick = onClick,

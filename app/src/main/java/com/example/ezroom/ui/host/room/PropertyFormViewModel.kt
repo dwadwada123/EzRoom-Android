@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 // State Management: UI State for Property Form
 data class PropertyFormUiState(
     val name: String = "",
+    val address: String = "",
     val detailedAddress: String = "",
     val description: String = "",
     val commonAmenities: List<CommonAmenityItem> = emptyList(),
@@ -72,6 +73,7 @@ class PropertyFormViewModel(
                 _uiState.update { state ->
                     state.copy(
                         name = property.name,
+                        address = property.address,
                         detailedAddress = property.detailedAddress,
                         description = property.description,
                         commonAmenities = state.commonAmenities.map { item ->
@@ -111,11 +113,19 @@ class PropertyFormViewModel(
             
             val newId = if (isEditMode) propertyId!! else ""
             val currentUser = com.example.ezroom.util.TokenManager.getUser()
+            val addressFromSelection = if (province != null && ward != null) {
+                "${ward}, ${province}".trim(',', ' ')
+            } else ""
+            val finalAddress = when {
+                addressFromSelection.isNotBlank() -> addressFromSelection
+                currentState.address.isNotBlank() -> currentState.address
+                else -> "Đà Nẵng"
+            }
             val property = Property(
                 id = newId,
                 name = currentState.name,
                 type = PropertyType.COMPLEX,
-                address = if (isEditMode) "" else "${ward ?: ""}, ${province ?: ""}".trim(',', ' '),
+                address = finalAddress,
                 detailedAddress = currentState.detailedAddress,
                 description = currentState.description,
                 commonAmenities = currentState.commonAmenities.filter { it.isChecked }.map { Amenity(it.name) },

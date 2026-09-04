@@ -20,7 +20,7 @@ interface RoomRepository {
     suspend fun getPropertyById(propertyId: String): Property?
     suspend fun submitAppeal(roomId: String, appealText: String, images: List<String>)
     suspend fun getRoomById(roomId: String): Room?
-    suspend fun saveRoom(room: Room)
+    suspend fun saveRoom(room: Room): Room
     suspend fun uploadRoomImage(fileBytes: ByteArray, fileName: String, mimeType: String): String?
     suspend fun getRoomReviews(roomId: String): List<com.example.ezroom.domain.model.RoomReview>
     suspend fun submitRoomReview(roomId: String, rating: Int, comment: String): Boolean

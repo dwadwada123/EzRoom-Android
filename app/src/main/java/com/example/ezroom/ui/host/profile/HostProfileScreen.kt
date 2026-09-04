@@ -29,6 +29,10 @@ import com.example.ezroom.ui.components.CommonTopAppBar
 import com.example.ezroom.ui.profile.ProfileViewModel
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.EzRoomTheme
+import com.example.ezroom.util.TokenManager
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 enum class EkycStatus {
     UNVERIFIED, PENDING, VERIFIED, REJECTED
@@ -55,8 +59,27 @@ fun HostProfileScreen(
         },
     ),
 ) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshProfile()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val uiState by viewModel.uiState.collectAsState()
-    val user = uiState.user ?: return
+    val user = uiState.user ?: TokenManager.getUser()
+    if (user == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     
     // State definitions
     val scrollState = rememberScrollState()
@@ -64,7 +87,7 @@ fun HostProfileScreen(
         "VERIFIED" -> EkycStatus.VERIFIED
         "PENDING" -> EkycStatus.PENDING
         "REJECTED" -> EkycStatus.REJECTED
-        else -> EkycStatus.UNVERIFIED
+        else -> if (user.isEkycVerified) EkycStatus.VERIFIED else EkycStatus.UNVERIFIED
     }
 
     // Main layout container
@@ -168,30 +191,6 @@ fun HostProfileScreen(
                         icon = Icons.Default.Lock,
                         title = "Đổi mật khẩu",
                         onClick = onNavigateToChangePassword
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    MenuOptionItem(
-                        icon = Icons.Default.Settings,
-                        title = "Cài đặt tài khoản",
-                        onClick = { }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    MenuOptionItem(
-                        icon = Icons.Default.SupportAgent,
-                        title = "Trung tâm trợ giúp",
-                        onClick = { }
                     )
                 }
             }

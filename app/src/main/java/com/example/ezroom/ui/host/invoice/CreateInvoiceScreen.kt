@@ -39,6 +39,8 @@ import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,6 +61,7 @@ fun CreateInvoiceScreen(
     ),
 ) {
     // State definitions
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var oldElectricity by remember { mutableStateOf("") }
@@ -80,7 +83,11 @@ fun CreateInvoiceScreen(
 
     LaunchedEffect(Unit) {
         roomRepo.getHostRooms().collect { list ->
-            rooms = list.filter { it.status == RoomStatus.RENTED }
+            val rented = list.filter { it.status == RoomStatus.RENTED }
+            rooms = if (rented.isNotEmpty()) rented else list
+            if (rooms.isNotEmpty() && selectedRoom == null) {
+                selectedRoom = rooms.find { it.title == roomName || it.id == roomName } ?: rooms.first()
+            }
         }
     }
 
@@ -355,30 +362,35 @@ fun CreateInvoiceScreen(
                     text = "XÁC NHẬN & GỬI HÓA ĐƠN",
                     onClick = {
                         if (isFormValid) {
-                            scope.launch {
-                                isLoading = true
-                                
-                                // Simulate saving to MockData
-                                val newInvoice = Invoice(
-                                    id = "",
-                                    roomId = selectedRoom?.id ?: "",
-                                    roomName = selectedRoom?.title ?: "Phòng trọ",
-                                    period = SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date()),
-                                    roomPrice = selectedRoom?.price ?: 0L,
-                                    oldElectricity = oldElectricity.toIntOrNull() ?: 0,
-                                    newElectricity = newElectricity.toIntOrNull() ?: 0,
-                                    oldWater = oldWater.toIntOrNull() ?: 0,
-                                    newWater = newWater.toIntOrNull() ?: 0,
-                                    otherCosts = otherCostItems.toList(),
-                                    status = InvoiceStatus.UNPAID,
-                                    type = TransactionType.RENT,
-                                    dateCreated = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                                )
-                                viewModel.createInvoice(newInvoice) {
+                            isLoading = true
+                            val validOtherCosts = otherCostItems.filter { it.reason.isNotBlank() && it.amount > 0 }
+                            val newInvoice = Invoice(
+                                id = "",
+                                roomId = selectedRoom?.id ?: "",
+                                roomName = selectedRoom?.title ?: "Phòng trọ",
+                                period = SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(Date()),
+                                roomPrice = selectedRoom?.price ?: 0L,
+                                oldElectricity = oldElectricity.toIntOrNull() ?: 0,
+                                newElectricity = newElectricity.toIntOrNull() ?: 0,
+                                oldWater = oldWater.toIntOrNull() ?: 0,
+                                newWater = newWater.toIntOrNull() ?: 0,
+                                otherCosts = validOtherCosts,
+                                status = InvoiceStatus.UNPAID,
+                                type = TransactionType.RENT,
+                                dateCreated = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                            )
+                            viewModel.createInvoice(
+                                invoice = newInvoice,
+                                onSuccess = {
                                     isLoading = false
+                                    Toast.makeText(context, "Lập hóa đơn thành công!", Toast.LENGTH_SHORT).show()
                                     onInvoiceCreated()
+                                },
+                                onError = { errorMsg ->
+                                    isLoading = false
+                                    Toast.makeText(context, "Lỗi tạo hóa đơn: $errorMsg", Toast.LENGTH_LONG).show()
                                 }
-                            }
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

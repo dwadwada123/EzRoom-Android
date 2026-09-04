@@ -211,7 +211,7 @@ fun RoomFormScreen(
     }
 
     val isFormValid = uiState.title.isNotEmpty() && 
-                      (uiState.belongsToProperty != null || (selectedProvince != null && selectedWard != null)) &&
+                      (uiState.belongsToProperty != null || uiState.address.isNotBlank() || (selectedProvince != null && selectedWard != null)) &&
                       uiState.detailedAddress.isNotEmpty() && uiState.price.isNotEmpty() && uiState.totalArea.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -343,6 +343,13 @@ fun RoomFormScreen(
                 // Location section for standalone rooms
                 if (uiState.belongsToProperty == null) {
                     FormSectionTitle(title = "Vị trí")
+                    if (uiState.address.isNotBlank() && (cloneFromRoomId != null || isEditMode)) {
+                        Text(
+                            text = "Khu vực: ${uiState.address}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Neutral500
+                        )
+                    }
                     LocationDropdown(
                         label = "Tỉnh/Thành phố",
                         items = provinces,
@@ -553,8 +560,8 @@ fun RoomFormScreen(
                         if (uiState.totalArea.isBlank() || areaVal < 0) missingFields.add("Diện tích (phải lớn hơn 0)")
                         
                         if (uiState.belongsToProperty == null) {
-                            if (selectedProvince == null) missingFields.add("Tỉnh/Thành phố")
-                            if (selectedWard == null) missingFields.add("Phường/Xã")
+                            if (selectedProvince == null && uiState.address.isBlank()) missingFields.add("Tỉnh/Thành phố")
+                            if (selectedWard == null && uiState.address.isBlank()) missingFields.add("Phường/Xã")
                             if (uiState.detailedAddress.isBlank()) missingFields.add("Địa chỉ chi tiết")
                         }
                         

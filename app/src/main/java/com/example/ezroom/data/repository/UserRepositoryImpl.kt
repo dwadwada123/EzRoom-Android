@@ -26,26 +26,41 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.InputStream
 class UserRepositoryImpl : UserRepository {
     private val authApi = NetworkClient.createService<AuthApi>()
-    private val cachedUser = TokenManager.getUser()
-    // If cached user has no valid id, clear and start fresh (stale cache migration)
-    private val _user = MutableStateFlow<User?>(
-        if (cachedUser != null && cachedUser.id.isNotBlank()) cachedUser else null
-    )
+
+    companion object {
+        private val cachedUser = TokenManager.getUser()
+        // If cached user has no valid id, clear and start fresh (stale cache migration)
+        private val _user = MutableStateFlow<User?>(
+            if (cachedUser != null && cachedUser.id.isNotBlank()) cachedUser else null
+        )
+
+        fun updateCachedUser(user: User?) {
+            _user.value = user
+            if (user != null) {
+                TokenManager.saveUser(user)
+            }
+        }
+    }
     
-    override fun getCurrentUser(): Flow<User?> = _user.asStateFlow()
+    override fun getCurrentUser(): Flow<User?> {
+        val current = TokenManager.getUser()
+        if (current != null && current.id.isNotBlank() && _user.value == null) {
+            _user.value = current
+        }
+        return _user.asStateFlow()
+    }
 
     override suspend fun updateProfile(name: String, phone: String) {
         try {
             val response = authApi.updateProfile(UpdateProfileRequest(name, phone))
             if (response.success && response.user != null) {
-                _user.update { response.user }
-                TokenManager.saveUser(response.user)
+                updateCachedUser(response.user)
             }
         } catch (e: Exception) {
             e.printStackTrace()
             // Fallback locally
-            _user.update { it?.copy(name = name, phone = phone) }
-            _user.value?.let { TokenManager.saveUser(it) }
+            val updated = _user.value?.copy(name = name, phone = phone)
+            updateCachedUser(updated)
         }
     }
 
@@ -116,7 +131,7 @@ class UserRepositoryImpl : UserRepository {
     }
 
     override suspend fun verifyEkyc(idCardNumber: String, frontUri: Uri, backUri: Uri, selfieUri: Uri, context: Context): Result<Unit> {
-        val currentUser = _user.value ?: return Result.failure(Exception("User not found locally"))
+        val currentUser = _user.value ?: TokenManager.getUser() ?: return Result.failure(Exception("User not found locally"))
         return try {
             val frontUrl = uploadEkycImage(frontUri, context)
             val backUrl = uploadEkycImage(backUri, context)
@@ -139,8 +154,7 @@ class UserRepositoryImpl : UserRepository {
                 val updatedUser = currentUser.copy(
                     ekycStatus = "PENDING"
                 )
-                _user.update { updatedUser }
-                TokenManager.saveUser(updatedUser)
+                updateCachedUser(updatedUser)
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(response.error ?: "Gửi hồ sơ thất bại."))
@@ -156,8 +170,7 @@ class UserRepositoryImpl : UserRepository {
             val response = authApi.login(LoginRequest(email, "", password))
             if (response.success && response.token != null && response.user != null) {
                 TokenManager.saveToken(response.token)
-                TokenManager.saveUser(response.user)
-                _user.update { response.user }
+                updateCachedUser(response.user)
                 Pair(true, null)
             } else {
                 Pair(false, response.error ?: "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!")
@@ -191,8 +204,7 @@ class UserRepositoryImpl : UserRepository {
             ))
             if (response.success && response.token != null && response.user != null) {
                 TokenManager.saveToken(response.token)
-                TokenManager.saveUser(response.user)
-                _user.update { response.user }
+                updateCachedUser(response.user)
                 true
             } else {
                 false
@@ -230,18 +242,21 @@ class UserRepositoryImpl : UserRepository {
         }
     }
 
-    suspend fun fetchFreshProfile(): User? {
+    override suspend fun fetchFreshProfile(): User? {
+        val cached = TokenManager.getUser()
+        if (cached != null && cached.id.isNotBlank() && _user.value == null) {
+            _user.value = cached
+        }
         return try {
             val response = authApi.getProfile()
             if (response.success && response.user != null) {
-                TokenManager.saveUser(response.user)
-                _user.update { response.user }
+                updateCachedUser(response.user)
                 response.user
             } else {
-                null
+                _user.value ?: TokenManager.getUser()
             }
         } catch (e: Exception) {
-            null
+            _user.value ?: TokenManager.getUser()
         }
     }
 }

@@ -21,6 +21,7 @@ import com.example.ezroom.domain.usecase.GetRenterReviewsUseCase
 import com.example.ezroom.ui.components.RenterReviewItem
 import com.example.ezroom.ui.renter.discovery.viewModelFactory
 import com.example.ezroom.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,15 +31,39 @@ fun RenterReputationScreen(
 ) {
     var reviews by remember { mutableStateOf(emptyList<RenterReview>()) }
     val getReviews = remember { GetRenterReviewsUseCase() }
-    val currentUserId = remember { com.example.ezroom.util.TokenManager.getUser()?.id ?: "" }
+    val currentUser = remember { com.example.ezroom.util.TokenManager.getUser() }
+    val currentUserId = currentUser?.id ?: ""
 
     val targetUserId = renterId ?: currentUserId
+    val scope = rememberCoroutineScope()
     LaunchedEffect(targetUserId) {
         getReviews(targetUserId).collect { reviews = it }
     }
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, targetUserId) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    getReviews(targetUserId).collect { reviews = it }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val userScore = if (renterId == null || renterId == currentUserId) {
+        currentUser?.creditScore?.toDouble() ?: 5.0
+    } else {
+        5.0
+    }
+
     RenterReputationContent(
         reviews = reviews,
+        userScore = userScore,
         onBack = onBack
     )
 }
@@ -47,9 +72,14 @@ fun RenterReputationScreen(
 @Composable
 fun RenterReputationContent(
     reviews: List<RenterReview>,
+    userScore: Double = 5.0,
     onBack: () -> Unit
 ) {
-    val averageRating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average()
+    val averageRating = if (reviews.isEmpty()) {
+        if (userScore > 0.0) userScore else 5.0
+    } else {
+        reviews.map { it.rating }.average()
+    }
 
     var selectedFilter by remember { mutableStateOf("Tất cả") }
     val filters = listOf("Tất cả", "5 sao", "4 sao", "3 sao", "Dưới 2 sao")

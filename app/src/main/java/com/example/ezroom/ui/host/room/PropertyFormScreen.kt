@@ -76,6 +76,7 @@ fun PropertyFormScreen(
         viewModel.loadProperty(propertyId)
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     val isEditMode = propertyId != null && propertyId != "{propertyId}"
 
     // Navigation: Handle successful save
@@ -83,6 +84,7 @@ fun PropertyFormScreen(
         val savedId = uiState.savedPropertyId
         if (uiState.isSuccess) {
             if (isEditMode) {
+                android.widget.Toast.makeText(context, "Cập nhật dãy trọ thành công", android.widget.Toast.LENGTH_SHORT).show()
                 onBack()
             } else if (!savedId.isNullOrBlank()) {
                 onNavigateToCreateFirstRoom(savedId)
@@ -192,6 +194,12 @@ fun PropertyFormContent(
                         onItemSelected = { selectedWard = it },
                         getItemName = { it.name },
                         enabled = selectedProvince != null
+                    )
+                } else if (uiState.address.isNotBlank()) {
+                    Text(
+                        text = "Khu vực: ${uiState.address}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Neutral500
                     )
                 }
 

@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 data class RoomFormUiState(
     val title: String = "",
+    val address: String = "",
     val detailedAddress: String = "",
     val description: String = "",
     val price: String = "",
@@ -29,6 +30,7 @@ data class RoomFormUiState(
     val longitude: Double? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
+    val savedRoomId: String? = null,
     val error: String? = null
 )
 
@@ -90,9 +92,24 @@ class RoomFormViewModel(
                         }
                     }
 
+                    val newTitle = if (isEditMode) {
+                        r.title
+                    } else {
+                        val baseTitle = r.title.replace(Regex("""\s*\(Bản sao(\s*\d+)?\)"""), "").trim()
+                        val existingTitles = com.example.ezroom.data.model.MockData.rooms.map { it.title }
+                        var candidate = "$baseTitle (Bản sao)"
+                        var count = 2
+                        while (existingTitles.contains(candidate)) {
+                            candidate = "$baseTitle (Bản sao $count)"
+                            count++
+                        }
+                        candidate
+                    }
+
                     _uiState.update { state ->
                         state.copy(
-                            title = if (isEditMode) r.title else "${r.title} (Bản sao)",
+                            title = newTitle,
+                            address = r.address,
                             detailedAddress = r.detailedAddress,
                             description = r.description,
                             price = r.price.toString(),
@@ -189,6 +206,16 @@ class RoomFormViewModel(
             val finalArea = state.totalArea.toDoubleOrNull() ?: 0.0
             val finalCapacity = state.capacity.toIntOrNull() ?: 0
 
+            val addressFromSelection = if (province != null && ward != null) {
+                "${ward}, ${province}".trim(',', ' ')
+            } else ""
+            val finalAddress = when {
+                addressFromSelection.isNotBlank() -> addressFromSelection
+                state.belongsToProperty?.address?.isNotBlank() == true -> state.belongsToProperty.address
+                state.address.isNotBlank() -> state.address
+                else -> "Đà Nẵng"
+            }
+
             val room = Room(
                 id = if (state.isEditMode) state.cloneFromRoomId!! else "",
                 propertyId = propertyId?.takeIf { it.isNotBlank() && it != "{propertyId}" } ?: state.belongsToProperty?.id,
@@ -197,7 +224,7 @@ class RoomFormViewModel(
                 priceFormatted = "",
                 electricityPrice = state.electricityPrice.toLongOrNull() ?: 3500L,
                 waterPrice = state.waterPrice.toLongOrNull() ?: 15000L,
-                address = state.belongsToProperty?.address ?: "${ward ?: ""}, ${province ?: ""}".trim(',', ' ').takeIf { it.isNotBlank() } ?: "Đà Nẵng",
+                address = finalAddress,
                 detailedAddress = if (state.belongsToProperty != null) state.belongsToProperty.detailedAddress else state.detailedAddress,
                 description = state.description,
                 structure = state.selectedStructure,
@@ -217,9 +244,10 @@ class RoomFormViewModel(
                 longitude = if (state.belongsToProperty != null) state.belongsToProperty.longitude else lon
             )
 
-            saveRoom(room)
+            val savedRoom = saveRoom(room)
+            val resolvedRoomId = savedRoom.id.takeIf { it.isNotBlank() } ?: (if (state.isEditMode) state.cloneFromRoomId else null)
 
-            _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+            _uiState.update { it.copy(isLoading = false, isSuccess = true, savedRoomId = resolvedRoomId) }
         }
     }
 }
