@@ -538,7 +538,6 @@ object PdfExporter {
             } catch (ex: Exception) {
                 android.util.Log.e("PdfExporter", "Lỗi mở PDF hợp đồng", ex)
             }
-            }
         } catch (e: Exception) {
             Toast.makeText(context, "Lỗi tạo tệp PDF Hợp đồng: ${e.message}", Toast.LENGTH_LONG)
                 .show()
