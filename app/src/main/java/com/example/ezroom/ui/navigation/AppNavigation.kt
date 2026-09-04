@@ -574,10 +574,13 @@ fun AppNavigation() {
                     LaunchedEffect(contractArg) {
                         if (contractArg != null) {
                             val fromJson = try {
-                                Gson().fromJson(android.net.Uri.decode(contractArg), Contract::class.java)
+                                val decoded = android.net.Uri.decode(contractArg)
+                                if (decoded.startsWith("{") && decoded.endsWith("}")) {
+                                    Gson().fromJson(decoded, Contract::class.java)
+                                } else null
                             } catch (e: Exception) { null }
 
-                            if (fromJson != null && fromJson.id.isNotBlank()) {
+                            if (fromJson != null) {
                                 contract = fromJson
                             } else {
                                 try {
@@ -689,10 +692,13 @@ fun AppNavigation() {
                     LaunchedEffect(contractArg) {
                         if (contractArg != null) {
                             val fromJson = try {
-                                Gson().fromJson(android.net.Uri.decode(contractArg), Contract::class.java)
+                                val decoded = android.net.Uri.decode(contractArg)
+                                if (decoded.startsWith("{") && decoded.endsWith("}")) {
+                                    Gson().fromJson(decoded, Contract::class.java)
+                                } else null
                             } catch (e: Exception) { null }
 
-                            if (fromJson != null && fromJson.id.isNotBlank()) {
+                            if (fromJson != null) {
                                 contract = fromJson
                             } else {
                                 try {
