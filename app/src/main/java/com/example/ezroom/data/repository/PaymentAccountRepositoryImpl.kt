@@ -33,9 +33,11 @@ class PaymentAccountRepositoryImpl(
             if (response.success) {
                 val updatedUser = user.copy(paymentAccounts = response.paymentAccounts)
                 com.example.ezroom.util.TokenManager.saveUser(updatedUser)
+                UserRepositoryImpl.updateCachedUser(updatedUser)
+                android.util.Log.d("PaymentAccountRepo", "Saved payment accounts: ${response.paymentAccounts.size}")
             }
         } catch (e: java.lang.Exception) {
-            // Error handling
+            android.util.Log.e("PaymentAccountRepo", "Error saving payment account", e)
         }
     }
 

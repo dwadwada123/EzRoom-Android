@@ -61,6 +61,19 @@ fun PaymentAccountManagementScreen(
     LaunchedEffect(Unit) {
         viewModel.loadSavedAccounts()
     }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadSavedAccounts()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     var showDeleteDialog by remember { mutableStateOf(false) }
     var accountToDelete by remember { mutableStateOf<PaymentAccount?>(null) }

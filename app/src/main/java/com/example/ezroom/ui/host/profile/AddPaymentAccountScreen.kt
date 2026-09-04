@@ -67,7 +67,11 @@ fun AddPaymentAccountScreen(
     AddPaymentAccountContent(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
-        onAddAccount = { bank, accNum, owner -> viewModel.onAddAccount(bank, accNum, owner) },
+        onAddAccount = { bank, accNum, owner ->
+            viewModel.onAddAccount(bank, accNum, owner) {
+                onNavigateBack()
+            }
+        },
         onBankSearch = { viewModel.onBankSearch(it) }
     )
 }
@@ -185,16 +189,23 @@ fun AddPaymentAccountContent(
                 // Submit Button
                 Button(
                     onClick = {
-                        if (isFormValid) {
+                        if (isFormValid && !uiState.isLoading) {
                             onAddAccount(selectedBank!!, accountNumber, accountOwner)
-                            onNavigateBack()
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(54.dp),
-                    enabled = isFormValid,
+                    enabled = isFormValid && !uiState.isLoading,
                     shape = CircleShape
                 ) {
-                    Text("LƯU TÀI KHOẢN", fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = peaceSansFont)
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("LƯU TÀI KHOẢN", fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = peaceSansFont)
+                    }
                 }
 
                 // Security Tag

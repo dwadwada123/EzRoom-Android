@@ -85,8 +85,9 @@ class PaymentAccountViewModel(
     }
 
     // Business Logic: Add new account
-    fun onAddAccount(bank: Bank, number: String, owner: String) {
+    fun onAddAccount(bank: Bank, number: String, owner: String, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             val newAccount = PaymentAccount(
                 id = "",
                 bank = bank,
@@ -95,6 +96,8 @@ class PaymentAccountViewModel(
             )
             saveAccount(newAccount)
             loadSavedAccounts()
+            _uiState.update { it.copy(isLoading = false) }
+            onSuccess()
         }
     }
 }
