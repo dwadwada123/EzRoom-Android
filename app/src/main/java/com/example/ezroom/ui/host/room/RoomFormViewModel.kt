@@ -72,8 +72,9 @@ class RoomFormViewModel(
             _uiState.update { it.copy(isLoading = true, isEditMode = isEditMode, cloneFromRoomId = roomId) }
             
             // 1. Load property banner if room is in a complex property
-            if (propertyId != null && propertyId != "{propertyId}") {
-                val property = getPropertyById(propertyId)
+            val cleanPropertyId = propertyId?.takeIf { it.isNotBlank() && it != "{propertyId}" }
+            if (cleanPropertyId != null) {
+                val property = getPropertyById(cleanPropertyId)
                 _uiState.update { it.copy(belongsToProperty = property) }
             }
 
@@ -190,7 +191,7 @@ class RoomFormViewModel(
 
             val room = Room(
                 id = if (state.isEditMode) state.cloneFromRoomId!! else "",
-                propertyId = propertyId ?: state.belongsToProperty?.id,
+                propertyId = propertyId?.takeIf { it.isNotBlank() && it != "{propertyId}" } ?: state.belongsToProperty?.id,
                 title = state.title,
                 price = finalPrice,
                 priceFormatted = "",

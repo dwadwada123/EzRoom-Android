@@ -84,7 +84,7 @@ fun PropertyFormScreen(
         if (uiState.isSuccess) {
             if (isEditMode) {
                 onBack()
-            } else if (savedId != null) {
+            } else if (!savedId.isNullOrBlank()) {
                 onNavigateToCreateFirstRoom(savedId)
             }
         }

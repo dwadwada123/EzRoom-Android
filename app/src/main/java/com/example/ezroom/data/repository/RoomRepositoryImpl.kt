@@ -200,7 +200,8 @@ class RoomRepositoryImpl : RoomRepository {
         MockData.rooms.removeAll { it.id == roomId }
     }
 
-    override suspend fun saveProperty(property: Property) {
+    override suspend fun saveProperty(property: Property): Property {
+        var finalProperty = property
         try {
             val request = PropertyRequest(
                 id = property.id.takeIf { it.isNotBlank() },
@@ -214,20 +215,34 @@ class RoomRepositoryImpl : RoomRepository {
                 longitude = property.longitude,
                 hostId = property.hostId
             )
-            propertyApi.createProperty(request)
+            val response = propertyApi.createProperty(request)
+            finalProperty = mapPropertyResponseToDomain(response)
         } catch (e: Exception) {
             android.util.Log.e("RoomRepo", "saveProperty API error: ${e.message}")
         }
-        val index = MockData.properties.indexOfFirst { it.id == property.id }
+        val index = MockData.properties.indexOfFirst { it.id == finalProperty.id }
         if (index != -1) {
-            MockData.properties[index] = property
+            MockData.properties[index] = finalProperty
         } else {
-            MockData.properties.add(property)
+            MockData.properties.add(finalProperty)
         }
+        return finalProperty
     }
 
     override suspend fun getPropertyById(propertyId: String): Property? {
-        return MockData.properties.find { it.id == propertyId }
+        val cached = MockData.properties.find { it.id == propertyId }
+        if (cached != null) return cached
+        return try {
+            val responseList = propertyApi.getHostProperties()
+            val domainList = responseList.map { mapPropertyResponseToDomain(it) }
+            domainList.forEach { prop ->
+                val idx = MockData.properties.indexOfFirst { it.id == prop.id }
+                if (idx != -1) MockData.properties[idx] = prop else MockData.properties.add(prop)
+            }
+            domainList.find { it.id == propertyId }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override suspend fun submitAppeal(roomId: String, appealText: String, images: List<String>) {
@@ -257,7 +272,7 @@ class RoomRepositoryImpl : RoomRepository {
         try {
             val request = RoomRequest(
                 id = room.id.takeIf { it.isNotBlank() },
-                propertyId = room.propertyId,
+                propertyId = room.propertyId?.takeIf { it.isNotBlank() && it != "{propertyId}" },
                 title = room.title,
                 price = room.price,
                 electricityPrice = room.electricityPrice,

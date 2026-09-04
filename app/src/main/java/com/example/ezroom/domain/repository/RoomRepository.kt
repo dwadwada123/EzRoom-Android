@@ -16,7 +16,7 @@ interface RoomRepository {
     suspend fun deleteProperty(propertyId: String)
     suspend fun toggleRoomVisibility(roomId: String)
     suspend fun deleteRoom(roomId: String)
-    suspend fun saveProperty(property: Property)
+    suspend fun saveProperty(property: Property): Property
     suspend fun getPropertyById(propertyId: String): Property?
     suspend fun submitAppeal(roomId: String, appealText: String, images: List<String>)
     suspend fun getRoomById(roomId: String): Room?

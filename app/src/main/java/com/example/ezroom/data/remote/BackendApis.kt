@@ -165,7 +165,7 @@ interface PropertyApi {
     suspend fun getHostProperties(): List<PropertyResponse>
 
     @POST("api/properties")
-    suspend fun createProperty(@Body property: PropertyRequest): GenericResponse
+    suspend fun createProperty(@Body property: PropertyRequest): PropertyResponse
 
     @PATCH("api/properties/{id}/visibility")
     suspend fun togglePropertyVisibility(@Path("id") id: String): GenericResponse

@@ -45,7 +45,7 @@ class DeleteRoomUseCase(private val repository: RoomRepository) {
 
 // Business Logic: Save Property
 class SavePropertyUseCase(private val repository: RoomRepository) {
-    suspend operator fun invoke(property: Property) = repository.saveProperty(property)
+    suspend operator fun invoke(property: Property): Property = repository.saveProperty(property)
 }
 
 // Business Logic: Get Property By ID

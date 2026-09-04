@@ -124,10 +124,9 @@ class PropertyFormViewModel(
                 hostId = currentUser?.id ?: "host_default"
             )
             
-            saveProperty(property)
-            _uiState.update { it.copy(isLoading = false, isSuccess = true, savedPropertyId = newId) }
-
-
+            val savedProperty = saveProperty(property)
+            val resolvedPropertyId = savedProperty.id.takeIf { it.isNotBlank() } ?: newId
+            _uiState.update { it.copy(isLoading = false, isSuccess = true, savedPropertyId = resolvedPropertyId) }
         }
     }
 }

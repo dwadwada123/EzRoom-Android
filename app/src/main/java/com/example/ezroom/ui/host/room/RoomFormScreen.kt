@@ -562,7 +562,7 @@ fun RoomFormScreen(
                             showSnackbar("Vui lòng điền đầy đủ: ${missingFields.joinToString(", ")}")
                         } else {
                             viewModel.save(
-                                propertyId = propertyId,
+                                propertyId = propertyId?.takeIf { it.isNotBlank() && it != "{propertyId}" },
                                 province = selectedProvince?.name,
                                 ward = selectedWard?.name,
                                 lat = markerState.position.latitude,
